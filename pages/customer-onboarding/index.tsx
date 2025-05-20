@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import SubcontentBar from '../../components/SubcontentBar/SubcontentBar';
 import CompanyProfile from '../../components/Onboarding/CompanyProfile';
 import UserManagement from '../../components/Onboarding/UserManagement';
 import ToolsIntegration from '../../components/Onboarding/ToolsIntegration';
@@ -31,6 +32,15 @@ const CustomerOnboarding = () => {
     }
   }, [router.isReady, router.query]);
 
+  // Handle tab selection
+  const handleTabSelect = (tabId: string) => {
+    setActiveTab(tabId);
+    router.push({
+      pathname: router.pathname,
+      query: { ...router.query, tab: tabId },
+    }, undefined, { shallow: true });
+  };
+
   // Render the appropriate component based on the active tab
   const renderContent = () => {
     switch (activeTab) {
@@ -51,7 +61,13 @@ const CustomerOnboarding = () => {
     }
   };
 
-  return renderContent();
+  return (
+    <div className="onboarding-page">
+      <div className="onboarding-content">
+        {renderContent()}
+      </div>
+    </div>
+  );
 };
 
 export default CustomerOnboarding;

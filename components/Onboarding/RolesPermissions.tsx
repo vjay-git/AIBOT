@@ -166,7 +166,7 @@ const RolesPermissions = () => {
           
           <div className="permissions-table">
             <div className="table-header">
-              <div className="permission-action-column">User Management Actions</div>
+              <div className="permission-action-column">{group.name} Actions</div>
               <div className="role-column">Sub-admin</div>
               <div className="role-column">Manager</div>
               <div className="role-column">Employee</div>

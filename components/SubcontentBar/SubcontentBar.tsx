@@ -695,7 +695,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
         <div className={`setup-item ${selectedId === 'subscription-plan' ? 'active' : ''}`} onClick={() => onSelect('subscription-plan')}>
           <span>Subscription Plan</span>
         </div>
-        <div className={`setup-item ${selectedId === 'subscription-plan' ? 'active' : ''}`} onClick={() => onSelect('subscription-plan')}>
+        <div className={`setup-item ${selectedId === 'license-management' ? 'active' : ''}`} onClick={() => onSelect('license-management')}>
           <span>License Management</span>
         </div>
       </div>
@@ -799,8 +799,8 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
         {renderLLMModels()}
         {renderSchemaTables()}
         
-        {/* Default navigation items for other sections, including onboarding */}
-        {(sectionType !== 'chatbot' && items.length > 0) && (
+        {/* Default navigation items for other sections, excluding chatbot and onboarding */}
+        {(sectionType !== 'chatbot' && sectionType !== 'onboarding' && items.length > 0) && (
           <div className="subnav-items-container">
             {items.map((item) => (
               <div

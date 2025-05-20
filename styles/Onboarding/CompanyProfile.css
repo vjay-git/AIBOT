@@ -168,6 +168,24 @@
   background-color: #0048E5;
 }
 
+.upload-button {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background-color: #EEF4FF;
+  color: #0052FF;
+  border: 1px solid #D4E0FF;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.2s;
+}
+
+.upload-button:hover {
+  background-color: #D4E0FF;
+}
+
 @media (max-width: 768px) {
   .company-profile-container {
     padding: 16px;

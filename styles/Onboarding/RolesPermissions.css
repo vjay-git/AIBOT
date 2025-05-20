@@ -76,10 +76,15 @@
 
 .permission-group {
   margin-bottom: 40px;
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
 .group-header {
-  margin-bottom: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #F0F2F5;
 }
 
 .group-title {
@@ -96,26 +101,26 @@
 }
 
 .permissions-table {
-  background-color: #F8F9FB;
-  border-radius: 8px;
-  overflow: hidden;
+  width: 100%;
 }
 
 .table-header {
   display: grid;
-  grid-template-columns: 1fr 120px 120px 120px;
-  padding: 12px;
-  background-color: #F0F2F5;
+  grid-template-columns: 3fr 1fr 1fr 1fr;
+  padding: 16px 24px;
+  background-color: #F8F9FB;
   font-weight: 500;
   font-size: 14px;
   color: #1A1A1A;
+  border-bottom: 1px solid #E4E4E7;
 }
 
 .table-row {
   display: grid;
-  grid-template-columns: 1fr 120px 120px 120px;
-  padding: 12px;
+  grid-template-columns: 3fr 1fr 1fr 1fr;
+  padding: 16px 24px;
   border-bottom: 1px solid #E4E4E7;
+  align-items: center;
 }
 
 .table-row:last-child {
@@ -123,7 +128,7 @@
 }
 
 .permission-action-column {
-  padding-right: 16px;
+  padding-right: 24px;
 }
 
 .permission-name {
@@ -136,6 +141,7 @@
 .permission-description {
   font-size: 12px;
   color: #71717A;
+  line-height: 1.4;
 }
 
 .role-column {
@@ -206,12 +212,25 @@
   
   .table-header,
   .table-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: 2fr 1fr;
     gap: 8px;
+    padding: 12px 16px;
+  }
+  
+  .table-header {
+    display: none; /* Hide header on mobile for better layout */
   }
   
   .role-column {
     justify-content: flex-start;
-    padding-left: 16px;
+    border-top: 1px solid #F0F2F5;
+    padding-top: 8px;
+    margin-top: 8px;
+  }
+  
+  .role-column:nth-child(2) {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
   }
 } 

@@ -16,15 +16,50 @@ export const chatbotTabs = [
   { id: 'prediction', title: 'Prediction' },
 ];
 
+// Welcome message component that shows when no messages exist
+const WelcomeMessage = ({ onSuggestionClick }: { onSuggestionClick: (text: string) => void }) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="welcome-container"
+    >
+      <div className="welcome-header">
+        <div className="welcome-avatar">
+          <img src="/images/bot-avatar.png" alt="Bot" 
+            onError={(e) => {
+              e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="%232563eb"><circle cx="12" cy="12" r="10"/></svg>';
+            }} 
+          />
+        </div>
+        <h2 className="welcome-title">Hello, I'm your AI Assistant</h2>
+      </div>
+      <p className="welcome-description">
+        I can help you analyze data, answer questions about your database, and provide insights.
+        Ask me anything about your data!
+      </p>
+      <div className="suggestion-chips">
+        <div className="suggestion-chip" onClick={() => onSuggestionClick("Show me patient demographics")}>
+          Show me patient demographics
+        </div>
+        <div className="suggestion-chip" onClick={() => onSuggestionClick("Analyze revenue trends")}>
+          Analyze revenue trends
+        </div>
+        <div className="suggestion-chip" onClick={() => onSuggestionClick("Compare doctor performance")}>
+          Compare doctor performance
+        </div>
+        <div className="suggestion-chip" onClick={() => onSuggestionClick("Generate a monthly report")}>
+          Generate a monthly report
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const Chatbot = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { 
-      id: 'welcome',
-      sender: 'bot', 
-      text: 'Your data assistant is thinking...',
-      timestamp: new Date().toISOString()
-    }
-  ]);
+  // Start with empty messages array to show welcome message
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -96,6 +131,11 @@ const Chatbot = () => {
     }
   };
 
+  // Function to handle clicking on suggestion chips
+  const handleSuggestionClick = (suggestion: string) => {
+    handleSend(suggestion);
+  };
+
   return (
     <div className={`chatbot-container ${theme}`}>
       <div className="chatbot-header">
@@ -112,41 +152,46 @@ const Chatbot = () => {
       </div>
       
       <div className="chatbot-messages">
-        <AnimatePresence>
-          {messages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className={`chatbot-message ${msg.sender === 'user' ? 'user' : ''}`}
-            >
-              {msg.sender === 'bot' && (
-                <div className="chatbot-avatar">
-                  <img src="/images/bot-avatar.png" alt="Bot" 
-                    onError={(e) => {
-                      e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="%232563eb"><circle cx="12" cy="12" r="10"/></svg>';
-                    }} 
-                  />
+        {/* Show welcome message if no messages exist */}
+        {messages.length === 0 ? (
+          <WelcomeMessage onSuggestionClick={handleSend} />
+        ) : (
+          <AnimatePresence>
+            {messages.map((msg) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className={`chatbot-message ${msg.sender === 'user' ? 'user' : ''}`}
+              >
+                {msg.sender === 'bot' && (
+                  <div className="chatbot-avatar">
+                    <img src="/images/bot-avatar.png" alt="Bot" 
+                      onError={(e) => {
+                        e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="%232563eb"><circle cx="12" cy="12" r="10"/></svg>';
+                      }} 
+                    />
+                  </div>
+                )}
+                <div className="chatbot-bubble">
+                  {msg.text}
                 </div>
-              )}
-              <div className="chatbot-bubble">
-                {msg.text}
-              </div>
-              {msg.sender === 'user' && (
-                <div className="message-actions">
-                  <button onClick={() => handleMessageAction(msg.id, 'copy')} className="action-icon">
-                    <span>📋</span>
-                  </button>
-                  <button onClick={() => handleMessageAction(msg.id, 'edit')} className="action-icon">
-                    <span>✏️</span>
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
+                {msg.sender === 'user' && (
+                  <div className="message-actions">
+                    <button onClick={() => handleMessageAction(msg.id, 'copy')} className="action-icon">
+                      <span>📋</span>
+                    </button>
+                    <button onClick={() => handleMessageAction(msg.id, 'edit')} className="action-icon">
+                      <span>✏️</span>
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
         
         {loading && (
           <motion.div 
@@ -165,6 +210,7 @@ const Chatbot = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Update InputBar to pass the handleSuggestionClick function */}
       <InputBar onSend={handleSend} theme={theme} />
 
       {error && (

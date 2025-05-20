@@ -56,11 +56,15 @@ const CompanyProfile = () => {
                 onChange={handleLogoChange}
                 style={{ display: 'none' }}
               />
+              
+              <label htmlFor="logo-upload" className="upload-button">
+                {logoPreview ? 'Change Logo' : 'Upload Logo'}
+              </label>
             </div>
           </div>
           
           <div className="form-column details-column">
-            <h2 className="section-title">Company Logo</h2>
+            <h2 className="section-title">Company Details</h2>
             
             <div className="form-fields">
               <div className="form-field">
