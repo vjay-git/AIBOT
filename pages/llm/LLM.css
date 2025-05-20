@@ -1,0 +1,172 @@
+.llm-page {
+  padding: 16px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 18px;
+  color: #666;
+}
+
+.model-config-section {
+  margin-top: 24px;
+  max-width: 800px;
+}
+
+.model-type-container,
+.model-parameters-container {
+  margin-bottom: 32px;
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0px 1px 3px rgba(16, 24, 40, 0.1);
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin-bottom: 8px;
+}
+
+.section-description {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.select-container {
+  position: relative;
+  width: 100%;
+}
+
+.select-container::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #666;
+  pointer-events: none;
+}
+
+.select-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1A1A1A;
+  background-color: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+
+.select-input:focus {
+  outline: none;
+  border-color: #0052FF;
+}
+
+.parameter-group {
+  margin-bottom: 24px;
+}
+
+.parameter-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #1A1A1A;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.slider {
+  flex: 1;
+  height: 4px;
+  appearance: none;
+  background: #E0E0E0;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0052FF;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0052FF;
+  border: none;
+  cursor: pointer;
+}
+
+.slider-value {
+  font-size: 14px;
+  color: #666;
+  width: 50px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.parameter-description {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.model-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.save-button {
+  background-color: #0052FF;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.save-button:hover {
+  background-color: #003ECC;
+}
+
+.reset-button {
+  background-color: transparent;
+  color: #666;
+  padding: 10px 20px;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.reset-button:hover {
+  background-color: #F8F9FB;
+} 

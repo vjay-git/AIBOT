@@ -1,0 +1,163 @@
+.license-management-container {
+  padding: 32px;
+  max-width: 1200px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #0052FF;
+  margin-bottom: 8px;
+}
+
+.page-description {
+  font-size: 14px;
+  color: #71717A;
+  margin-bottom: 32px;
+}
+
+.license-form {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.form-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 0;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1A1A1A;
+  margin-bottom: 8px;
+}
+
+.section-description {
+  font-size: 14px;
+  color: #71717A;
+  margin-bottom: 24px;
+}
+
+.form-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-field label {
+  font-size: 14px;
+  color: #71717A;
+}
+
+.select-input, .text-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E4E4E7;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #FFFFFF;
+  color: #1A1A1A;
+}
+
+.select-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+.email-input-container {
+  position: relative;
+}
+
+.email-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.text-input.with-icon {
+  padding-left: 40px;
+}
+
+.password-input-container {
+  display: flex;
+  gap: 8px;
+}
+
+.text-input.with-button {
+  flex: 1;
+}
+
+.generate-password-button {
+  padding: 0 16px;
+  background-color: #EEF2FF;
+  border: 1px solid #E4E4E7;
+  border-radius: 8px;
+  color: #0052FF;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.generate-password-button:hover {
+  background-color: #E5EDFF;
+}
+
+.checkbox-field {
+  margin-top: 8px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid #E4E4E7;
+  cursor: pointer;
+}
+
+.checkbox-label {
+  font-size: 14px;
+  color: #1A1A1A;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .license-management-container {
+    padding: 16px;
+  }
+  
+  .form-fields-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .password-input-container {
+    flex-direction: column;
+  }
+  
+  .generate-password-button {
+    align-self: flex-start;
+  }
+} 

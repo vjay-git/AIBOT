@@ -1,0 +1,246 @@
+/* ============================================
+   OSCAR‑GRADE SIDEBAR — Glassmorphic Elegance
+   Author: ChatGPT (2025)
+   Description:
+   A refined, accessible sidebar with subtle
+   glassmorphism, fluid motion, and adaptive
+   theming. No external dependencies.
+   ============================================ */
+
+   :root {
+    /* Colours */
+    --clr-surface: hsla(0 0% 100% / 0.6);
+    --clr-outline: hsla(220 15% 85% / 0.6);
+    --clr-shadow: hsla(220 15% 10% / 0.1);
+    --clr-accent: hsl(222 100% 55%);
+    --clr-accent-bg: hsla(222 100% 55% / 0.15);
+    --clr-icon: hsl(220 4% 46%);
+    --clr-icon-active: var(--clr-accent);
+  
+    /* Sizing */
+    --sz-track: 64px;
+    --radius-lg: 20px;
+    --radius-sm: 10px;
+    --gap: 6px;
+    --blur: 14px;
+  
+    /* Motion */
+    --ease-spring: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --dur-short: 180ms;
+  }
+  
+  /* DARK MODE SUPPORT */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --clr-surface: hsla(220 10% 10% / 0.4);
+      --clr-outline: hsla(220 10% 30% / 0.6);
+      --clr-shadow: hsla(220 10% 2% / 0.5);
+      --clr-icon: hsl(220 4% 65%);
+    }
+  }
+  
+  /* ---- Container ---- */
+  .sidebar-container {
+    position: fixed;
+    inset-block: 20px; /* top & bottom */
+    inset-inline-start: 20px; /* left in LTR */
+    width: var(--sz-track);
+    padding: 10px;
+  
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--gap);
+  
+    background: var(--clr-surface);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--clr-outline);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 12px var(--clr-shadow);
+    z-index: 999;
+    transition: background var(--dur-short) var(--ease-spring),
+                border var(--dur-short) var(--ease-spring);
+  }
+  
+  /* ---- Scroll for overflow (small screens) ---- */
+  .sidebar-container:has(.nav-items-container:focus-visible) {
+    overflow-y: auto;
+  }
+  
+  /* ---- Navigation ---- */
+  .nav-items-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+  }
+  
+  .nav-item-container,
+  .add-button,
+  .user-profile {
+    width: var(--sz-track) - 16px;
+    aspect-ratio: 1 / 1;
+    display: grid;
+    place-content: center;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    position: relative;
+    color: var(--clr-icon);
+    transition: background var(--dur-short) var(--ease-spring),
+                transform var(--dur-short) var(--ease-spring),
+                color var(--dur-short) var(--ease-spring);
+  }
+  
+  .nav-item-container:hover,
+  .add-button:hover,
+  .user-profile:hover {
+    background: var(--clr-accent-bg);
+  }
+  
+  .nav-item-container:active,
+  .add-button:active,
+  .user-profile:active {
+    transform: scale(0.96);
+  }
+  
+  /* Active state */
+  .nav-item-container.active {
+    background: var(--clr-accent-bg);
+    color: var(--clr-icon-active);
+  }
+  
+  /* ---- Icon ---- */
+  .icon-wrapper {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    position: relative;
+  }
+  
+  .icon-wrapper img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    transition: transform var(--dur-short) var(--ease-spring);
+    filter: brightness(1.05);
+  }
+  
+  .nav-item-container.active .icon-wrapper img {
+    transform: scale(1.1);
+  }
+  
+  .icon-placeholder {
+    width: 100%;
+    height: 100%;
+    background: var(--clr-outline);
+    border-radius: 6px;
+    opacity: 0.7;
+  }
+  
+  /* Plus icon (pure CSS) */
+  .plus-icon::before,
+  .plus-icon::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    background: var(--clr-icon);
+    transition: background var(--dur-short) var(--ease-spring);
+  }
+  .plus-icon::before {
+    width: 12px;
+    height: 2px;
+  }
+  .plus-icon::after {
+    width: 2px;
+    height: 12px;
+  }
+  .add-button:hover .plus-icon::before,
+  .add-button:hover .plus-icon::after {
+    background: var(--clr-icon-active);
+  }
+  
+  /* ---- Tooltip ---- */
+  .tooltip {
+    position: absolute;
+    inset-inline-start: calc(100% + 12px);
+    inset-block-start: 50%;
+    translate: 0 -50%;
+    padding: 6px 10px;
+    background: var(--clr-icon-active);
+    color: #fff;
+    font-size: 0.825rem;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform-origin: left center;
+    scale: 0.9;
+    transition: opacity var(--dur-short) var(--ease-spring),
+                scale var(--dur-short) var(--ease-spring);
+    z-index: 20;
+  }
+  
+  .nav-item-container:hover .tooltip,
+  .add-button:hover .tooltip,
+  .user-profile:hover .tooltip {
+    opacity: 1;
+    scale: 1;
+  }
+  
+  /* ---- Avatar ---- */
+  .avatarr {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, hsl(222 100% 59%), hsl(222 82% 66%));
+    border-radius: 50%;
+    display: grid;
+    place-content: center;
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  
+  /* ---- Reduced‑motion media query ---- */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.001ms !important;
+      animation-duration: 0.001ms !important;
+    }
+  }
+  
+  .plus-icon {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    position: relative;
+  }
+  
+  /* Sidebar content wrapper for proper structure */
+  .sidebar-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+  }
+  
+  /* Logo container */
+  .logo-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+    transition: transform var(--dur-short) var(--ease-spring);
+  }
+  
+  .logo-container:hover {
+    transform: scale(1.05);
+  }
+  
+  .logo-image {
+    border-radius: 8px;
+    width: 48px !important;
+    height: 48px !important;
+  }
+  

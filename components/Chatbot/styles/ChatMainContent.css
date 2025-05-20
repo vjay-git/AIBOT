@@ -1,0 +1,120 @@
+.chat-main-content {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  background-color: #f8f9fc;
+  position: relative;
+  flex: 1;
+}
+
+.chat-empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  background-color: #f8f9fc;
+}
+
+.empty-state-content {
+  text-align: center;
+  max-width: 420px;
+  padding: 2rem;
+  border-radius: 12px;
+  background-color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.empty-state-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.new-chat-button-large {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #0052FF;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.new-chat-button-large:hover {
+  background-color: #0045db;
+}
+
+.new-chat-button-large svg {
+  margin-right: 8px;
+}
+
+.loading-chat, .chat-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 1.125rem;
+  color: #666;
+}
+
+.chat-error {
+  color: #e53e3e;
+}
+
+.chat-search-bar {
+  position: relative;
+  padding: 16px;
+  background-color: white;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  z-index: 10;
+}
+
+.chat-search-input {
+  width: 100%;
+  padding: 10px 14px;
+  padding-left: 38px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: white;
+  transition: all 0.2s ease;
+}
+
+.chat-search-input:focus {
+  outline: none;
+  border-color: #0052FF;
+  box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.1);
+}
+
+.search-icon {
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #777;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .chat-search-bar {
+    padding: 10px;
+  }
+  
+  .chat-search-input {
+    padding: 8px 12px;
+    padding-left: 32px;
+    font-size: 13px;
+  }
+  
+  .search-icon {
+    left: 22px;
+  }
+} 

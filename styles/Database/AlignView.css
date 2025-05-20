@@ -1,0 +1,237 @@
+.align-view-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.align-controls {
+  margin-bottom: 24px;
+}
+
+.select-label {
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: #1A1A1A;
+  margin-bottom: 8px;
+}
+
+.mapping-dropdown {
+  width: 100%;
+  max-width: 260px;
+  padding: 12px 16px;
+  background-color: #FFFFFF;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  color: #1A1A1A;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='7' viewBox='0 0 12 7' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23666666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+}
+
+.mapping-dropdown:focus {
+  outline: none;
+  border-color: #0052FF;
+  box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.2);
+}
+
+.align-results {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0px 1px 3px rgba(16, 24, 40, 0.1);
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #E5E9F5;
+}
+
+.csv-name {
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: #1A1A1A;
+  display: flex;
+  align-items: center;
+}
+
+.result-count {
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal);
+  color: #4D9E3F;
+  background-color: #E9F7E5;
+  padding: 4px 8px;
+  border-radius: 16px;
+  margin-left: 12px;
+}
+
+.create-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #0052FF;
+  border: none;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.create-button:hover {
+  background-color: #003ECB;
+}
+
+.search-filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #E5E9F5;
+}
+
+.search-container {
+  position: relative;
+  flex: 1;
+  max-width: 300px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666666;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 16px 10px 40px;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: #1A1A1A;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #0052FF;
+  box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.2);
+}
+
+.filters-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: #FFFFFF;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: #1A1A1A;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filters-button:hover {
+  background-color: #F8F9FB;
+  border-color: #B3B3B3;
+}
+
+.align-table {
+  width: 100%;
+}
+
+.align-table-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  background-color: #F3F6FF;
+  border-bottom: 1px solid #E5E9F5;
+}
+
+.align-table-body {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.align-table-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  border-bottom: 1px solid #E5E9F5;
+  transition: background-color 0.2s ease;
+}
+
+.align-table-row:last-child {
+  border-bottom: none;
+}
+
+.align-table-row:hover {
+  background-color: #F8F9FB;
+}
+
+.align-cell {
+  padding: 0 8px;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: #1A1A1A;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.align-table-header .align-cell {
+  font-weight: var(--font-medium);
+  color: #666666;
+}
+
+.checkbox-cell {
+  width: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actions-column {
+  width: 80px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.copy-button,
+.options-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.copy-button:hover,
+.options-button:hover {
+  background-color: #F0F1F6;
+} 

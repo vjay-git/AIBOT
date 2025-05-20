@@ -1,0 +1,50 @@
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin: 0;
+  flex: 1;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.bookmark-button, .new-chat-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #666;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.bookmark-button:hover, .new-chat-button:hover {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.bookmarked {
+  color: #0052FF;
+}
+
+.bookmarked:hover {
+  color: #0052FF;
+} 
