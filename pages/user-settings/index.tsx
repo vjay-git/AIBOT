@@ -4,10 +4,7 @@ import ProfileSecurity from '../../components/UserSettings/ProfileSecurity';
 import Customization from '../../components/UserSettings/Customization';
 
 // Subnav items for user settings
-export const userSettingsTabs = [
-  { id: 'profile-security', title: 'Profile & Security' },
-  { id: 'customisation', title: 'Customisation' },
-];
+
 
 const UserSettings = () => {
   const router = useRouter();

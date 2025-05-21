@@ -2,17 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { fetchSchemaData } from '../../utils/apiMocks';
 import { SchemaType } from '../../types';
 
-// Subnav items for schema
-export const schemaTabs = [
-  { id: 'operation-table', title: 'Operation_table' },
-  { id: 'trained-models', title: 'Trained Models' },
-  { id: 'patient-age-metrics', title: 'Patient age metrics' },
-  { id: 'demographics', title: 'Demographics' },
-  { id: 'department-doctor', title: 'Department & Doctor' },
-  { id: 'age-pattern', title: 'Age Pattern' },
-  { id: 'age-complaints', title: 'Age and complains' },
-];
-
 const Schema = () => {
   const [loading, setLoading] = useState(true);
   const [schemaData, setSchemaData] = useState<SchemaType | null>(null);

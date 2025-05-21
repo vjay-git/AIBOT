@@ -8,14 +8,6 @@ const EmbeddedModel = () => <div className="llm-section">Embedded Model content 
 const ResponsiveModel = () => <div className="llm-section">Responsive Model content placeholder</div>;
 const ActionModel = () => <div className="llm-section">Action Model content placeholder</div>;
 
-// Subnav items for LLM
-export const llmTabs = [
-  { id: 'primary-model', title: 'Primary Model' },
-  { id: 'secondary-model', title: 'Secondary Model' },
-  { id: 'embedded-model', title: 'Embedded Model' },
-  { id: 'responsive-model', title: 'Responsive Model' },
-  { id: 'action-model', title: 'Action Model' },
-];
 
 const LLM = () => {
   const router = useRouter();

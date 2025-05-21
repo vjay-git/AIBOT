@@ -3,6 +3,8 @@ import { askDB } from '../../utils/api';
 import InputBar from '../../components/Chatbot/InputBar';
 import { ChatMessage } from '../../types';
 import { motion, AnimatePresence } from 'framer-motion';
+import TabularAnswer from '../../components/Chatbot/TabularAnswer';
+import MessageBubble from '../../components/Chatbot/MessageBubble';
 
 const DEFAULT_USER_ID = '56376e63-0377-413d-8c9e-359028e2380d';
 
@@ -63,6 +65,7 @@ const Chatbot = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -78,10 +81,12 @@ const Chatbot = () => {
       id: `msg-${Date.now()}`,
       sender: 'user',
       text: msg,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      replyTo: replyTo?.id,
     };
     
     setMessages(msgs => [...msgs, userMessage]);
+    setReplyTo(null);
     setLoading(true);
     setError('');
     
@@ -93,14 +98,41 @@ const Chatbot = () => {
         tile: ''
       });
       
-      const botMessage: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
-        sender: 'bot',
-        text: res.answer,
-        timestamp: new Date().toISOString()
-      };
-      
-      setMessages(msgs => [...msgs, botMessage]);
+      // Detect tabular data (2D array or array of objects)
+      let isTabular = false;
+      if (
+        Array.isArray(res.answer) &&
+        res.answer.length > 1 &&
+        Array.isArray(res.answer[0]) &&
+        res.answer[0].every((h: any) => typeof h === 'string')
+      ) {
+        isTabular = true;
+      } else if (Array.isArray(res.answer) && res.answer.length > 0 && typeof res.answer[0] === 'object') {
+        isTabular = true;
+      }
+      if (isTabular) {
+        setMessages(msgs => [
+          ...msgs,
+          {
+            id: `msg-${Date.now() + 1}`,
+            sender: 'bot',
+            text: '',
+            timestamp: new Date().toISOString(),
+            type: 'tabular',
+            rawAnswer: res.answer
+          } as any
+        ]);
+      } else {
+        setMessages(msgs => [
+          ...msgs,
+          {
+            id: `msg-${Date.now() + 1}`,
+            sender: 'bot',
+            text: res.answer,
+            timestamp: new Date().toISOString()
+          }
+        ]);
+      }
     } catch (err: any) {
       const errorMessage: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
@@ -150,6 +182,14 @@ const Chatbot = () => {
           </button>
         </div>
       </div>
+
+      {/* Reply context UI */}
+      {replyTo && (
+        <div className="reply-context-bar">
+          <span>Replying to: {replyTo.text.slice(0, 50)}</span>
+          <button onClick={() => setReplyTo(null)} className="cancel-reply">Cancel</button>
+        </div>
+      )}
       
       <div className="chatbot-messages">
         {/* Show welcome message if no messages exist */}
@@ -166,28 +206,11 @@ const Chatbot = () => {
                 transition={{ duration: 0.3 }}
                 className={`chatbot-message ${msg.sender === 'user' ? 'user' : ''}`}
               >
-                {msg.sender === 'bot' && (
-                  <div className="chatbot-avatar">
-                    <img src="/images/bot-avatar.png" alt="Bot" 
-                      onError={(e) => {
-                        e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="%232563eb"><circle cx="12" cy="12" r="10"/></svg>';
-                      }} 
-                    />
-                  </div>
-                )}
-                <div className="chatbot-bubble">
-                  {msg.text}
-                </div>
-                {msg.sender === 'user' && (
-                  <div className="message-actions">
-                    <button onClick={() => handleMessageAction(msg.id, 'copy')} className="action-icon">
-                      <span>📋</span>
-                    </button>
-                    <button onClick={() => handleMessageAction(msg.id, 'edit')} className="action-icon">
-                      <span>✏️</span>
-                    </button>
-                  </div>
-                )}
+                <MessageBubble
+                  message={msg}
+                  messages={messages}
+                  onReply={setReplyTo}
+                />
               </motion.div>
             ))}
           </AnimatePresence>

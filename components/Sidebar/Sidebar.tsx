@@ -133,9 +133,9 @@ const Sidebar: React.FC<SidebarProps> = ({ items }) => {
       
       <div className="user-profile">
         <div className="avatarr">
-          <span>AR</span>
+          <span>VK</span>
         </div>
-        <div className="tooltip">Anush Reddy<br />anush@upslide.in</div>
+        <div className="tooltip">Vijay Kumar<br></br>vijaykumar.g@sap.in</div>
       </div>
     </div>
   );

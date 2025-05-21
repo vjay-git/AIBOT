@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchDashboardData, askDatabase, AskDatabaseRequest } from '../../utils/apiMocks';
 import { DashboardDataType } from '../../types';
-import AskDBForm from '../../components/dashboard/AskDBForm';
 
 // Subnav items for dashboard
 export const dashboardTabs = [
@@ -117,11 +116,6 @@ const Dashboard = () => {
         <button className="action-button">
           <span>Add Card</span>
         </button>
-      </div>
-
-      {/* AskDBForm for /ask_db integration */}
-      <div style={{ margin: '2rem 0' }}>
-        <AskDBForm />
       </div>
 
       {dashboardData && (
