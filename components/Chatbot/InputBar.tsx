@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Database, Globe } from 'lucide-react';
 
 type InputBarProps = {
   onSend: (msg: string) => void;
@@ -106,32 +107,29 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, theme }) => {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="mode-selector">
-        <button
-          type="button"
-          className={`mode-btn ${mode === 'db' ? 'active' : ''}`}
-          onClick={() => handleModeChange('db')}
-        >
-          Ask DB
-        </button>
-        <button
-          type="button"
-          className={`mode-btn ${mode === 'web' ? 'active' : ''}`}
-          onClick={() => handleModeChange('web')}
-        >
-          Web Search
-        </button>
-      </div>
-      
       <form onSubmit={handleSubmit}>
         <div className="input-container">
-          <button type="button" className="attachment-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" 
-                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          
+          {/* Mode icons inside input bar, left-aligned */}
+          <div className="input-modes">
+            <button
+              type="button"
+              className={`mode-btn-icon${mode === 'db' ? ' active' : ''}`}
+              onClick={() => handleModeChange('db')}
+              aria-label="Ask DB"
+              title="Ask DB"
+            >
+              <Database size={20} />
+            </button>
+            <button
+              type="button"
+              className={`mode-btn-icon${mode === 'web' ? ' active' : ''}`}
+              onClick={() => handleModeChange('web')}
+              aria-label="Web Search"
+              title="Web Search"
+            >
+              <Globe size={20} />
+            </button>
+          </div>
           <textarea
             ref={inputRef}
             value={message}
@@ -142,7 +140,6 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, theme }) => {
             rows={1}
             style={{ resize: 'none' }}
           />
-          
           <div className="input-actions">
             <motion.button
               type="button"
@@ -156,7 +153,6 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, theme }) => {
               </svg>
               Generate Report
             </motion.button>
-            
             <motion.button
               type="button"
               className={`voice-button ${isRecording ? 'recording' : ''}`}
@@ -169,7 +165,6 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, theme }) => {
                 <path d="M17 12c0 2.76-2.24 5-5 5s-5-2.24-5-5m5 5v3m-3 0h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </motion.button>
-            
             <motion.button
               type="submit"
               className={`send-button ${!message.trim() ? 'disabled' : ''}`}
@@ -184,7 +179,6 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, theme }) => {
           </div>
         </div>
       </form>
-
       {showSuggestions && suggestions.length > 0 && (
         <motion.div 
           className={`suggestions-dropdown ${theme}`}
