@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 
 const PlotlyChart = dynamic(() => import('../dashboard/PlotlyChart'), { ssr: false });
@@ -26,7 +26,15 @@ function toObjectArrayFrom2D(data: any): any[] | null {
   return null;
 }
 
+const chartTypes = [
+  { label: 'Bar', value: 'bar' },
+  { label: 'Line', value: 'line' },
+  { label: 'Pie', value: 'pie' },
+  { label: 'Scatter', value: 'scatter' },
+];
+
 const TabularAnswer: React.FC<TabularAnswerProps> = ({ rawAnswer }) => {
+  const [chartType, setChartType] = useState<'bar' | 'line' | 'pie' | 'scatter'>('bar');
   let tabularObjArr: any[] = [];
   let is2DArray = false;
   if (
@@ -50,11 +58,33 @@ const TabularAnswer: React.FC<TabularAnswerProps> = ({ rawAnswer }) => {
 
   if (tabularObjArr && Array.isArray(tabularObjArr) && tabularObjArr.length > 0 && typeof tabularObjArr[0] === 'object' && Object.keys(tabularObjArr[0]).length > 1) {
     return (
-      <>
-        <div style={{ marginTop: 24 }}>
-          <PlotlyChart data={tabularObjArr} />
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 350px', minWidth: 320, maxWidth: 600 }}>
+          <div style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontWeight: 500 }}>Chart Type:</span>
+            {chartTypes.map((ct) => (
+              <button
+                key={ct.value}
+                onClick={() => setChartType(ct.value as any)}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  border: chartType === ct.value ? '2px solid #2563eb' : '1px solid #ccc',
+                  background: chartType === ct.value ? '#e6f0ff' : '#fff',
+                  color: chartType === ct.value ? '#2563eb' : '#333',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  marginRight: 4,
+                }}
+              >
+                {ct.label}
+              </button>
+            ))}
+          </div>
+          <PlotlyChart data={tabularObjArr} chartType={chartType} />
         </div>
-        <div style={{ marginTop: 24, overflowX: 'auto' }}>
+        <div style={{ flex: '1 1 350px', minWidth: 320, maxWidth: 600, overflowX: 'auto' }}>
           <table className="askdb-table" style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead>
               <tr>
@@ -74,7 +104,7 @@ const TabularAnswer: React.FC<TabularAnswerProps> = ({ rawAnswer }) => {
             </tbody>
           </table>
         </div>
-      </>
+      </div>
     );
   }
   if (is2DArray && (!tabularObjArr || tabularObjArr.length === 0 || typeof tabularObjArr[0] !== 'object')) {

@@ -1,11 +1,16 @@
 /* InputBar styles for chatbot */
 
 .chatbot-form {
-  position: relative;
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
   padding: var(--spacing);
   background: var(--light-bg);
   border-top: 1px solid var(--light-border);
   transition: background-color var(--transition), border-color var(--transition);
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.04);
 }
 
 .dark .chatbot-form {
@@ -49,10 +54,13 @@
 /* Mode icons inside input bar */
 .input-modes {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 4px;
+  flex: 0 0 auto;
+  height: 40px;
   margin-right: 8px;
 }
+
 .mode-btn-icon {
   background: none;
   border: none;
@@ -70,24 +78,29 @@
   outline: none;
   padding: 0;
 }
+
 .mode-btn-icon.active {
   background: #e6f0ff;
   color: #2563eb;
   opacity: 1;
 }
+
 .mode-btn-icon:hover, .mode-btn-icon:focus {
   background: #e6f0ff;
   color: #2563eb;
   opacity: 1;
 }
+
 .dark .mode-btn-icon {
   color: #888;
   background: none;
 }
+
 .dark .mode-btn-icon.active {
   background: #232a3a;
   color: #7da6ff;
 }
+
 .dark .mode-btn-icon:hover, .dark .mode-btn-icon:focus {
   background: #232a3a;
   color: #7da6ff;
@@ -95,14 +108,15 @@
 
 /* Input container */
 .input-container {
-  display: flex;
-  gap: 12px;
-  align-items: center;
   position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
   background: white;
   border-radius: var(--radius-md);
-  padding: 8px 12px;
+  padding: 12px 16px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  min-height: 56px;
 }
 
 .dark .input-container {
@@ -134,10 +148,10 @@
 
 /* Textarea input */
 .chatbot-input {
-  flex: 1;
-  min-height: 24px;
-  max-height: 150px;
-  padding: 8px 16px;
+  flex: 1 1 auto;
+  min-height: 40px;
+  max-height: 180px;
+  padding: 10px 0;
   border: none;
   border-radius: var(--radius-md);
   font-size: 1rem;
@@ -147,6 +161,11 @@
   resize: none;
   transition: all var(--transition);
   font-family: var(--font-sans);
+  overflow-y: auto;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: block;
 }
 
 .dark .chatbot-input {
@@ -168,8 +187,11 @@
 /* Action buttons */
 .input-actions {
   display: flex;
+  align-items: flex-end;
   gap: 8px;
-  align-items: center;
+  flex: 0 0 auto;
+  height: 40px;
+  margin-left: 8px;
 }
 
 .action-btn {
@@ -304,11 +326,23 @@
   }
   
   .input-container {
-    padding: 6px 10px;
+    padding: 8px 6px;
+    min-height: 44px;
   }
   
   .chatbot-input {
     font-size: 0.9rem;
+    padding: 8px 0;
+  }
+  
+  .input-modes {
+    height: 32px;
+    margin-right: 4px;
+  }
+  
+  .input-actions {
+    height: 32px;
+    margin-left: 4px;
   }
   
   .action-btn {

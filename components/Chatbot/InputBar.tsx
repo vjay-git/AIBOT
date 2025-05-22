@@ -5,39 +5,35 @@ import { Database, Globe } from 'lucide-react';
 type InputBarProps = {
   onSend: (msg: string) => void;
   theme: 'light' | 'dark';
+  suggestions?: string[];
 };
 
-const InputBar: React.FC<InputBarProps> = ({ onSend, theme }) => {
+const InputBar: React.FC<InputBarProps> = ({ onSend, theme, suggestions: propSuggestions = [] }) => {
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>(propSuggestions);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [mode, setMode] = useState<'db' | 'web'>('db');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Fetch suggestions (mock)
-  const fetchSuggestions = async (query: string) => {
-    return [
-      'What is the total sales for Q1?',
-      'Show me revenue trends for last quarter',
-      'How many customers signed up last month?'
-    ].filter(s => s.toLowerCase().includes(query.toLowerCase()));
-  };
+  useEffect(() => {
+    setSuggestions(propSuggestions);
+  }, [propSuggestions]);
 
   useEffect(() => {
     if (message.trim().length > 2) {
-      fetchSuggestions(message).then(newSuggestions => {
-        setSuggestions(newSuggestions);
-        setShowSuggestions(newSuggestions.length > 0);
-        setActiveSuggestion(-1);
-      });
+      // Filter suggestions by input
+      const filtered = propSuggestions.filter(s => s.toLowerCase().includes(message.toLowerCase()));
+      setSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
+      setActiveSuggestion(-1);
     } else {
-      setSuggestions([]);
+      setSuggestions(propSuggestions);
       setShowSuggestions(false);
     }
-  }, [message]);
+  }, [message, propSuggestions]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);

@@ -154,7 +154,7 @@
     inset-block-start: 50%;
     translate: 0 -50%;
     padding: 6px 10px;
-    background-color: #0052FF;
+    background-color: #0051ff;
     color: #fff;
     font-size: 0.825rem;
     line-height: 1;
@@ -223,7 +223,7 @@
     font-size: var(--text-base);
     font-weight: var(--font-semibold);
     letter-spacing: var(--tracking-tight);
-    color: #0052FF;
+    color: #0051ff;
     margin-block-end: 20px;
     padding-inline-start: 6px;
   }

@@ -19,7 +19,7 @@ export const chatbotTabs = [
 ];
 
 // Welcome message component that shows when no messages exist
-const WelcomeMessage = ({ onSuggestionClick }: { onSuggestionClick: (text: string) => void }) => {
+const WelcomeMessage = ({ onSuggestionClick, suggestions }: { onSuggestionClick: (text: string) => void, suggestions: string[] }) => {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -42,18 +42,18 @@ const WelcomeMessage = ({ onSuggestionClick }: { onSuggestionClick: (text: strin
         Ask me anything about your data!
       </p>
       <div className="suggestion-chips">
-        <div className="suggestion-chip" onClick={() => onSuggestionClick("Show me patient demographics")}>
-          Show me patient demographics
-        </div>
-        <div className="suggestion-chip" onClick={() => onSuggestionClick("Analyze revenue trends")}>
-          Analyze revenue trends
-        </div>
-        <div className="suggestion-chip" onClick={() => onSuggestionClick("Compare doctor performance")}>
-          Compare doctor performance
-        </div>
-        <div className="suggestion-chip" onClick={() => onSuggestionClick("Generate a monthly report")}>
-          Generate a monthly report
-        </div>
+        {suggestions.length === 0 ? (
+          <>
+            <div className="suggestion-chip" onClick={() => onSuggestionClick("Show me patient demographics")}>Show me patient demographics</div>
+            <div className="suggestion-chip" onClick={() => onSuggestionClick("Analyze revenue trends")}>Analyze revenue trends</div>
+            <div className="suggestion-chip" onClick={() => onSuggestionClick("Compare doctor performance")}>Compare doctor performance</div>
+            <div className="suggestion-chip" onClick={() => onSuggestionClick("Generate a monthly report")}>Generate a monthly report</div>
+          </>
+        ) : (
+          suggestions.map((s, i) => (
+            <div className="suggestion-chip" key={i} onClick={() => onSuggestionClick(s)}>{s}</div>
+          ))
+        )}
       </div>
     </motion.div>
   );
@@ -168,6 +168,10 @@ const Chatbot = () => {
     handleSend(suggestion);
   };
 
+  // Compute last 4 user prompts (most recent first)
+  const userPrompts = messages.filter(m => m.sender === 'user' && m.text).map(m => m.text);
+  const last4Prompts = userPrompts.slice(-4).reverse();
+
   return (
     <div className={`chatbot-container ${theme}`}>
       <div className="chatbot-header">
@@ -194,7 +198,7 @@ const Chatbot = () => {
       <div className="chatbot-messages">
         {/* Show welcome message if no messages exist */}
         {messages.length === 0 ? (
-          <WelcomeMessage onSuggestionClick={handleSend} />
+          <WelcomeMessage onSuggestionClick={handleSend} suggestions={last4Prompts} />
         ) : (
           <AnimatePresence>
             {messages.map((msg) => (
@@ -233,8 +237,8 @@ const Chatbot = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Update InputBar to pass the handleSuggestionClick function */}
-      <InputBar onSend={handleSend} theme={theme} />
+      {/* Pass last4Prompts to InputBar as suggestions */}
+      <InputBar onSend={handleSend} theme={theme} suggestions={last4Prompts} />
 
       {error && (
         <motion.div 
