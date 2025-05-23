@@ -76,41 +76,61 @@ const Chatbot = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async (msg: string) => {
-    const userMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      sender: 'user',
-      text: msg,
-      timestamp: new Date().toISOString(),
-      replyTo: replyTo?.id,
-    };
-    
+  const handleSend = async (msg: string | Blob, isAudio = false) => {
+    let userMessage: ChatMessage;
+    if (isAudio && msg instanceof Blob) {
+      userMessage = {
+        id: `msg-${Date.now()}`,
+        sender: 'user',
+        text: '[Voice message]',
+        timestamp: new Date().toISOString(),
+        replyTo: replyTo?.id,
+        type: 'audio',
+        rawAnswer: msg
+      };
+    } else {
+      userMessage = {
+        id: `msg-${Date.now()}`,
+        sender: 'user',
+        text: msg as string,
+        timestamp: new Date().toISOString(),
+        replyTo: replyTo?.id,
+      };
+    }
     setMessages(msgs => [...msgs, userMessage]);
     setReplyTo(null);
     setLoading(true);
     setError('');
-    
     try {
-      const res = await askDB({
-        user_id: DEFAULT_USER_ID,
-        question: msg,
-        dashboard: '',
-        tile: ''
-      });
-      
-      // Detect tabular data (2D array or array of objects)
-      let isTabular = false;
-      if (
-        Array.isArray(res.answer) &&
-        res.answer.length > 1 &&
-        Array.isArray(res.answer[0]) &&
-        res.answer[0].every((h: any) => typeof h === 'string')
-      ) {
-        isTabular = true;
-      } else if (Array.isArray(res.answer) && res.answer.length > 0 && typeof res.answer[0] === 'object') {
-        isTabular = true;
+      let res, response, contentType;
+      if (isAudio && msg instanceof Blob) {
+        // Send audio as FormData
+        const formData = new FormData();
+        formData.append('audio', msg, 'audio.webm');
+        response = await fetch('/ask_db', { method: 'POST', body: formData });
+        contentType = response.headers.get('Content-Type');
+      } else {
+        res = await askDB({
+          user_id: DEFAULT_USER_ID,
+          question: msg as string,
+          dashboard: '',
+          tile: ''
+        });
+        contentType = res?.contentType || 'application/json';
       }
-      if (isTabular) {
+      // Handle file responses
+      if (contentType === 'application/pdf' || contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        let fileType = 'file';
+        if (contentType === 'application/pdf') fileType = 'pdf';
+        if (contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') fileType = 'xlsx';
+        if (contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') fileType = 'docx';
+        let fileBlob;
+        if (response) {
+          fileBlob = await response.blob();
+        } else if (res && res.file) {
+          fileBlob = res.file;
+        }
+        const fileUrl = URL.createObjectURL(fileBlob);
         setMessages(msgs => [
           ...msgs,
           {
@@ -118,20 +138,67 @@ const Chatbot = () => {
             sender: 'bot',
             text: '',
             timestamp: new Date().toISOString(),
-            type: 'tabular',
-            rawAnswer: res.answer
-          } as any
+            type: fileType,
+            rawAnswer: fileUrl
+          }
         ]);
-      } else {
+      } else if (contentType && contentType.startsWith('audio/')) {
+        // Audio response from backend
+        let audioUrl;
+        if (response) {
+          const audioBlob = await response.blob();
+          audioUrl = URL.createObjectURL(audioBlob);
+        } else if (res && res.audio) {
+          audioUrl = res.audio;
+        }
         setMessages(msgs => [
           ...msgs,
           {
             id: `msg-${Date.now() + 1}`,
             sender: 'bot',
-            text: res.answer,
-            timestamp: new Date().toISOString()
+            text: '',
+            timestamp: new Date().toISOString(),
+            type: 'audio',
+            rawAnswer: audioUrl
           }
         ]);
+      } else {
+        // Existing logic for text/tabular
+        let answer = res?.answer;
+        let isTabular = false;
+        if (
+          Array.isArray(answer) &&
+          answer.length > 1 &&
+          Array.isArray(answer[0]) &&
+          answer[0].every((h: any) => typeof h === 'string')
+        ) {
+          isTabular = true;
+        } else if (Array.isArray(answer) && answer.length > 0 && typeof answer[0] === 'object') {
+          isTabular = true;
+        }
+        if (isTabular) {
+          setMessages(msgs => [
+            ...msgs,
+            {
+              id: `msg-${Date.now() + 1}`,
+              sender: 'bot',
+              text: '',
+              timestamp: new Date().toISOString(),
+              type: 'tabular',
+              rawAnswer: answer
+            } as any
+          ]);
+        } else {
+          setMessages(msgs => [
+            ...msgs,
+            {
+              id: `msg-${Date.now() + 1}`,
+              sender: 'bot',
+              text: answer,
+              timestamp: new Date().toISOString()
+            }
+          ]);
+        }
       }
     } catch (err: any) {
       const errorMessage: ChatMessage = {

@@ -59,6 +59,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onRepl
           {/* Main message content */}
           {message.type === 'tabular' && message.rawAnswer ? (
             <TabularAnswer rawAnswer={message.rawAnswer} />
+          ) : message.type === 'audio' && message.rawAnswer ? (
+            <audio controls src={message.rawAnswer} style={{ width: '100%', margin: '8px 0' }} />
+          ) : (['pdf', 'xlsx', 'docx'].includes(message.type || '') && message.rawAnswer) ? (
+            <a
+              href={message.rawAnswer}
+              download={`response.${message.type}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="download-link"
+              style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: 500 }}
+            >
+              Download {message.type?.toUpperCase()} file
+            </a>
           ) : (
             <div className="message-text">{message.text}</div>
           )}

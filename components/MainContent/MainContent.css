@@ -3,13 +3,13 @@
   flex: 1;
   height: 100vh;
   overflow: hidden;
-  padding-left: 16px; /* Slightly increased breathing space */
+  padding-left: 6px; /* Reduced from 16px to 6px for more space */
   transition: padding-left var(--dur-short) var(--ease-spring);
 }
 
 .content-container {
   flex: 1;
-  padding: 20px 24px 24px 24px;
+  padding: 20px 16px 24px 16px; /* Reduce horizontal padding */
   height: 100vh;
   overflow-y: auto;
   background-color: #F8F9FB;
@@ -353,4 +353,4 @@
 /* When SubcontentBar is not present (adjusted in Layout.css) */
 .without-subcontent .main-content {
   padding-left: 0;
-} 
+}

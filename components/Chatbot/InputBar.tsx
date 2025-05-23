@@ -17,6 +17,8 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, theme, suggestions: propSug
   const [mode, setMode] = useState<'db' | 'web'>('db');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     setSuggestions(propSuggestions);
@@ -81,9 +83,40 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, theme, suggestions: propSug
     inputRef.current?.focus();
   };
 
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    // TODO: Implement voice recording functionality
+  const handleVoiceSend = (audioBlob: Blob) => {
+    if (onSend) {
+      // Pass audio blob and isAudio flag
+      (onSend as any)(audioBlob, true);
+    }
+  };
+
+  const toggleRecording = async () => {
+    if (isRecording) {
+      setIsRecording(false);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+    } else {
+      setIsRecording(true);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new window.MediaRecorder(stream, { mimeType: 'audio/webm' });
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+        mediaRecorder.ondataavailable = (event: BlobEvent) => {
+          audioChunksRef.current.push(event.data);
+        };
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          handleVoiceSend(audioBlob);
+          stream.getTracks().forEach(track => track.stop());
+        };
+        mediaRecorder.start();
+      } catch (err) {
+        setIsRecording(false);
+        alert('Could not access microphone.');
+      }
+    }
   };
 
   const handleModeChange = (newMode: 'db' | 'web') => {

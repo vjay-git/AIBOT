@@ -95,9 +95,9 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   replyTo?: string; // for replies
-  type?: 'text' | 'search_query' | 'search_result' | 'db_answer' | 'tabular'; // message type for different modes
+  type?: 'text' | 'search_query' | 'search_result' | 'db_answer' | 'tabular' | 'audio' | 'pdf' | 'xlsx' | 'docx' | 'file'; // message type for different modes
   bookmarked?: boolean; // whether message is bookmarked
-  rawAnswer?: any; // for tabular/chatbot table answers
+  rawAnswer?: any; // for tabular/chatbot table answers, file/audio URLs
 }
 
 export interface ChatSession {

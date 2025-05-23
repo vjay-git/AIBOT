@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { BarChart2, LineChart, PieChart, ScatterChart } from 'lucide-react';
 
 const PlotlyChart = dynamic(() => import('../dashboard/PlotlyChart'), { ssr: false });
 
@@ -27,14 +28,15 @@ function toObjectArrayFrom2D(data: any): any[] | null {
 }
 
 const chartTypes = [
-  { label: 'Bar', value: 'bar' },
-  { label: 'Line', value: 'line' },
-  { label: 'Pie', value: 'pie' },
-  { label: 'Scatter', value: 'scatter' },
+  { label: 'Bar', value: 'bar', icon: <BarChart2 size={18} /> },
+  { label: 'Line', value: 'line', icon: <LineChart size={18} /> },
+  { label: 'Pie', value: 'pie', icon: <PieChart size={18} /> },
+  { label: 'Scatter', value: 'scatter', icon: <ScatterChart size={18} /> },
 ];
 
 const TabularAnswer: React.FC<TabularAnswerProps> = ({ rawAnswer }) => {
   const [chartType, setChartType] = useState<'bar' | 'line' | 'pie' | 'scatter'>('bar');
+  const [view, setView] = useState<'chart' | 'table'>('chart');
   let tabularObjArr: any[] = [];
   let is2DArray = false;
   if (
@@ -58,52 +60,93 @@ const TabularAnswer: React.FC<TabularAnswerProps> = ({ rawAnswer }) => {
 
   if (tabularObjArr && Array.isArray(tabularObjArr) && tabularObjArr.length > 0 && typeof tabularObjArr[0] === 'object' && Object.keys(tabularObjArr[0]).length > 1) {
     return (
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 350px', minWidth: 320, maxWidth: 600 }}>
-          <div style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontWeight: 500 }}>Chart Type:</span>
-            {chartTypes.map((ct) => (
-              <button
-                key={ct.value}
-                onClick={() => setChartType(ct.value as any)}
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: 6,
-                  border: chartType === ct.value ? '2px solid #2563eb' : '1px solid #ccc',
-                  background: chartType === ct.value ? '#e6f0ff' : '#fff',
-                  color: chartType === ct.value ? '#2563eb' : '#333',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  marginRight: 4,
-                }}
-              >
-                {ct.label}
-              </button>
-            ))}
-          </div>
-          <PlotlyChart data={tabularObjArr} chartType={chartType} />
+      <div style={{ width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <button
+            onClick={() => setView('chart')}
+            style={{
+              background: view === 'chart' ? '#e6f0ff' : '#fff',
+              color: view === 'chart' ? '#2563eb' : '#333',
+              border: view === 'chart' ? '2px solid #2563eb' : '1px solid #ccc',
+              borderRadius: 6,
+              padding: '4px 12px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            aria-label="Show Chart"
+          >
+            <BarChart2 size={16} style={{ marginRight: 4 }} /> Chart
+          </button>
+          <button
+            onClick={() => setView('table')}
+            style={{
+              background: view === 'table' ? '#e6f0ff' : '#fff',
+              color: view === 'table' ? '#2563eb' : '#333',
+              border: view === 'table' ? '2px solid #2563eb' : '1px solid #ccc',
+              borderRadius: 6,
+              padding: '4px 12px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            aria-label="Show Table"
+          >
+            <table style={{ display: 'inline', width: 16, height: 16, marginRight: 4 }}><tbody><tr><td style={{ background: '#2563eb', width: 6, height: 6 }}></td><td style={{ background: '#2563eb', width: 6, height: 6 }}></td></tr><tr><td style={{ background: '#2563eb', width: 6, height: 6 }}></td><td style={{ background: '#2563eb', width: 6, height: 6 }}></td></tr></tbody></table> Table
+          </button>
+          {view === 'chart' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 16 }}>
+              {chartTypes.map((ct) => (
+                <button
+                  key={ct.value}
+                  onClick={() => setChartType(ct.value as any)}
+                  style={{
+                    background: chartType === ct.value ? '#e6f0ff' : '#fff',
+                    color: chartType === ct.value ? '#2563eb' : '#333',
+                    border: chartType === ct.value ? '2px solid #2563eb' : '1px solid #ccc',
+                    borderRadius: 6,
+                    padding: 4,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  aria-label={ct.label + ' Chart'}
+                >
+                  {ct.icon}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <div style={{ flex: '1 1 350px', minWidth: 320, maxWidth: 600, overflowX: 'auto' }}>
-          <table className="askdb-table" style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <thead>
-              <tr>
-                {Object.keys(tabularObjArr[0]).map((col) => (
-                  <th key={col} style={{ border: '1px solid #ccc', padding: '8px', background: '#f5f5f5' }}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tabularObjArr.map((row: any, idx: number) => (
-                <tr key={idx}>
+        {view === 'chart' ? (
+          <PlotlyChart data={tabularObjArr} chartType={chartType} />
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="askdb-table" style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <thead>
+                <tr>
                   {Object.keys(tabularObjArr[0]).map((col) => (
-                    <td key={col} style={{ border: '1px solid #ccc', padding: '8px' }}>{row[col]}</td>
+                    <th key={col} style={{ border: '1px solid #ccc', padding: '8px', background: '#f5f5f5' }}>{col}</th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {tabularObjArr.map((row: any, idx: number) => (
+                  <tr key={idx}>
+                    {Object.keys(tabularObjArr[0]).map((col) => (
+                      <td key={col} style={{ border: '1px solid #ccc', padding: '8px' }}>{row[col]}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   }

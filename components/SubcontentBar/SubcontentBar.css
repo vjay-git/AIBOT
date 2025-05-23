@@ -18,7 +18,7 @@
     --clr-icon-active: var(--clr-accent);
   
     /* Sizing */
-    --sz-track: 64px;
+    --sz-track: 48px; /* Reduced from 64px to 48px */
     --radius-lg: 20px;
     --radius-sm: 10px;
     --gap: 6px;
@@ -43,7 +43,7 @@
     position: fixed;
     inset-block: 20px;
     inset-inline-start: 20px;
-    width: var(--sz-track);
+    width: var(--sz-track); /* Now 48px */
     padding: 10px;
   
     display: flex;
@@ -76,7 +76,7 @@
   .nav-item-container,
   .add-button,
   .user-profile {
-    width: calc(var(--sz-track) - 16px);
+    width: calc(var(--sz-track) - 10px); /* Adjust for new width */
     aspect-ratio: 1 / 1;
     display: grid;
     place-content: center;
@@ -109,8 +109,8 @@
   
   .icon-wrapper,
   .plus-icon {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     display: grid;
     place-items: center;
   }
@@ -198,7 +198,7 @@
   
   /* ========== Subcontent Panel ========== */
   .subcontent-container {
-    width: 320px;
+    width: 280px;
     background-color: #F8F9FB;
     border-right: 1px solid rgba(224, 224, 224, 0.3);
     margin-inline-start: calc(var(--sz-track) + 20px);

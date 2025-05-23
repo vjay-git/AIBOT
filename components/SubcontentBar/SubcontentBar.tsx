@@ -336,29 +336,32 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
           <button 
             className={`chatbot-nav-tab ${activeSection === 'folders' ? 'active' : ''}`}
             onClick={() => setActiveSection('folders')}
+            title="Folders"
+            aria-label="Folders"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6H12L10 4Z" fill="currentColor"/>
             </svg>
-            <span>Folders</span>
           </button>
           <button 
             className={`chatbot-nav-tab ${activeSection === 'chats' ? 'active' : ''}`}
             onClick={() => setActiveSection('chats')}
+            title="Chats"
+            aria-label="Chats"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
             </svg>
-            <span>Chats</span>
           </button>
           <button 
             className={`chatbot-nav-tab ${activeSection === 'bookmarks' ? 'active' : ''}`}
             onClick={() => setActiveSection('bookmarks')}
+            title="Bookmarks"
+            aria-label="Bookmarks"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
             </svg>
-            <span>Bookmarks</span>
           </button>
         </div>
 
