@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Database, Globe } from 'lucide-react';
 
@@ -8,7 +8,10 @@ type InputBarProps = {
   suggestions?: string[];
 };
 
-const InputBar: React.FC<InputBarProps> = ({ onSend, theme, suggestions: propSuggestions = [] }) => {
+const InputBar = forwardRef(function InputBar(
+  { onSend, theme, suggestions: propSuggestions = [] }: InputBarProps,
+  ref
+) {
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>(propSuggestions);
@@ -129,6 +132,13 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, theme, suggestions: propSug
     console.log('Generating report...');
   };
 
+  // Expose focusInput method to parent
+  useImperativeHandle(ref, () => ({
+    focusInput: () => {
+      inputRef.current?.focus();
+    }
+  }));
+
   return (
     <motion.div 
       className={`chatbot-form ${theme}`}
@@ -230,6 +240,6 @@ const InputBar: React.FC<InputBarProps> = ({ onSend, theme, suggestions: propSug
       )}
     </motion.div>
   );
-};
+});
 
 export default InputBar;

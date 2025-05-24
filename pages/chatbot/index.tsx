@@ -120,6 +120,7 @@ const Chatbot = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputBarRef = useRef<{ focusInput: () => void }>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -128,6 +129,12 @@ const Chatbot = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (replyTo && inputBarRef.current && typeof inputBarRef.current.focusInput === 'function') {
+      inputBarRef.current.focusInput();
+    }
+  }, [replyTo]);
 
   const handleSend = async (msg: string | Blob, isAudio = false) => {
     let userMessage: ChatMessage;
@@ -178,7 +185,7 @@ const Chatbot = () => {
       }
       // Handle file responses
       if (contentType === 'application/pdf' || contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        let fileType = 'file';
+        let fileType: ChatMessage['type'] = 'file';
         if (contentType === 'application/pdf') fileType = 'pdf';
         if (contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') fileType = 'xlsx';
         if (contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') fileType = 'docx';
@@ -198,7 +205,7 @@ const Chatbot = () => {
             timestamp: new Date().toISOString(),
             type: fileType,
             rawAnswer: fileUrl
-          }
+          } as ChatMessage
         ]);
       } else if (contentType && contentType.startsWith('audio/')) {
         // Audio response from backend
@@ -363,7 +370,7 @@ const Chatbot = () => {
       )}
       
       {/* Pass last4Prompts to InputBar as suggestions */}
-      <InputBar onSend={handleSend} theme={theme} suggestions={last4Prompts} />
+      <InputBar ref={inputBarRef} onSend={handleSend} theme={theme} suggestions={last4Prompts} />
 
       {error && (
         <motion.div 
