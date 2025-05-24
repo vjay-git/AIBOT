@@ -285,16 +285,47 @@
   Error Message
 ────────────────────────────────────────────────────────────*/
 .chatbot-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   position: fixed;
-  bottom: 80px;
+  bottom: 90px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 12px 24px;
-  background: #ff3b30;
-  color: white;
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.2);
+  min-width: 220px;
+  max-width: 90vw;
+  padding: 12px 20px;
+  background: #fff6f5;
+  color: #e53e3e;
+  border: 1px solid #ffd6d6;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+  box-shadow: 0 2px 12px #ff3b301a;
   z-index: 1000;
+  animation: fadeIn 0.3s;
+}
+
+.chatbot-error .error-message {
+  flex: 1;
+  white-space: pre-line;
+}
+
+.chatbot-error .error-close-btn {
+  background: none;
+  border: none;
+  color: #e53e3e;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.chatbot-error .error-close-btn:hover {
+  background: #ffeaea;
 }
 
 /*────────────────────────────────────────────────────────────

@@ -34,6 +34,42 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onRepl
     setTimeout(() => setShowThanks(false), 1500);
   };
 
+  // Helper to get the true original question for reply chains (ignoring greetings)
+  const isGreeting = (text: string) => {
+    const greetings = [
+      'ok', 'okay', 'got it', 'thanks', 'thank you', 'cool', 'great', 'nice', 'sure', 'alright', 'fine', 'good', 'noted', 'understood', 'roger', 'yep', 'yes', 'no', 'hmm', 'huh', 'hmmm', 'hmm.', 'huh.', 'hmmm.'
+    ];
+    return greetings.includes(text.trim().toLowerCase());
+  };
+
+  const getTrueOriginalQuestion = (msg: ChatMessage, messages: ChatMessage[]): string => {
+    let current = msg;
+    let original = typeof current.text === 'string' ? current.text : '';
+    while (current.replyTo) {
+      const parent = messages.find(m => m.id === current.replyTo);
+      if (!parent) break;
+      if (typeof parent.text === 'string' && !isGreeting(parent.text)) {
+        original = parent.text;
+      }
+      current = parent;
+    }
+    return original;
+  };
+
+  // Helper to display only the latest user question for concatenated payloads
+  const getDisplayText = (text: string | any) => {
+    if (typeof text === 'string') {
+      // If text matches the concatenated format, extract only the New Question part
+      const match = text.match(/New Question: (.*)$/i);
+      if (match) return match[1].trim();
+      // If text matches 'Original Questions: ... | New Question: ...', extract after last '| New Question:'
+      const pipeMatch = text.match(/\| New Question: (.*)$/i);
+      if (pipeMatch) return pipeMatch[1].trim();
+      return text;
+    }
+    return typeof text === 'string' ? text : JSON.stringify(text);
+  };
+
   return (
     <div
       className={`message-container ${message.sender === 'user' ? 'user-message' : 'bot-message'}`}
@@ -51,7 +87,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onRepl
                 <span className="reply-sender">{repliedToMsg.sender === 'user' ? 'You' : 'Bot'}</span>
               </div>
               <div className="reply-text" style={{ color: '#444', fontStyle: 'italic', fontSize: 13 }}>
-                {repliedToMsg.text ? repliedToMsg.text.slice(0, 80) : '[Tabular/Non-text answer]'}
+                {repliedToMsg.text ? getDisplayText(repliedToMsg.text).slice(0, 80) : '[Tabular/Non-text answer]'}
               </div>
             </div>
           )}
@@ -72,8 +108,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onRepl
             >
               Download {message.type?.toUpperCase()} file
             </a>
+          ) : Array.isArray(message.text) ? (
+            <div className="message-text">
+              {message.text.map((item, idx) => (
+                <div key={idx}>{typeof item === 'object' ? JSON.stringify(item) : String(item)}</div>
+              ))}
+            </div>
+          ) : typeof message.text === 'object' && message.text !== null ? (
+            <div className="message-text">{JSON.stringify(message.text)}</div>
           ) : (
-            <div className="message-text">{message.text}</div>
+            <div className="message-text">{getDisplayText(message.text)}</div>
           )}
         </div>
         <div className="message-timestamp">{formatTime(message.timestamp)}</div>
@@ -82,7 +126,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onRepl
           <button
             className="action-button"
             title="Reply to this message"
-            onClick={() => onReply(message)}
+            onClick={() => {
+              // When replying, pass a synthetic message with only the true original question as text
+              const original = getTrueOriginalQuestion(message, messages);
+              onReply({ ...message, text: original });
+            }}
             aria-label="Reply"
             style={{ display: 'flex', alignItems: 'center', gap: 4 }}
           >

@@ -59,6 +59,59 @@ const WelcomeMessage = ({ onSuggestionClick, suggestions }: { onSuggestionClick:
   );
 };
 
+// Helper to check greetings/non-question phrases
+const isGreeting = (text: string) => {
+  const greetings = [
+    'ok', 'okay', 'got it', 'thanks', 'thank you', 'cool', 'great', 'nice', 'sure', 'alright', 'fine', 'good', 'noted', 'understood', 'roger', 'yep', 'yes', 'no', 'hmm', 'huh', 'hmmm', 'hmm.', 'huh.', 'hmmm.'
+  ];
+  return greetings.includes(text.trim().toLowerCase());
+};
+
+// Helper to get the true original question for reply chains (ignoring greetings)
+const getTrueOriginalQuestion = (msg: ChatMessage, messages: ChatMessage[]): string => {
+  let current = msg;
+  let original = typeof current.text === 'string' ? current.text : '';
+  // Traverse to the root of the reply chain
+  while (current.replyTo) {
+    const parent = messages.find(m => m.id === current.replyTo);
+    if (!parent) break;
+    if (typeof parent.text === 'string' && !isGreeting(parent.text)) {
+      original = parent.text;
+    }
+    current = parent;
+  }
+  // After traversing, check if the root is a greeting, if so, skip it
+  if (isGreeting(original)) {
+    // Try to find the first non-greeting up the chain
+    current = msg;
+    let lastNonGreeting = original;
+    while (current.replyTo) {
+      const parent = messages.find(m => m.id === current.replyTo);
+      if (!parent) break;
+      if (typeof parent.text === 'string' && !isGreeting(parent.text)) {
+        lastNonGreeting = parent.text;
+      }
+      current = parent;
+    }
+    return lastNonGreeting;
+  }
+  return original;
+};
+
+// Helper to display only the latest user question for concatenated payloads
+const getDisplayText = (text: string | any) => {
+  if (typeof text === 'string') {
+    // If text matches the concatenated format, extract only the New Question part
+    const match = text.match(/New Question: (.*)$/i);
+    if (match) return match[1].trim();
+    // If text matches 'Original Questions: ... | New Question: ...', extract after last '| New Question:'
+    const pipeMatch = text.match(/\| New Question: (.*)$/i);
+    if (pipeMatch) return pipeMatch[1].trim();
+    return text;
+  }
+  return typeof text === 'string' ? text : JSON.stringify(text);
+};
+
 const Chatbot = () => {
   // Start with empty messages array to show welcome message
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -78,6 +131,11 @@ const Chatbot = () => {
 
   const handleSend = async (msg: string | Blob, isAudio = false) => {
     let userMessage: ChatMessage;
+    let concatenatedQuestion = msg as string;
+    if (replyTo && typeof msg === 'string') {
+      const original = getTrueOriginalQuestion(replyTo, messages);
+      concatenatedQuestion = `Original Questions: ${original} | New Question: ${msg}`;
+    }
     if (isAudio && msg instanceof Blob) {
       userMessage = {
         id: `msg-${Date.now()}`,
@@ -92,7 +150,7 @@ const Chatbot = () => {
       userMessage = {
         id: `msg-${Date.now()}`,
         sender: 'user',
-        text: msg as string,
+        text: concatenatedQuestion,
         timestamp: new Date().toISOString(),
         replyTo: replyTo?.id,
       };
@@ -112,7 +170,7 @@ const Chatbot = () => {
       } else {
         res = await askDB({
           user_id: DEFAULT_USER_ID,
-          question: msg as string,
+          question: concatenatedQuestion,
           dashboard: '',
           tile: ''
         });
@@ -144,7 +202,7 @@ const Chatbot = () => {
         ]);
       } else if (contentType && contentType.startsWith('audio/')) {
         // Audio response from backend
-        let audioUrl;
+        let audioUrl: string | undefined;
         if (response) {
           const audioBlob = await response.blob();
           audioUrl = URL.createObjectURL(audioBlob);
@@ -236,7 +294,7 @@ const Chatbot = () => {
   };
 
   // Compute last 4 user prompts (most recent first)
-  const userPrompts = messages.filter(m => m.sender === 'user' && m.text).map(m => m.text);
+  const userPrompts = messages.filter(m => m.sender === 'user' && m.text).map(m => getDisplayText(m.text));
   const last4Prompts = userPrompts.slice(-4).reverse();
 
   return (
@@ -254,14 +312,6 @@ const Chatbot = () => {
         </div>
       </div>
 
-      {/* Reply context UI */}
-      {replyTo && (
-        <div className="reply-context-bar">
-          <span>Replying to: {replyTo.text.slice(0, 50)}</span>
-          <button onClick={() => setReplyTo(null)} className="cancel-reply">Cancel</button>
-        </div>
-      )}
-      
       <div className="chatbot-messages">
         {/* Show welcome message if no messages exist */}
         {messages.length === 0 ? (
@@ -304,6 +354,14 @@ const Chatbot = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Reply context UI moved here, just above InputBar */}
+      {replyTo && (
+        <div className="reply-context-bar">
+          <span>Replying to: {replyTo.text.slice(0, 50)}</span>
+          <button onClick={() => setReplyTo(null)} className="cancel-reply">Cancel</button>
+        </div>
+      )}
+      
       {/* Pass last4Prompts to InputBar as suggestions */}
       <InputBar onSend={handleSend} theme={theme} suggestions={last4Prompts} />
 
@@ -313,7 +371,8 @@ const Chatbot = () => {
           animate={{ opacity: 1, y: 0 }}
           className="chatbot-error"
         >
-          {error}
+          <span className="error-message">{error}</span>
+          <button className="error-close-btn" onClick={() => setError('')} aria-label="Close error">×</button>
         </motion.div>
       )}
     </div>
