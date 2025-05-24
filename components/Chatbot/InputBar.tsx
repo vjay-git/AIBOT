@@ -14,6 +14,7 @@ const InputBar = forwardRef(function InputBar(
 ) {
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isRecognizing, setIsRecognizing] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>(propSuggestions);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
@@ -22,6 +23,7 @@ const InputBar = forwardRef(function InputBar(
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     setSuggestions(propSuggestions);
@@ -132,6 +134,39 @@ const InputBar = forwardRef(function InputBar(
     console.log('Generating report...');
   };
 
+  // Speech-to-text logic
+  const handleSpeechToText = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Speech recognition is not supported in this browser.');
+      return;
+    }
+    let SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!recognitionRef.current) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setMessage(prev => prev ? prev + ' ' + transcript : transcript);
+        setIsRecognizing(false);
+      };
+      recognitionRef.current.onerror = () => {
+        setIsRecognizing(false);
+      };
+      recognitionRef.current.onend = () => {
+        setIsRecognizing(false);
+      };
+    }
+    if (!isRecognizing) {
+      setIsRecognizing(true);
+      recognitionRef.current.start();
+    } else {
+      setIsRecognizing(false);
+      recognitionRef.current.stop();
+    }
+  };
+
   // Expose focusInput method to parent
   useImperativeHandle(ref, () => ({
     focusInput: () => {
@@ -188,9 +223,9 @@ const InputBar = forwardRef(function InputBar(
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M14 3v4a1 1 0 001 1h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 <path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M9 9h1M9 13h6M9 17h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M9 9h1M9 13h6M9 17h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>Generate Report
               </svg>
-              Generate Report
+              
             </motion.button>
             <motion.button
               type="button"
@@ -199,10 +234,31 @@ const InputBar = forwardRef(function InputBar(
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Waveform icon */}
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="9" width="2" height="6" fill="currentColor" />
+                <rect x="6" y="7" width="2" height="10" fill="currentColor" />
+                <rect x="10" y="5" width="2" height="14" fill="currentColor" />
+                <rect x="14" y="7" width="2" height="10" fill="currentColor" />
+                <rect x="18" y="9" width="2" height="6" fill="currentColor" />
+              </svg>
+            </motion.button>
+            {/* Speech-to-text button */}
+            <motion.button
+              type="button"
+              className={`speech-to-text-btn${isRecognizing ? ' recognizing' : ''}`}
+              onClick={handleSpeechToText}
+              title={isRecognizing ? 'Stop speech recognition' : 'Speak to type'}
+              style={{ margin: '0 4px' }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {/* Microphone icon */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3s-3 1.34-3 3v6c0 1.66 1.34 3 3 3z" fill="currentColor"/>
                 <path d="M17 12c0 2.76-2.24 5-5 5s-5-2.24-5-5m5 5v3m-3 0h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
+              {isRecognizing && <span style={{ marginLeft: 6, fontSize: 12 }}>Listening...</span>}
             </motion.button>
             <motion.button
               type="submit"

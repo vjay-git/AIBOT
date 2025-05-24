@@ -266,6 +266,49 @@
   transform: none !important;
 }
 
+/* Speech to Text Button */
+.speech-to-text-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: #f0f2f5;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  box-shadow: 0 1px 4px rgba(37,99,235,0.06);
+  position: relative;
+  font-size: 18px;
+  outline: none;
+}
+
+.speech-to-text-btn:hover,
+.speech-to-text-btn:focus {
+  background: #e6f0ff;
+  color: #1746a2;
+  box-shadow: 0 2px 8px #2563eb22;
+}
+
+.speech-to-text-btn.recognizing {
+  background: #fffbe6;
+  color: #ffb300;
+  animation: stt-pulse 1.2s infinite;
+}
+
+.speech-to-text-btn svg {
+  display: block;
+}
+
+.speech-to-text-btn span {
+  margin-left: 4px;
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+}
+
 @keyframes pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4);
@@ -276,6 +319,35 @@
   100% {
     box-shadow: 0 0 0 0 rgba(255, 59, 48, 0);
   }
+}
+
+@keyframes stt-pulse {
+  0% { box-shadow: 0 0 0 0 #ffb30044; }
+  70% { box-shadow: 0 0 0 10px #ffb30011; }
+  100% { box-shadow: 0 0 0 0 #ffb30044; }
+}
+
+.dark .speech-to-text-btn {
+  background: #232a3a;
+  color: #7da6ff;
+}
+
+.dark .speech-to-text-btn:hover,
+.dark .speech-to-text-btn:focus {
+  background: #2b3550;
+  color: #ffd700;
+}
+
+.dark .speech-to-text-btn.recognizing {
+  background: #2b3550;
+  color: #ffd700;
+  animation: stt-pulse-dark 1.2s infinite;
+}
+
+@keyframes stt-pulse-dark {
+  0% { box-shadow: 0 0 0 0 #ffd70044; }
+  70% { box-shadow: 0 0 0 10px #ffd70011; }
+  100% { box-shadow: 0 0 0 0 #ffd70044; }
 }
 
 /* Suggestions Dropdown */
