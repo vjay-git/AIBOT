@@ -23,6 +23,18 @@ const pieColors = [
   '#78D3F8', '#9661BC', '#F6903D', '#008685', '#F08BB4'
 ];
 
+function getThemeMode() {
+  if (typeof window !== 'undefined') {
+    if (document.body.classList.contains('dark') || document.documentElement.classList.contains('dark')) {
+      return 'dark';
+    }
+    // Check for .chatbot-container.dark
+    const chatbot = document.querySelector('.chatbot-container');
+    if (chatbot && chatbot.classList.contains('dark')) return 'dark';
+  }
+  return 'light';
+}
+
 const PlotlyChart: React.FC<PlotlyChartProps> = ({
   data,
   chartType = 'bar',
@@ -75,14 +87,22 @@ const PlotlyChart: React.FC<PlotlyChartProps> = ({
     };
   }
 
+  // Theme-aware colors
+  const mode = getThemeMode();
+  const isDark = mode === 'dark';
+  const bgColor = isDark ? '#181C2A' : 'rgba(255, 255, 255, 0.75)';
+  const fontColor = isDark ? '#F3F4F6' : '#1F2937';
+  const axisColor = isDark ? '#A0AEC0' : '#374151';
+  const gridColor = isDark ? '#23263A' : '#E5E7EB';
+
   return (
     <div
       style={{
         borderRadius: '20px',
         backdropFilter: 'blur(12px)',
-        background: 'rgba(255, 255, 255, 0.75)',
+        background: bgColor,
         padding: '24px',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1)',
+        boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.35)' : '0 8px 24px rgba(0,0,0,0.1)',
         margin: '2rem 0',
       }}
     >
@@ -92,7 +112,7 @@ const PlotlyChart: React.FC<PlotlyChartProps> = ({
           fontSize: '1.5rem',
           fontWeight: 600,
           marginBottom: '1rem',
-          color: '#1F2937',
+          color: fontColor,
         }}
       >
         {title}
@@ -104,15 +124,20 @@ const PlotlyChart: React.FC<PlotlyChartProps> = ({
           plot_bgcolor: 'transparent',
           title: { text: '' },
           xaxis: {
-            title: { text: columns[0], font: { size: 14, color: '#374151' } },
-            tickfont: { color: '#4B5563' },
+            title: { text: columns[0], font: { size: 14, color: axisColor } },
+            tickfont: { color: axisColor },
+            gridcolor: gridColor,
+            zerolinecolor: gridColor,
           },
           yaxis: {
-            title: { text: columns[1], font: { size: 14, color: '#374151' } },
-            tickfont: { color: '#4B5563' },
+            title: { text: columns[1], font: { size: 14, color: axisColor } },
+            tickfont: { color: axisColor },
+            gridcolor: gridColor,
+            zerolinecolor: gridColor,
           },
           margin: { l: 50, r: 30, b: 50, t: 20 },
-          font: { family: 'Inter, sans-serif', color: '#111827' },
+          font: { family: 'Inter, sans-serif', color: fontColor },
+          legend: { font: { color: fontColor } },
         }}
         config={{
           responsive: true,

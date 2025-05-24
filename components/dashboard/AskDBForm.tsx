@@ -147,11 +147,24 @@ const AskDBForm = () => {
             <PlotlyChart data={tabularObjArr} />
           </div>
           <div style={{ marginTop: 24, overflowX: 'auto' }}>
-            <table className="askdb-table" style={{ borderCollapse: 'collapse', width: '100%' }}>
+            <table
+              className={`askdb-table${typeof window !== 'undefined' && (document.body.classList.contains('dark') || document.documentElement.classList.contains('dark') || (document.querySelector('.chatbot-container') && document.querySelector('.chatbot-container')!.classList.contains('dark'))) ? ' dark' : ''}`}
+              style={{ borderCollapse: 'collapse', width: '100%' }}
+            >
               <thead>
                 <tr>
                   {Object.keys(tabularObjArr[0]).map((col) => (
-                    <th key={col} style={{ border: '1px solid #ccc', padding: '8px', background: '#f5f5f5' }}>{col}</th>
+                    <th
+                      key={col}
+                      style={{
+                        border: '1px solid #ccc',
+                        padding: '8px',
+                        background: 'var(--table-th-bg, #f5f5f5)',
+                        color: 'var(--table-th-color, #222)',
+                      }}
+                    >
+                      {col}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -159,7 +172,17 @@ const AskDBForm = () => {
                 {tabularObjArr.map((row: any, idx: number) => (
                   <tr key={idx}>
                     {Object.keys(tabularObjArr[0]).map((col) => (
-                      <td key={col} style={{ border: '1px solid #ccc', padding: '8px' }}>{row[col]}</td>
+                      <td
+                        key={col}
+                        style={{
+                          border: '1px solid #ccc',
+                          padding: '8px',
+                          background: 'var(--table-td-bg, #fff)',
+                          color: 'var(--table-td-color, #222)',
+                        }}
+                      >
+                        {row[col]}
+                      </td>
                     ))}
                   </tr>
                 ))}

@@ -31,6 +31,20 @@
   --spacing: 16px;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   --transition: 0.2s ease;
+  
+  /* Table Colors */
+  --table-th-bg: #f5f5f5;
+  --table-th-color: #222;
+  --table-td-bg: #fff;
+  --table-td-color: #222;
+}
+
+/* Dark mode overrides */
+.dark {
+  --table-th-bg: #23263A;
+  --table-th-color: #F3F4F6;
+  --table-td-bg: #181C2A;
+  --table-td-color: #F3F4F6;
 }
 
 /*────────────────────────────────────────────────────────────
@@ -591,4 +605,25 @@
   .chatbot-message {
     max-width: 95%;
   }
+}
+
+.askdb-table th {
+  background: var(--table-th-bg);
+  color: var(--table-th-color);
+}
+.askdb-table td {
+  background: var(--table-td-bg);
+  color: var(--table-td-color);
+}
+.dark .askdb-table th,
+.askdb-table.dark th {
+  background: #23263A !important;
+  color: #F3F4F6 !important;
+  border-color: #3a3f5c !important;
+}
+.dark .askdb-table td,
+.askdb-table.dark td {
+  background: #181C2A !important;
+  color: #F3F4F6 !important;
+  border-color: #23263A !important;
 }
