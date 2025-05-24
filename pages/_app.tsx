@@ -63,6 +63,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <>
+    <title>SAP Echo</title>
       {loading && <div className="oscar-loading-overlay"><div className="oscar-spinner"></div><div className="oscar-loading-text">Loading...</div></div>}
       <Layout>
         <Component {...pageProps} />

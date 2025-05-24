@@ -1,21 +1,52 @@
+/* === Theme Variables === */
+:root {
+  --primary-color: #0052FF;
+  --primary-hover: #0048E5;
+  --background-light: #FFFFFF;
+  --background-muted: #EEF4FF;
+  --border-color: #E4E4E7;
+  --text-primary: #1A1A1A;
+  --text-secondary: #71717A;
+  --hint-color: #71717A;
+  --logo-bg: #D4E0FF;
+}
+
+/* === Container === */
 .company-profile-container {
   padding: 32px;
   max-width: 1200px;
+  margin: 0 auto;
 }
 
+/* === Typography === */
 .page-title {
   font-size: 24px;
   font-weight: 600;
-  color: #0052FF;
+  color: var(--primary-color);
   margin-bottom: 8px;
 }
 
 .page-description {
   font-size: 14px;
-  color: #71717A;
+  color: var(--text-secondary);
   margin-bottom: 32px;
 }
 
+.section-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.section-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+/* === Form Layout === */
 .company-profile-form {
   display: flex;
   flex-direction: column;
@@ -29,6 +60,10 @@
   align-items: flex-start;
 }
 
+.domain-section {
+  grid-template-columns: 1fr;
+}
+
 .form-column {
   display: flex;
   flex-direction: column;
@@ -37,52 +72,40 @@
 
 .logo-column {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
-.section-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: #1A1A1A;
-  margin-bottom: 4px;
-}
-
-.section-description {
-  font-size: 14px;
-  color: #71717A;
-  margin-top: 0;
-  margin-bottom: 16px;
-}
-
+/* === Logo Upload === */
 .logo-upload-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
+  cursor: pointer;
 }
 
-.logo-placeholder {
+.logo-placeholder,
+.logo-preview {
   width: 120px;
   height: 120px;
-  background-color: #D4E0FF;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  overflow: hidden;
+}
+
+.logo-placeholder {
+  background-color: var(--logo-bg);
 }
 
 .logo-letter {
   font-size: 48px;
   font-weight: 600;
-  color: #0052FF;
-}
-
-.logo-preview {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  overflow: hidden;
+  color: var(--primary-color);
 }
 
 .logo-preview img {
@@ -91,6 +114,7 @@
   object-fit: cover;
 }
 
+/* === Form Fields === */
 .form-fields {
   display: flex;
   flex-direction: column;
@@ -106,19 +130,28 @@
 
 .form-field label {
   font-size: 14px;
-  color: #71717A;
+  color: var(--text-secondary);
 }
 
+/* === Inputs === */
 .text-input {
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E4E4E7;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 14px;
-  background-color: #FFFFFF;
-  color: #1A1A1A;
+  background-color: var(--background-light);
+  color: var(--text-primary);
+  transition: border-color 0.2s;
 }
 
+.text-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.3);
+}
+
+/* Inputs with icons */
 .input-container {
   position: relative;
   width: 100%;
@@ -130,22 +163,22 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 16px;
+  color: var(--text-secondary);
+  pointer-events: none;
 }
 
 .text-input.with-icon {
   padding-left: 40px;
 }
 
+/* === Field Hint === */
 .field-hint {
   font-size: 12px;
-  color: #71717A;
+  color: var(--hint-color);
   margin-top: 4px;
 }
 
-.domain-section {
-  grid-template-columns: 1fr;
-}
-
+/* === Buttons === */
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -154,7 +187,7 @@
 
 .save-button {
   padding: 12px 32px;
-  background-color: #0052FF;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   border-radius: 8px;
@@ -164,16 +197,19 @@
   transition: background-color 0.2s;
 }
 
-.save-button:hover {
-  background-color: #0048E5;
+.save-button:hover,
+.save-button:focus-visible {
+  background-color: var(--primary-hover);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 72, 229, 0.5);
 }
 
 .upload-button {
   margin-top: 16px;
   padding: 8px 16px;
-  background-color: #EEF4FF;
-  color: #0052FF;
-  border: 1px solid #D4E0FF;
+  background-color: var(--background-muted);
+  color: var(--primary-color);
+  border: 1px solid var(--logo-bg);
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -182,21 +218,25 @@
   transition: background-color 0.2s;
 }
 
-.upload-button:hover {
-  background-color: #D4E0FF;
+.upload-button:hover,
+.upload-button:focus-visible {
+  background-color: var(--logo-bg);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 224, 255, 0.8);
 }
 
+/* === Responsive === */
 @media (max-width: 768px) {
   .company-profile-container {
     padding: 16px;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .logo-column {
     align-items: center;
     text-align: center;
   }
-} 
+}

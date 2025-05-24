@@ -1,28 +1,36 @@
 .profile-security-container {
-  padding: 32px;
+  padding: 40px 24px;
   width: 100%;
-  max-width: 800px;
+  max-width: 820px;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+  color: #1A1A1A;
 }
 
 .page-title {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 26px;
+  font-weight: 700;
   color: #0052FF;
-  margin-bottom: 32px;
+  margin-bottom: 36px;
+  text-align: center;
 }
 
 .sections-container {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 36px;
 }
 
 .section {
   background-color: #FFFFFF;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.05);
-  margin-bottom: 24px;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s ease;
+}
+
+.section:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
 }
 
 .section-header {
@@ -30,35 +38,39 @@
 }
 
 .section-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
-  color: #1A1A1A;
-  margin-bottom: 8px;
+  color: #111827;
+  margin-bottom: 6px;
 }
 
 .section-description {
   font-size: 14px;
-  color: #71717A;
+  color: #6B7280;
+  line-height: 1.5;
 }
 
 .section-content {
   display: flex;
-  gap: 24px;
+  gap: 32px;
 }
 
 .profile-section {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .column-left {
   flex: 1;
+  min-width: 280px;
 }
 
 .column-right {
   display: flex;
   align-items: flex-start;
   justify-content: center;
+  min-width: 160px;
 }
 
 .field-group {
@@ -72,8 +84,9 @@
 .field-label {
   display: block;
   font-size: 14px;
-  color: #71717A;
-  margin-bottom: 8px;
+  font-weight: 500;
+  color: #4B5563;
+  margin-bottom: 6px;
 }
 
 .input-container {
@@ -86,88 +99,97 @@
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #71717A;
+  color: #9CA3AF;
+  font-size: 16px;
 }
 
 .text-input {
   width: 100%;
   padding: 12px 12px 12px 40px;
-  border: 1px solid #E4E4E7;
-  border-radius: 8px;
+  border: 1px solid #D1D5DB;
+  border-radius: 10px;
   font-size: 14px;
-  color: #1A1A1A;
-  background-color: #F8F9FB;
+  background-color: #F9FAFB;
+  transition: border 0.2s, box-shadow 0.2s;
 }
 
 .text-input:focus {
   outline: none;
   border-color: #0052FF;
-  box-shadow: 0 0 0 1px rgba(0, 82, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.15);
 }
 
 .text-input.license-key {
-  font-family: monospace;
-  letter-spacing: 1px;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.8px;
 }
 
 .avatar-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .avatar {
-  width: 80px;
-  height: 80px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
-  background-color: #B4C6FF;
+  background: linear-gradient(135deg, #B4C6FF, #E0E7FF);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #0052FF;
   font-size: 28px;
   font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .avatar-label {
-  font-size: 14px;
-  color: #71717A;
+  font-size: 13px;
+  color: #6B7280;
 }
 
 .actions-container {
   display: flex;
   justify-content: flex-end;
-  margin-top: 24px;
+  margin-top: 32px;
 }
 
 .save-button {
   background-color: #0052FF;
-  color: white;
-  padding: 10px 24px;
+  color: #FFFFFF;
+  padding: 12px 28px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 82, 255, 0.15);
 }
 
 .save-button:hover {
   background-color: #003ECC;
+  transform: translateY(-1px);
 }
 
-/* Responsive styles */
+.save-button:active {
+  transform: translateY(0);
+}
+
+/* Responsive Styles */
 @media (max-width: 768px) {
   .profile-security-container {
-    padding: 16px;
+    padding: 24px 16px;
   }
 
   .section-content {
     flex-direction: column-reverse;
+    gap: 24px;
   }
 
   .column-right {
     margin-bottom: 24px;
   }
-} 
+}

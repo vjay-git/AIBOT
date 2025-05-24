@@ -10,9 +10,9 @@ interface ProfileSecurityProps {
 
 const ProfileSecurity: React.FC<ProfileSecurityProps> = ({ 
   userData = {
-    name: "Anush Reddy Jakkula",
-    email: "anush@upslide.in",
-    licenseKey: "XXXX-XXXX-XXXX-XXXX"
+    name: "",
+    email: "",
+    licenseKey: ""
   }
 }) => {
   return (
