@@ -9,7 +9,6 @@
 
 .content-container {
   flex: 1;
-  padding: 20px 16px 24px 16px; /* Reduce horizontal padding */
   height: 100vh;
   overflow-y: auto;
   background-color: #F8F9FB;

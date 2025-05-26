@@ -4,17 +4,21 @@ interface MainContentProps {
   navId: string;
   subNavId: string;
   children: React.ReactNode;
+  shouldShowSubcontentBar?: boolean;
 }
 
-const MainContent: React.FC<MainContentProps> = ({ navId, subNavId, children }) => {
-  // We only render page-specific content here, no sidebar or subcontent duplication
+const MainContent: React.FC<MainContentProps> = ({ navId, subNavId, children, shouldShowSubcontentBar }) => {
   return (
     <div className="main-content">
       <div className="content-container">
-        {children}
+        {React.Children.map(children, child =>
+          React.isValidElement(child) && typeof child.type !== 'string'
+            ? React.cloneElement(child as React.ReactElement<any>, {navId, subNavId, shouldShowSubcontentBar })
+            : child
+        )}
       </div>
     </div>
   );
 };
 
-export default MainContent; 
+export default MainContent;
