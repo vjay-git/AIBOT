@@ -195,7 +195,6 @@ export const fetchLLMModels = async (): Promise<LLMModelType> => {
 
 // Mock chatbot conversation data
 export const fetchChatbotData = async (): Promise<ChatbotDataType> => {
-  await delay(600);
   
   // Load data from localStorage if available
   const storedData = typeof window !== 'undefined' ? localStorage.getItem('chatbotData') : null;
@@ -209,7 +208,7 @@ export const fetchChatbotData = async (): Promise<ChatbotDataType> => {
     username: 'Anush',
     chatSessions: [
       {
-        id: 'patient-age-metrics',
+        id: '101bcef9-9e3d-48a0-9d91-d8a2a2f55747',
         title: 'Patient age metrics',
         bookmarked: true,
         createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -230,7 +229,7 @@ export const fetchChatbotData = async (): Promise<ChatbotDataType> => {
         ]
       },
       {
-        id: 'demographics',
+        id: '92406b27-22fa-416e-bea4-e87051386cac',
         title: 'Demographics',
         bookmarked: false,
         createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -251,7 +250,7 @@ export const fetchChatbotData = async (): Promise<ChatbotDataType> => {
         ]
       },
       {
-        id: 'department-doctor',
+        id: '4ec3eadf-43a1-4e34-8c25-aaf258eb116b',
         title: 'Department & Doctor',
         bookmarked: true,
         createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -271,48 +270,7 @@ export const fetchChatbotData = async (): Promise<ChatbotDataType> => {
           }
         ]
       },
-      {
-        id: 'age-pattern',
-        title: 'Age Pattern',
-        bookmarked: false,
-        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-        messages: [
-          {
-            id: 'msg7',
-            sender: 'user',
-            text: 'Are there any age-related patterns in hospital admissions?',
-            timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: 'msg8',
-            sender: 'bot',
-            text: 'Yes, we observe several age-related patterns: Pediatric admissions peak during winter months (respiratory infections), Adults 20-40 have more trauma-related admissions on weekends, and Seniors 65+ show more admissions for cardiac and respiratory conditions year-round with peaks during extreme weather.',
-            timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000 + 12000).toISOString()
-          }
-        ]
-      },
-      {
-        id: 'age-complaints',
-        title: 'Age and complains',
-        bookmarked: true,
-        createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-        messages: [
-          {
-            id: 'msg9',
-            sender: 'user',
-            text: 'What are the most common complaints by age group?',
-            timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: 'msg10',
-            sender: 'bot',
-            text: 'Most common complaints by age group: Children (0-12): Fever, cough, ear pain. Teenagers (13-19): Sports injuries, acne, mental health. Adults (20-40): Back pain, anxiety, digestive issues. Middle-aged (41-65): Hypertension, joint pain, sleep problems. Seniors (65+): Heart issues, arthritis, balance/mobility concerns.',
-            timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000 + 15000).toISOString()
-          }
-        ]
-      }
+      
     ],
     folders: [
       { id: 'patients', name: 'Patients' },

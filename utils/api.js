@@ -1,12 +1,12 @@
 // Reusable API utility for /ask_db
-export async function askDB({ user_id, question, dashboard = '', tile = '' }) {
+export async function askDB({ user_id, question, dashboard = '', tile = '', thread_id = '' }) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/ask_db`;
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id, question, dashboard, tile })
+      body: JSON.stringify({ user_id, question, dashboard, tile,thread_id })
     });
     if (!res.ok) {
       throw new Error(`API error: ${res.status}`);
@@ -123,3 +123,20 @@ export async function fetchAllUserHistoryAPI() {
 // Deprecated: Use fetchAllUserHistoryAPI instead
 // export async function listThreadsAPI() { ... }
 // export async function listFoldersAPI() { ... }
+
+export async function fetchThreadById(threadId) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/userhistory/thread/${threadId}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch thread');
+  return await res.json();
+}
+
+
+export async function getAllChats() {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/userhistory/all`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch thread');
+  return await res.json();
+}

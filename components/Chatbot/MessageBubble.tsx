@@ -87,13 +87,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onRepl
                 <span className="reply-sender">{repliedToMsg.sender === 'user' ? 'You' : 'Bot'}</span>
               </div>
               <div className="reply-text" style={{ color: '#444', fontStyle: 'italic', fontSize: 13 }}>
-                {repliedToMsg.text ? getDisplayText(repliedToMsg.text).slice(0, 80) : '[Tabular/Non-text answer]'}
+                {repliedToMsg.text ? getDisplayText(repliedToMsg.text).slice(0, 80) : '[Tabular/Non-text answer]'} {message.type} {message.rawAnswer}
               </div>
             </div>
           )}
 
           {/* Main message content */}
-          {message.type === 'tabular' && message.rawAnswer ? (
+          {(message.type === 'tabular' || message.type === 'table') && message.rawAnswer ? (
             <TabularAnswer rawAnswer={message.rawAnswer} />
           ) : message.type === 'audio' && message.rawAnswer ? (
             <audio controls src={message.rawAnswer} style={{ width: '100%', margin: '8px 0' }} />

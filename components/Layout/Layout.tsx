@@ -5,6 +5,7 @@ import SubcontentBar from '../SubcontentBar/SubcontentBar';
 import MainContent from '../MainContent/MainContent';
 import { NavItem, ChatSession, ChatFolder } from '../../types';
 import { fetchChatbotData, createFolder, deleteFolder, deleteChat, toggleBookmark, moveToFolder, renameFolder } from '../../utils/apiMocks';
+import { getAllChats } from '@/utils/api';
 
 // Navigation items for sidebar
 const navItems: NavItem[] = [
@@ -47,7 +48,7 @@ function useNavigation(router: any) {
     const mainRouteSegment = pathSegments[1] || ''; // e.g., 'dashboard', 'user-settings', or empty for root
 
     // Determine the new active navigation item based on the route
-    const newNav = navItems.find(item => 
+    const newNav = navItems.find(item =>
       item.route === mainRouteSegment || (mainRouteSegment === '' && item.id === 'dashboard')
     );
 
@@ -67,7 +68,7 @@ function useNavigation(router: any) {
         setActiveSubNav('');
       }
     }
-    
+
     setIsInitialized(true);
   }, [router.pathname, router.query]);
 
@@ -77,10 +78,10 @@ function useNavigation(router: any) {
       router.push(`/${selectedNav.route}`);
     }
   };
-  
+
   const handleSubNavSelect = (subNavId: string) => {
     setActiveSubNav(subNavId);
-    
+
     // For sections that use query parameters
     if (['settings', 'llm', 'onboarding'].includes(activeNav)) {
       const routePath = navItems.find(nav => nav.id === activeNav)?.route || '';
@@ -106,95 +107,6 @@ function getTabFromQuery(query: any): string | undefined {
   return Array.isArray(tab) ? tab[0] : tab;
 }
 
-// Custom hook to manage chatbot data
-function useChatbotData(activeNav: string) {
-  const [chatbotData, setChatbotData] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Error | null>(null);
-  const router = useRouter();
-
-  useEffect(() => {
-    let isMounted = true;
-    
-    const initializeChatbotData = async () => {
-      if (activeNav !== 'chatbot') return;
-      
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        const data = await fetchChatbotData();
-        
-        if (isMounted) {
-          setChatbotData({
-            chatSessions: data.chatSessions,
-            folders: data.folders,
-            activeChatId: data.activeChatId,
-            handleSelectChat: (id: string) => {
-              if (router.pathname.includes('/chatbot')) {
-                return;
-              }
-              router.push('/chatbot');
-            },
-            handleNewChat: () => {
-              router.push('/chatbot');
-            },
-            handleToggleBookmark: (id: string) => {
-              router.push('/chatbot');
-            },
-            handleCreateFolder: (name: string) => {
-              router.push('/chatbot');
-            },
-            handleMoveToFolder: (chatId: string, folderId: string | null) => {
-              router.push('/chatbot');
-            },
-            handleRenameFolder: () => {},
-            handleDeleteFolder: () => {}
-          });
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err : new Error('Unknown error occurred'));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-    
-    initializeChatbotData();
-    
-    // Cleanup function
-    return () => {
-      isMounted = false;
-    };
-  }, [activeNav, router]);
-
-  // Update window chatbotData and notify components when data changes
-  useEffect(() => {
-    if (chatbotData && typeof window !== 'undefined') {
-      (window as any).chatbotData = chatbotData;
-      
-      // Use a safer way to notify components
-      const event = new CustomEvent('chatbotDataUpdated', {
-        detail: { chatbotData }
-      });
-      window.dispatchEvent(event);
-    }
-    
-    // Cleanup
-    return () => {
-      if (typeof window !== 'undefined' && activeNav !== 'chatbot') {
-        // Only remove from window when navigating away from chatbot section
-        delete (window as any).chatbotData;
-      }
-    };
-  }, [chatbotData, activeNav]);
-
-  return { chatbotData, isLoading, error };
-}
-
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -206,14 +118,40 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [chatbotChats, setChatbotChats] = useState<ChatSession[]>([]);
   const [chatbotFolders, setChatbotFolders] = useState<ChatFolder[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string>('');
-  
+  const [selectedNewChatId, setSelectedNewChatId] = useState<string>('');
+  const [newChatStarted, setNewChatStarted] = useState<boolean>(false);
   // Use custom hooks
   const { activeNav, activeSubNav, handleNavSelect, handleSubNavSelect } = useNavigation(router);
-  const { chatbotData, isLoading, error } = useChatbotData(activeNav);
+  const [chatbotData, setChatbotData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
   
+
+  // Update window chatbotData and notify components when data changes
+  useEffect(() => {
+    if (chatbotData && typeof window !== 'undefined') {
+      (window as any).chatbotData = chatbotData;
+
+      // Use a safer way to notify components
+      const event = new CustomEvent('chatbotDataUpdated', {
+        detail: { chatbotData }
+      });
+      window.dispatchEvent(event);
+    }
+
+    // Cleanup
+    return () => {
+      if (typeof window !== 'undefined' && activeNav !== 'chatbot') {
+        // Only remove from window when navigating away from chatbot section
+        delete (window as any).chatbotData;
+      }
+    };
+  }, [chatbotData, activeNav]);
+
   // Check if the current page should display the SubcontentBar
   const shouldShowSubcontentBar = !pagesWithoutSubcontentBar.includes(activeNav);
-  
+
   // Create a value object for the context
   const appStateValue = useMemo(() => ({
     activeNav,
@@ -224,33 +162,50 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     isLoading,
     error
   }), [activeNav, activeSubNav, searchTerm, chatbotData, isLoading, error]);
+
+  useEffect(() => {
+    if (newChatStarted) {
+      // Reset new chat state after starting a new chat
+      setSelectedNewChatId('');
+      setNewChatStarted(false);
+       getAllChats().then(data => {
+        console.log('Chatbot data loaded:', data);
+        const chatbotData = convertApiToChatbotData(data); // apiResponse is your pasted JSON
+        console.log(chatbotData.chatSessions, chatbotData.folders);
+        setChatbotChats(chatbotData.chatSessions || []);
+        setChatbotFolders(chatbotData.folders || []);
+        setSelectedChatId('');
+      });; // Re-fetch chatbot data
+    }
+
+  }, [newChatStarted]);
   
   // Dynamically import subnav config from each page
   let subNavItems = [];
   switch (activeNav) {
     case 'dashboard':
-      try { subNavItems = require('../../pages/dashboard/index').dashboardTabs; } catch {}
+      try { subNavItems = require('../../pages/dashboard/index').dashboardTabs; } catch { }
       break;
     case 'chatbot':
-      try { subNavItems = require('../../pages/chatbot/index').chatbotTabs; } catch {}
+      try { subNavItems = require('../../pages/chatbot/index').chatbotTabs; } catch { }
       break;
     case 'database':
-      try { subNavItems = require('../../pages/database/index').databaseTabs; } catch {}
+      try { subNavItems = require('../../pages/database/index').databaseTabs; } catch { }
       break;
     case 'schema':
-      try { subNavItems = require('../../pages/schema/index').schemaTabs; } catch {}
+      try { subNavItems = require('../../pages/schema/index').schemaTabs; } catch { }
       break;
     case 'llm':
-      try { subNavItems = require('../../pages/llm/index').llmTabs; } catch {}
+      try { subNavItems = require('../../pages/llm/index').llmTabs; } catch { }
       break;
     case 'settings':
-      try { subNavItems = require('../../pages/user-settings/index').userSettingsTabs; } catch {}
+      try { subNavItems = require('../../pages/user-settings/index').userSettingsTabs; } catch { }
       break;
     case 'onboarding':
-      try { subNavItems = require('../../pages/customer-onboarding/index').onboardingTabs; } catch {}
+      try { subNavItems = require('../../pages/customer-onboarding/index').onboardingTabs; } catch { }
       break;
     case 'reports':
-      try { subNavItems = require('../../pages/reports/index').reportsTabs; } catch {}
+      try { subNavItems = require('../../pages/reports/index').reportsTabs; } catch { }
       break;
     default:
       subNavItems = [];
@@ -259,16 +214,100 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Load chatbot data on nav change
   useEffect(() => {
     if (activeNav === 'chatbot') {
-      fetchChatbotData().then(data => {
-        setChatbotChats(data.chatSessions || []);
-        setChatbotFolders(data.folders || []);
-        setSelectedChatId(data.activeChatId || (data.chatSessions?.[0]?.id ?? ''));
+      getAllChats().then(data => {
+        console.log('Chatbot data loaded:', data);
+        const chatbotData = convertApiToChatbotData(data); // apiResponse is your pasted JSON
+        console.log(chatbotData.chatSessions, chatbotData.folders);
+        setChatbotChats(chatbotData.chatSessions || []);
+        setChatbotFolders(chatbotData.folders || []);
+        setSelectedChatId('');
       });
     }
   }, [activeNav]);
 
+  function convertApiToChatbotData(api: any) {
+    // 1. Build unique folders from aitables
+    const folders = (api.aitables || []).reduce((acc: any[], t: any) => {
+      if (!acc.find((f: any) => f.id === t.table_id)) {
+        acc.push({ id: t.table_id, name: t.table_name });
+      }
+      return acc;
+    }, []);
+
+    // 2. Build a map of query_id -> table_id (folder id) from aitables.queries
+    const queryToTableId: Record<string, string> = {};
+    (api.aitables || []).forEach((table: any) => {
+      (table.queries || []).forEach((query: any) => {
+        if (query.query_id) {
+          queryToTableId[query.query_id] = table.table_id;
+        }
+      });
+    });
+
+    // 3. Build a map of query_id -> messages (from api.query)
+    const queryMap: Record<string, any[]> = {};
+    (api.query || []).forEach((q: any) => {
+      if (q.query_id && q.message) {
+        if (Array.isArray(q.message[0])) {
+          queryMap[q.query_id] = q.message[0];
+        } else {
+          queryMap[q.query_id] = q.message;
+        }
+      }
+    });
+
+    // 4. Build chatSessions from threads, grouping messages by query_id
+    const chatSessions = (api.thread || []).map((thread: any, idx: number) => {
+      // Skip threads whose title starts with "SQL Generated by LLM:"
+      if (typeof thread.thread_name === "string" && thread.thread_name.startsWith("SQL Generated by LLM:")) {
+        return null;
+      }
+      let messages: any[] = [];
+      let folderId: string | undefined = undefined;
+
+      (thread.querydetails || []).forEach((qd: any) => {
+        if (qd.query_id && queryMap[qd.query_id]) {
+          if (!folderId && queryToTableId[qd.query_id]) {
+            folderId = queryToTableId[qd.query_id];
+          }
+          const groupedMessages = queryMap[qd.query_id]
+            .filter((msg: any) => !(typeof msg.content === "string" && msg.content.startsWith("SQL Generated by LLM:")))
+            .map((msg: any, i: number) => ({
+              id: `msg-${qd.query_id}-${i}`,
+              sender: msg.role === "user" ? "user" : "bot",
+              text: msg.content || (msg.results?.data || msg.results || ""),
+              timestamp: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000 + i * 10000).toISOString(),
+              queryId: qd.query_id
+            }));
+          if (groupedMessages.length > 0) {
+            messages.push({
+              queryId: qd.query_id,
+              messages: groupedMessages
+            });
+          }
+        }
+        else {
+          console.warn(`No messages found for query_id: ${qd.query_id} in thread: ${thread.thread_id}`);
+        }
+      });
+      // Do NOT filter out threads with no messages
+      return {
+        id: thread.thread_id,
+        title: thread.thread_name,
+        folderId,
+        bookmarked: false,
+        createdAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
+        messages
+      };
+    })
+
+    return { chatSessions, folders };
+  }
+
   // Sidebar actions
   const handleSelectChat = (id: string) => {
+    console.log(`Selected chat ID layout: ${id}`);
     setSelectedChatId(id);
     // Optionally update route/query if needed
   };
@@ -282,8 +321,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    setChatbotChats(prev => [newChat, ...prev]);
-    setSelectedChatId(newChat.id);
+    setSelectedNewChatId(newChat.id);
+    setSelectedChatId("");
   };
   const handleCreateFolder = async (name: string) => {
     const folder = await createFolder(name);
@@ -313,23 +352,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     await renameFolder(folderId, newName);
     setChatbotFolders(prev => prev.map(f => f.id === folderId ? { ...f, name: newName } : f));
   };
-  
+
   // Render search box based on current route
   const renderSearchBox = () => {
     if (['schema', 'customer-onboarding', 'dashboard', 'database'].includes(activeNav)) {
-      const placeholder = 
-        activeNav === 'customer-onboarding' ? "Search by Name, Id.no" : 
-        "Search";
-      
+      const placeholder =
+        activeNav === 'customer-onboarding' ? "Search by Name, Id.no" :
+          "Search";
+
       return (
         <div className="search-input-container">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder={placeholder}
-            className="search-input-field" 
+            className="search-input-field"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -338,14 +377,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
     return null;
   };
-  
+
   // Render filters based on current route
   const renderFilters = () => {
     if (['schema', 'dashboard', 'customer-onboarding'].includes(activeNav)) {
       return (
         <button className="filter-button-container">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 6H21M3 12H21M3 18H21" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3 6H21M3 12H21M3 18H21" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span>Filters</span>
         </button>
@@ -353,31 +392,31 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
     return null;
   };
-  
+
   // Render additional controls based on current route
   const renderAdditionalControls = () => {
     if (activeNav === 'customer-onboarding') {
       return (
         <button className="invite-button">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 4.5v15m7.5-7.5h-15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M12 4.5v15m7.5-7.5h-15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           Invite
         </button>
       );
     }
-    
+
     if (activeNav === 'dashboard') {
       return (
         <button className="add-card-button">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 4.5v15m7.5-7.5h-15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M12 4.5v15m7.5-7.5h-15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           Add Card
         </button>
       );
     }
-    
+
     return null;
   };
 
@@ -393,7 +432,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
     );
   }
-  
+
   // Define props for SubcontentBar
   const subContentBarProps = {
     items: subNavItems || [],
@@ -414,22 +453,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     onDeleteChat: handleDeleteChat,
     onToggleBookmark: handleToggleBookmark
   };
-  
+
   return (
     <AppStateContext.Provider value={appStateValue}>
       <div className={`layout-container ${!shouldShowSubcontentBar ? 'without-subcontent' : ''}`}>
         <Sidebar items={navItems} />
-        
+
         {shouldShowSubcontentBar && (
           <SubcontentBar {...subContentBarProps} />
         )}
-        
-        <MainContent navId={activeNav} subNavId={activeSubNav}>
-          {isLoading && activeNav === 'chatbot' ? (
-            <div className="loading-container">Loading chatbot data...</div>
-          ) : (
-            children
-          )}
+
+        <MainContent navId={activeNav} subNavId={activeSubNav} selectedChatId={selectedChatId} selectedNewChatId={selectedNewChatId} setNewChatStarted={setNewChatStarted}>
+          {/* Render children components */}
+          {children}
         </MainContent>
       </div>
     </AppStateContext.Provider>

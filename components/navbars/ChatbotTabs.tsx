@@ -53,8 +53,13 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   };
 
   // Bookmarked and unorganized chats
-  const bookmarkedChats = chats.filter(chat => chat.bookmarked);
-  const unorganizedChats = chats.filter(chat => !chat.folderId);
+  const bookmarkedChats = chats.filter(chat => chat?.bookmarked);
+  const unorganizedChats = chats
+
+  const handleFolderSelect = (folderId: string | null) => {
+   console.log(`Selected folder: ${folderId}`);
+   onSelect(folderId || '');
+  }
 
   return (
     <div className="chatbot-sidebar-content">
@@ -210,7 +215,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                             <div
                               key={chat.id}
                               className={`chat-item ${selectedId === chat.id ? 'active' : ''}`}
-                              onClick={() => onSelect(chat.id)}
+                              onClick={() => handleFolderSelect(chat.id)}
                             >
                               <div className="chat-icon">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -220,7 +225,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                               <span className="chat-title">{chat.title}</span>
                               <div className="chat-actions">
                                 <button
-                                  className={`bookmark-button ${chat.bookmarked ? 'bookmarked' : ''}`}
+                                  className={`bookmark-button ${chat?.bookmarked ? 'bookmarked' : ''}`}
                                   onClick={e => {
                                     e.stopPropagation();
                                     onToggleBookmark && onToggleBookmark(chat.id);
@@ -277,19 +282,19 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
               <div className="empty-list-message">No chats yet</div>
             ) : (
               unorganizedChats
-                .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                .map(chat => (
+                .sort((a, b) => new Date(b?.updatedAt).getTime() - new Date(a?.updatedAt).getTime())
+                .map((chat:any) => chat?.messages?.length>0  &&(
                   <div
                     key={chat.id}
-                    className={`chat-item ${selectedId === chat.id ? 'active' : ''}`}
-                    onClick={() => onSelect(chat.id)}
+                    className={`chat-item ${selectedId === chat?.id ? 'active' : ''}`}
+                    onClick={() => handleFolderSelect(chat?.id)}
                   >
                     <div className="chat-icon">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
                       </svg>
                     </div>
-                    <span className="chat-title">{chat.title}</span>
+                    <span className="chat-title">{chat?.title}</span>
                     <div className="chat-actions">
                       <button
                         className={`bookmark-button ${chat.bookmarked ? 'bookmarked' : ''}`}
@@ -344,7 +349,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                   <div
                     key={chat.id}
                     className={`chat-item ${selectedId === chat.id ? 'active' : ''}`}
-                    onClick={() => onSelect(chat.id)}
+                    onClick={() => handleFolderSelect(chat.id)}
                   >
                     <div className="chat-icon">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
