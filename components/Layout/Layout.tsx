@@ -3,8 +3,8 @@ import { useRouter } from 'next/router';
 import Sidebar from '../Sidebar/Sidebar';
 import SubcontentBar from '../SubcontentBar/SubcontentBar';
 import MainContent from '../MainContent/MainContent';
-import { NavItem } from '../../types';
-import { fetchChatbotData } from '../../utils/apiMocks';
+import { NavItem, ChatSession, ChatFolder } from '../../types';
+import { fetchChatbotData, createFolder, deleteFolder, deleteChat, toggleBookmark, moveToFolder, renameFolder } from '../../utils/apiMocks';
 
 // Navigation items for sidebar
 const navItems: NavItem[] = [
@@ -202,6 +202,10 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState<string>('');
+  // Chatbot sidebar state
+  const [chatbotChats, setChatbotChats] = useState<ChatSession[]>([]);
+  const [chatbotFolders, setChatbotFolders] = useState<ChatFolder[]>([]);
+  const [selectedChatId, setSelectedChatId] = useState<string>('');
   
   // Use custom hooks
   const { activeNav, activeSubNav, handleNavSelect, handleSubNavSelect } = useNavigation(router);
@@ -252,6 +256,64 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       subNavItems = [];
   }
 
+  // Load chatbot data on nav change
+  useEffect(() => {
+    if (activeNav === 'chatbot') {
+      fetchChatbotData().then(data => {
+        setChatbotChats(data.chatSessions || []);
+        setChatbotFolders(data.folders || []);
+        setSelectedChatId(data.activeChatId || (data.chatSessions?.[0]?.id ?? ''));
+      });
+    }
+  }, [activeNav]);
+
+  // Sidebar actions
+  const handleSelectChat = (id: string) => {
+    setSelectedChatId(id);
+    // Optionally update route/query if needed
+  };
+  const handleNewChat = async () => {
+    // Create a new chat session (mock)
+    const newChat: ChatSession = {
+      id: `chat-${Date.now()}`,
+      title: 'New Chat',
+      messages: [],
+      bookmarked: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setChatbotChats(prev => [newChat, ...prev]);
+    setSelectedChatId(newChat.id);
+  };
+  const handleCreateFolder = async (name: string) => {
+    const folder = await createFolder(name);
+    setChatbotFolders(prev => [...prev, folder]);
+  };
+  const handleDeleteFolder = async (folderId: string) => {
+    await deleteFolder(folderId);
+    setChatbotFolders(prev => prev.filter(f => f.id !== folderId));
+    setChatbotChats(prev => prev.map(chat => chat.folderId === folderId ? { ...chat, folderId: undefined } : chat));
+  };
+  const handleDeleteChat = async (chatId: string) => {
+    await deleteChat(chatId);
+    setChatbotChats(prev => prev.filter(chat => chat.id !== chatId));
+    if (selectedChatId === chatId) {
+      setSelectedChatId(chatbotChats.length > 0 ? chatbotChats[0].id : '');
+    }
+  };
+  const handleToggleBookmark = async (chatId: string) => {
+    await toggleBookmark(chatId);
+    setChatbotChats(prev => prev.map(chat => chat.id === chatId ? { ...chat, bookmarked: !chat.bookmarked } : chat));
+  };
+  const handleMoveToFolder = async (chatId: string, folderId: string | null) => {
+    await moveToFolder(chatId, folderId);
+    setChatbotChats(prev => prev.map(chat => chat.id === chatId ? { ...chat, folderId: folderId || undefined } : chat));
+  };
+  const handleRenameFolder = async (folderId: string, newName: string) => {
+    await renameFolder(folderId, newName);
+    setChatbotFolders(prev => prev.map(f => f.id === folderId ? { ...f, name: newName } : f));
+  };
+  
   // Render search box based on current route
   const renderSearchBox = () => {
     if (['schema', 'customer-onboarding', 'dashboard', 'database'].includes(activeNav)) {
@@ -335,13 +397,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Define props for SubcontentBar
   const subContentBarProps = {
     items: subNavItems || [],
-    selectedId: activeSubNav,
-    onSelect: handleSubNavSelect,
+    selectedId: selectedChatId,
+    onSelect: handleSelectChat,
     title: navItems.find(item => item.id === activeNav)?.title || '',
     searchBox: renderSearchBox(),
     filters: renderFilters(),
     additionalControls: renderAdditionalControls(),
-    sectionType: activeNav
+    sectionType: activeNav,
+    chats: chatbotChats,
+    folders: chatbotFolders,
+    onNewChat: handleNewChat,
+    onCreateFolder: handleCreateFolder,
+    onMoveToFolder: handleMoveToFolder,
+    onRenameFolder: handleRenameFolder,
+    onDeleteFolder: handleDeleteFolder,
+    onDeleteChat: handleDeleteChat,
+    onToggleBookmark: handleToggleBookmark
   };
   
   return (
@@ -368,8 +439,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 // Custom hook to use the app state context
 export function useAppState() {
   const context = useContext(AppStateContext);
-  if (context === undefined) {
-    throw new Error('useAppState must be used within an AppStateProvider');
+  if (!context) {
+    throw new Error('useAppState must be used within an AppStateContext.Provider');
   }
   return context;
 }

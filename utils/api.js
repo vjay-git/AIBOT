@@ -97,3 +97,29 @@ export async function askDB({ user_id, question, dashboard = '', tile = '' }) {
     throw err;
   }
 }
+
+// Add a bookmark API call for messages
+export async function bookmarkMessageAPI(messageId, bookmark) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/bookmark-message`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message_id: messageId, bookmark })
+  });
+  if (!res.ok) throw new Error('Failed to bookmark message');
+  return await res.json();
+}
+
+// Fetch all user history (folders, threads, bookmarks, queries) from single endpoint
+export async function fetchAllUserHistoryAPI() {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/userhistory/all`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch all user history');
+  return await res.json();
+}
+
+// Deprecated: Use fetchAllUserHistoryAPI instead
+// export async function listThreadsAPI() { ... }
+// export async function listFoldersAPI() { ... }
