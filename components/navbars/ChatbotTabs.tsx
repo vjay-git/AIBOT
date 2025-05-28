@@ -7,6 +7,7 @@ interface ChatSession {
   updatedAt: string;
   bookmarked: boolean;
   folderId?: string;
+  bookmarkId?: string;
 }
 
 interface ChatFolder {
@@ -17,8 +18,10 @@ interface ChatFolder {
 interface ChatbotTabsProps {
   chats: ChatSession[];
   folders: ChatFolder[];
+  bookmarks: ChatFolder[];
   selectedId: string;
   onSelect: (id: string) => void;
+  isBookmarked: (bookmark:boolean)=> void;
   onNewChat?: () => void;
   onCreateFolder?: (name: string) => void;
   onMoveToFolder?: (chatId: string, folderId: string | null) => void;
@@ -32,7 +35,9 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   chats,
   folders,
   selectedId,
+  bookmarks,
   onSelect,
+  isBookmarked,
   onNewChat,
   onCreateFolder,
   onMoveToFolder,
@@ -56,9 +61,10 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   const bookmarkedChats = chats.filter(chat => chat?.bookmarked);
   const unorganizedChats = chats
 
-  const handleFolderSelect = (folderId: string | null) => {
+  const handleFolderSelect = (folderId: string | null, bookmarked: boolean = false) => {
    console.log(`Selected folder: ${folderId}`);
    onSelect(folderId || '');
+   isBookmarked(bookmarked);
   }
 
   return (
@@ -339,52 +345,82 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
               <span>Bookmarks</span>
             </div>
           </div>
-          <div className="bookmarks-list">
-            {bookmarkedChats.length === 0 ? (
-              <div className="empty-list-message">No bookmarked chats</div>
+          <div className="folders-list">
+            {bookmarks.length === 0 ? (
+              <div className="empty-list-message">No bookmarks yet</div>
             ) : (
-              bookmarkedChats
-                .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                .map(chat => (
+              bookmarks.map(bookmark => (
+                <div key={bookmark.id} className="folder-container">
                   <div
-                    key={chat.id}
-                    className={`chat-item ${selectedId === chat.id ? 'active' : ''}`}
-                    onClick={() => handleFolderSelect(chat.id)}
+                    className="folder-header"
+                    onClick={() => toggleFolderExpand(bookmark.id)}
                   >
-                    <div className="chat-icon">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
+                    <div className="folder-icon-name">
+                      <svg
+                        className={`folder-expand-icon ${expandedFolders[bookmark.id] ? 'expanded' : ''}`}
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                    </div>
-                    <span className="chat-title">{chat.title}</span>
-                    <div className="chat-actions">
-                      <button
-                        className={`bookmark-button ${chat.bookmarked ? 'bookmarked' : ''}`}
-                        onClick={e => {
-                          e.stopPropagation();
-                          onToggleBookmark && onToggleBookmark(chat.id);
-                        }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill={chat.bookmarked ? '#0052FF' : 'currentColor'}/>
-                        </svg>
-                      </button>
-                      <button
-                        className="delete-button"
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (onDeleteChat && window.confirm(`Delete chat "${chat.title}"?`)) {
-                            onDeleteChat(chat.id);
-                          }
-                        }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-                        </svg>
-                      </button>
+                      <span className="folder-name">{bookmark.name}</span>
                     </div>
                   </div>
-                ))
+                  {expandedFolders[bookmark.id] && (
+                    <div className="folder-content">
+                      {chats.filter(chat => chat && chat.bookmarkId === bookmark.id).length === 0 ? (
+                        <div className="empty-folder-message">No bookmarked chats in this folder</div>
+                      ) : (
+                        chats
+                          .filter(chat => chat && chat.bookmarkId === bookmark.id)
+                          .map(chat => (
+                            <div
+                              key={chat.id}
+                              className={`chat-item ${selectedId === chat.id ? 'active' : ''}`}
+                              onClick={() => handleFolderSelect(chat.id, true)}
+                            >
+                              <div className="chat-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
+                                </svg>
+                              </div>
+                              <span className="chat-title">{chat.title}</span>
+                              <div className="chat-actions">
+                                <button
+                                  className={`bookmark-button ${chat?.bookmarkId ? 'bookmarked' : ''}`}
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    onToggleBookmark && onToggleBookmark(chat.id);
+                                  }}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill={chat.bookmarked ? '#0052FF' : 'currentColor'}/>
+                                  </svg>
+                                </button>
+                                <button
+                                  className="delete-button"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    if (onDeleteChat && window.confirm(`Delete chat "${chat.title}"?`)) {
+                                      onDeleteChat(chat.id);
+                                    }
+                                  }}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
             )}
           </div>
         </div>

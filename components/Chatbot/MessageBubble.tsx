@@ -3,16 +3,22 @@ import { ChatMessage } from '../../types';
 import TabularAnswer from './TabularAnswer';
 import { FiCornerUpLeft } from 'react-icons/fi';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
+import { bookmarkMessageAPI, bookmarkMessageAPIUpdate } from '../../utils/api';
 
 interface MessageBubbleProps {
   message: ChatMessage;
   messages: ChatMessage[];
   onReply: (msg: ChatMessage) => void;
+  isBookmarked?: boolean; // Optional prop to indicate if the message is bookmarked
+  bookmarks?: any[]; // Optional prop for bookmarks, if needed
+  refreshBookmarks?: () => void; // Optional callback to refresh bookmarks after bookmarking
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onReply }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onReply, isBookmarked, bookmarks = [],refreshBookmarks }) => {
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
   const [showThanks, setShowThanks] = useState(false);
+  const [showBookmarkPrompt, setShowBookmarkPrompt] = useState(false);
+  const [bookmarkName, setBookmarkName] = useState('');
 
   // Find the message being replied to, if any
   const repliedToMsg = message.replyTo
@@ -70,6 +76,40 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onRepl
     return typeof text === 'string' ? text : JSON.stringify(text);
   };
 
+  // Bookmark handler
+  const handleBookmarkClick = async () => {
+    if (isBookmarked) return;
+    setShowBookmarkPrompt(true);
+  };
+
+  const handleBookmarkSubmit = async () => {
+    if (!bookmarkName.trim()) return;
+    const id = bookmarks.find(
+      (b: any) =>  (b.name === bookmarkName.trim()) 
+    )?.id;
+    if (id) {
+      // Update existing bookmark
+      await bookmarkMessageAPIUpdate(message.queryId,id);
+    } else {
+      // Create new bookmark
+      await bookmarkMessageAPI([message.queryId], bookmarkName.trim());
+    }
+    setShowBookmarkPrompt(false);
+    setBookmarkName('');
+    if (refreshBookmarks) {
+      refreshBookmarks();
+    }
+    // Optionally trigger a refresh or callback here
+
+    // Set bookmarked in messages to true for this message
+    if (typeof message.id !== 'undefined') {
+      const idx = messages.findIndex(m => m.id === message.id);
+      if (idx !== -1) {
+        messages[idx].bookmarked = true;
+      }
+    }
+  };
+
   return (
     <div
       className={`message-container ${message.sender === 'user' ? 'user-message' : 'bot-message'}`}
@@ -87,7 +127,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onRepl
                 <span className="reply-sender">{repliedToMsg.sender === 'user' ? 'You' : 'Bot'}</span>
               </div>
               <div className="reply-text" style={{ color: '#444', fontStyle: 'italic', fontSize: 13 }}>
-                {repliedToMsg.text ? getDisplayText(repliedToMsg.text).slice(0, 80) : '[Tabular/Non-text answer]'} {message.type} {message.rawAnswer}
+                {repliedToMsg.text ? getDisplayText(repliedToMsg.text).slice(0, 80) : '[Tabular/Non-text answer]'} {message.type} {message.rawAnswer} 
               </div>
             </div>
           )}
@@ -161,6 +201,82 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onRepl
                   <ThumbsDown size={20} />
                 </button>
               </>
+            )}
+          </div>
+        )}
+
+        {/* Bookmark icon for user messages */}
+        {message.sender === 'user' && (
+          <div className="feedback-row">
+            <button
+              className="feedback-btn"
+              aria-label="Bookmark"
+              title="Bookmark this message"
+              style={{
+                color: isBookmarked || message.bookmarked ? '#2563eb' : '#fff',
+                background: 'none',
+                border: 'none',
+                cursor: isBookmarked || message.bookmarked ? 'default' : 'pointer',
+              }}
+              onClick={handleBookmarkClick}
+            >
+              <svg width="20" height="20" fill={isBookmarked || message.bookmarked ? '#2563eb' : '#fff'} viewBox="0 0 20 20">
+                <path d="M5 3a2 2 0 0 0-2 2v12a1 1 0 0 0 1.447.894L10 16.118l5.553 1.776A1 1 0 0 0 17 17V5a2 2 0 0 0-2-2H5zm0 2h10v11.382l-4.553-1.455a1 1 0 0 0-.894 0L5 16.382V5z"/>
+              </svg>
+            </button>
+            {/* Bookmark name popup */}
+            {showBookmarkPrompt && (
+              <div className="bookmark-popup" style={{
+                position: 'absolute',
+                background: '#fff',
+                border: '1px solid #ccc',
+                borderRadius: 6,
+                padding: 12,
+                zIndex: 10,
+                top: 30,
+                left: 0,
+                minWidth: 220
+              }}>
+                <div style={{ marginBottom: 8 }}>Enter bookmark name:</div>
+                <input
+                  type="text"
+                  value={bookmarkName}
+                  onChange={e => setBookmarkName(e.target.value)}
+                  style={{ width: '100%', marginBottom: 8, padding: 4 }}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={handleBookmarkSubmit}
+                    style={{
+                      background: '#2563eb',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 4,
+                      padding: '4px 10px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowBookmarkPrompt(false);
+                      setBookmarkName('');
+                    }}
+                    style={{
+                      background: '#eee',
+                      color: '#333',
+                      border: 'none',
+                      borderRadius: 4,
+                      padding: '4px 10px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}

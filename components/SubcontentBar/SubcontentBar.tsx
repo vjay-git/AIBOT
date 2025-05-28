@@ -19,7 +19,9 @@ interface SubcontentBarProps {
   // New props for chatbot sidebar
   chats?: any[];
   folders?: any[];
+  bookmarks?: any[];
   onNewChat?: () => void;
+   isBookmarked: (bookmark:boolean)=> void;
   onCreateFolder?: (name: string) => void;
   onMoveToFolder?: (chatId: string, folderId: string | null) => void;
   onRenameFolder?: (folderId: string, newName: string) => void;
@@ -39,7 +41,9 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
   sectionType,
   chats,
   folders,
+  bookmarks,
   onNewChat,
+  isBookmarked,
   onCreateFolder,
   onMoveToFolder,
   onRenameFolder,
@@ -54,8 +58,10 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
         <ChatbotTabs
           chats={chats || []}
           folders={folders || []}
+          bookmarks={bookmarks || []}
           selectedId={selectedId}
           onSelect={onSelect}
+          isBookmarked={isBookmarked}
           onNewChat={onNewChat}
           onCreateFolder={onCreateFolder}
           onMoveToFolder={onMoveToFolder}

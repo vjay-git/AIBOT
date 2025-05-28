@@ -214,7 +214,7 @@ async function convertApiMessagesToChatMessages(apiData: any): Promise<ChatMessa
 return allMessages;
 }
 
-const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) => {
+const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted,isBookmarked,bookmarks, refreshBookmarks }: any) => {
   // Start with empty messages array to show welcome message
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -352,7 +352,7 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
     setLoading(true);
     setError('');
     try {
-      let res, response, contentType;
+      let res:any, response, contentType;
       if (isAudio && msg instanceof Blob) {
         // Send audio as FormData
         const formData = new FormData();
@@ -382,6 +382,18 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
       } else if (res?.query_id) {
         setQueryIds(prev => prev.includes(res.query_id) ? prev : [...prev, res.query_id]);
       }
+      // --- Assign query_id from response to previous user message ---
+      setMessages(msgs => {
+        const updated = [...msgs];
+        // Find the last user message (the one just sent)
+        for (let i = updated.length - 1; i >= 0; i--) {
+          if (updated[i].sender === 'user' && !updated[i].queryId) {
+            updated[i] = { ...updated[i], queryId: res?.query_id || '' };
+            break;
+          }
+        }
+        return updated;
+      });
       // Handle file responses
       if (contentType === 'application/pdf' || contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         let fileType: ChatMessage['type'] = 'file';
@@ -405,7 +417,8 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
             text: '',
             timestamp: new Date().toISOString(),
             type: fileType,
-            rawAnswer: fileUrl
+            rawAnswer: fileUrl,
+            queryId: res?.query_id ? res.query_id : ''
           } as ChatMessage
         ]);
       } else if (contentType && contentType.startsWith('audio/')) {
@@ -425,7 +438,8 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
             text: '',
             timestamp: new Date().toISOString(),
             type: 'audio',
-            rawAnswer: audioUrl
+            rawAnswer: audioUrl,
+            queryId: res?.query_id ? res.query_id : ''
           }
         ]);
       } else {
@@ -451,7 +465,8 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
               text: '',
               timestamp: new Date().toISOString(),
               type: 'tabular',
-              rawAnswer: answer
+              rawAnswer: answer,
+              queryId: res?.query_id ? res.query_id : ''
             } as any
           ]);
         } else {
@@ -461,7 +476,8 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
               id: `msg-${Date.now() + 1}`,
               sender: 'bot',
               text: answer,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              queryId: res?.query_id ? res.query_id : ''
             }
           ]);
         }
@@ -570,6 +586,9 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
                   message={msg}
                   messages={messages}
                   onReply={setReplyTo}
+                  isBookmarked={isBookmarked}
+                  bookmarks={bookmarks}
+                  refreshBookmarks={refreshBookmarks}
                 />
               </motion.div>
             ))}

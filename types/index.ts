@@ -98,6 +98,7 @@ export interface ChatMessage {
   type?: 'text' | 'search_query' | 'search_result' | 'db_answer' | 'tabular' | 'audio' | 'pdf' | 'xlsx' | 'docx' | 'file' | 'table'; // message type for different modes
   bookmarked?: boolean; // whether message is bookmarked
   rawAnswer?: any; // for tabular/chatbot table answers, file/audio URLs
+  queryId?: string; // ID of the query this message is associated with
 }
 
 export interface ChatSession {

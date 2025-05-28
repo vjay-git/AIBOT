@@ -101,11 +101,23 @@ export async function askDB({ user_id, question, dashboard = '', tile = '', thre
 // Add a bookmark API call for messages
 export async function bookmarkMessageAPI(messageId, bookmark) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const url = `${baseUrl}/bookmark-message`;
+  const url = `${baseUrl}/userhistory/bookmark`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message_id: messageId, bookmark })
+    body: JSON.stringify({ query_ids: messageId, bookmark_name:bookmark })
+  });
+  if (!res.ok) throw new Error('Failed to bookmark message');
+  return await res.json();
+}
+
+export async function bookmarkMessageAPIUpdate(messageId, bookmarkid) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/userhistory/bookmark/${bookmarkid}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query_id: messageId })
   });
   if (!res.ok) throw new Error('Failed to bookmark message');
   return await res.json();
