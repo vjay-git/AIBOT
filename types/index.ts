@@ -108,6 +108,7 @@ export interface ChatSession {
   createdAt: string;
   updatedAt: string;
   folderId?: string;
+  queryIds?: string[]; // Track all queryIds for this thread/session
 }
 
 export interface ChatFolder {

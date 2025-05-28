@@ -298,7 +298,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         bookmarked: false,
         createdAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
         updatedAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
-        messages
+        messages,
+        queryIds: (thread.querydetails || []).map((qd: any) => qd.query_id).filter(Boolean) // Add queryIds to ChatSession
       };
     })
 
@@ -320,6 +321,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       bookmarked: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      queryIds: [] // Always initialize queryIds for new chat
     };
     setSelectedNewChatId(newChat.id);
     setSelectedChatId("");

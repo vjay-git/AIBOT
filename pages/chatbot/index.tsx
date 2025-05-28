@@ -226,6 +226,7 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
   const chatbotContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [queryIds, setQueryIds] = useState<string[]>([]); // Track queryIds for this thread
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -286,6 +287,40 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
+  // On mount, restore threadId and queryIds from localStorage if present
+  useEffect(() => {
+    const savedThreadId = localStorage.getItem('chatbot_threadId');
+    const savedQueryIds = localStorage.getItem('chatbot_queryIds');
+    if (savedThreadId) setThreadId(savedThreadId);
+    if (savedQueryIds) setQueryIds(JSON.parse(savedQueryIds));
+  }, []);
+
+  // Whenever threadId or queryIds change, persist them
+  useEffect(() => {
+    if (threadId) localStorage.setItem('chatbot_threadId', threadId);
+    localStorage.setItem('chatbot_queryIds', JSON.stringify(queryIds));
+  }, [threadId, queryIds]);
+
+  // When starting a new chat, reset threadId and messages
+  useEffect(() => {
+    if (selectedNewChatId) {
+      setThreadId(null);
+      setQueryIds([]);
+      localStorage.removeItem('chatbot_threadId');
+      localStorage.setItem('chatbot_queryIds', JSON.stringify([]));
+      setMessages([]);
+      setReplyTo(null);
+    }
+  }, [selectedNewChatId]);
+
+  // When a user selects an existing chat/thread, set threadId and persist it
+  useEffect(() => {
+    if (selectedChatId) {
+      setThreadId(selectedChatId);
+      localStorage.setItem('chatbot_threadId', selectedChatId);
+    }
+  }, [selectedChatId]);
+
   const handleSend = async (msg: string | Blob, isAudio = false) => {
     let userMessage: ChatMessage;
     let concatenatedQuestion = msg as string;
@@ -325,18 +360,27 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
         response = await fetch('/ask_db', { method: 'POST', body: formData });
         contentType = response.headers.get('Content-Type');
       } else {
+        // --- FIX: allow first message to create a new thread if threadId is null ---
         res = await askDB({
           user_id: DEFAULT_USER_ID,
           question: concatenatedQuestion,
           dashboard: '',
           tile: '',
-          thread_id: threadId || ''
+          thread_id: threadId === null ? '' : threadId // send empty string if null
         });
         contentType = res?.contentType || 'application/json';
       }
-      if(!threadId){
-      setThreadId(res?.thread_id || null); // Set thread ID if available
-      setNewChatStarted(true); // Notify parent component that a new chat has started
+      // --- FIX: after first response, if new threadId is returned, set it and persist ---
+      if (threadId === null && res?.thread_id) {
+        setThreadId(res.thread_id);
+        localStorage.setItem('chatbot_threadId', res.thread_id);
+      }
+      // If this is a new thread, set threadId and reset queryIds
+      if (!threadId && res?.thread_id) {
+        setThreadId(res.thread_id);
+        setQueryIds(res.query_id ? [res.query_id] : []);
+      } else if (res?.query_id) {
+        setQueryIds(prev => prev.includes(res.query_id) ? prev : [...prev, res.query_id]);
       }
       // Handle file responses
       if (contentType === 'application/pdf' || contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
