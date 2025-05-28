@@ -287,12 +287,12 @@ const Chatbot = ({ selectedChatId, selectedNewChatId,setNewChatStarted }: any) =
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
-  // On mount, restore threadId and queryIds from localStorage if present
+  // On mount, always start a new thread by default (clear previous threadId and queryIds)
   useEffect(() => {
-    const savedThreadId = localStorage.getItem('chatbot_threadId');
-    const savedQueryIds = localStorage.getItem('chatbot_queryIds');
-    if (savedThreadId) setThreadId(savedThreadId);
-    if (savedQueryIds) setQueryIds(JSON.parse(savedQueryIds));
+    setThreadId(null);
+    setQueryIds([]);
+    localStorage.removeItem('chatbot_threadId');
+    localStorage.setItem('chatbot_queryIds', JSON.stringify([]));
   }, []);
 
   // Whenever threadId or queryIds change, persist them

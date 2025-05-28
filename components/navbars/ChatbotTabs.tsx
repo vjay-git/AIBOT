@@ -206,11 +206,11 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                   </div>
                   {expandedFolders[folder.id] && (
                     <div className="folder-content">
-                      {chats.filter(chat => chat.folderId === folder.id).length === 0 ? (
+                      {chats.filter(chat => chat && chat.folderId === folder.id).length === 0 ? (
                         <div className="empty-folder-message">Folder is empty</div>
                       ) : (
                         chats
-                          .filter(chat => chat.folderId === folder.id)
+                          .filter(chat => chat && chat.folderId === folder.id)
                           .map(chat => (
                             <div
                               key={chat.id}
