@@ -94,7 +94,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, messages, onRepl
       // Create new bookmark
       await bookmarkMessageAPI([message.queryId], bookmarkName.trim());
     }
-    setShowBookmarkPrompt(false);
+    setShowBookmarkPrompt(true);
     setBookmarkName('');
     if (refreshBookmarks) {
       refreshBookmarks();

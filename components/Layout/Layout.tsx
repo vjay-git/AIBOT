@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useMemo, createContext, useContext, ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, createContext, useContext, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Sidebar from '../Sidebar/Sidebar';
 import SubcontentBar from '../SubcontentBar/SubcontentBar';
 import MainContent from '../MainContent/MainContent';
 import { NavItem, ChatSession, ChatFolder } from '../../types';
-import { fetchChatbotData, createFolder, deleteFolder, deleteChat, toggleBookmark, moveToFolder, renameFolder } from '../../utils/apiMocks';
+import { fetchChatbotData, createFolder, deleteFolder, toggleBookmark, moveToFolder, renameFolder } from '../../utils/apiMocks';
 import { getAllChats } from '@/utils/api';
-import { set } from 'date-fns';
 
 // Navigation items for sidebar
 const navItems: NavItem[] = [
@@ -46,7 +45,7 @@ function useNavigation(router: any) {
   useEffect(() => {
     const currentPath = router.pathname;
     const pathSegments = currentPath.split('/');
-    const mainRouteSegment = pathSegments[1] || ''; // e.g., 'dashboard', 'user-settings', or empty for root
+    const mainRouteSegment = pathSegments[1] || '';
 
     // Determine the new active navigation item based on the route
     const newNav = navItems.find(item =>
@@ -73,14 +72,14 @@ function useNavigation(router: any) {
     setIsInitialized(true);
   }, [router.pathname, router.query]);
 
-  const handleNavSelect = (navId: string) => {
+  const handleNavSelect = useCallback((navId: string) => {
     const selectedNav = navItems.find(item => item.id === navId);
     if (selectedNav) {
       router.push(`/${selectedNav.route}`);
     }
-  };
+  }, [router]);
 
-  const handleSubNavSelect = (subNavId: string) => {
+  const handleSubNavSelect = useCallback((subNavId: string) => {
     setActiveSubNav(subNavId);
 
     // For sections that use query parameters
@@ -91,7 +90,7 @@ function useNavigation(router: any) {
         query: { tab: subNavId }
       }, undefined, { shallow: true });
     }
-  };
+  }, [activeNav, router]);
 
   return {
     activeNav,
@@ -115,6 +114,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState<string>('');
+  
   // Chatbot sidebar state
   const [chatbotChats, setChatbotChats] = useState<ChatSession[]>([]);
   const [chatbotFolders, setChatbotFolders] = useState<ChatFolder[]>([]);
@@ -122,13 +122,354 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [selectedChatId, setSelectedChatId] = useState<string>('');
   const [selectedNewChatId, setSelectedNewChatId] = useState<string>('');
   const [newChatStarted, setNewChatStarted] = useState<boolean>(false);
+  
+  // Enhanced bookmark state management
+  const [currentChatContext, setCurrentChatContext] = useState<{
+    isBookmarked: boolean;
+    chatId: string | null;
+    isNewChat: boolean;
+  }>({
+    isBookmarked: false,
+    chatId: null,
+    isNewChat: false
+  });
+
   // Use custom hooks
   const { activeNav, activeSubNav, handleNavSelect, handleSubNavSelect } = useNavigation(router);
   const [chatbotData, setChatbotData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
-  
+
+  // Enhanced function to convert API data with better error handling
+  const convertApiToChatbotData = useCallback((api: any) => {
+    try {
+      // 1. Build unique folders from aitables
+      const folders = (api.aitables || []).reduce((acc: any[], t: any) => {
+        if (t.table_id && !acc.find((f: any) => f.id === t.table_id)) {
+          acc.push({ id: t.table_id, name: t.table_name || 'Unnamed Table' });
+        }
+        return acc;
+      }, []);
+
+      // 2. Convert api.bookmarks to ChatFolder[]
+      const bookmarks: ChatFolder[] = (api.bookmarks || []).map((bookmark: any) => ({
+        id: bookmark.bookmark_id || bookmark.id || '',
+        name: bookmark.bookmark_name || bookmark.name || 'Bookmark'
+      }));
+
+      // 3. Build a map of query_id -> table_id (folder id) from aitables.queries
+      const queryToTableId: Record<string, string> = {};
+      (api.aitables || []).forEach((table: any) => {
+        (table.queries || []).forEach((query: any) => {
+          if (query.query_id) {
+            queryToTableId[query.query_id] = table.table_id;
+          }
+        });
+      });
+
+      // 4. Build a map of query_id -> messages (from api.query)
+      const queryMap: Record<string, any[]> = {};
+      (api.query || []).forEach((q: any) => {
+        if (q.query_id && q.message) {
+          if (Array.isArray(q.message[0])) {
+            queryMap[q.query_id] = q.message[0];
+          } else {
+            queryMap[q.query_id] = q.message;
+          }
+        }
+      });
+
+      // 5. Build a map of query_id -> bookmark_id
+      const queryToBookmarkId: Record<string, string> = {};
+      if (api.bookmarks && Array.isArray(api.bookmarks)) {
+        api.bookmarks.forEach((bookmark: any) => {
+          if (bookmark.queries && Array.isArray(bookmark.queries)) {
+            bookmark.queries.forEach((q: any) => {
+              if (q.query_id) {
+                queryToBookmarkId[q.query_id] = bookmark.id || bookmark.bookmark_id || q.query_id;
+              }
+            });
+          }
+        });
+      }
+
+      // 6. Build chatSessions from threads, grouping messages by query_id
+      const chatSessions = (api.thread || [])
+        .filter((thread: any) => {
+          // Skip threads whose title starts with "SQL Generated by LLM:"
+          return !(typeof thread.thread_name === "string" && thread.thread_name.startsWith("SQL Generated by LLM:"));
+        })
+        .map((thread: any, idx: number) => {
+          let messages: any[] = [];
+          let folderId: string | undefined = undefined;
+          let bookmarkId: string | undefined = undefined;
+
+          (thread.querydetails || []).forEach((qd: any) => {
+            if (qd.query_id && queryMap[qd.query_id]) {
+              if (!folderId && queryToTableId[qd.query_id]) {
+                folderId = queryToTableId[qd.query_id];
+              }
+              // If any query_id in this thread is bookmarked, assign its bookmark id
+              if (!bookmarkId && queryToBookmarkId[qd.query_id]) {
+                bookmarkId = queryToBookmarkId[qd.query_id];
+              }
+              const groupedMessages = queryMap[qd.query_id]
+                .filter((msg: any) => !(typeof msg.content === "string" && msg.content.startsWith("SQL Generated by LLM:")))
+                .map((msg: any, i: number) => ({
+                  id: `msg-${qd.query_id}-${i}`,
+                  sender: msg.role === "user" ? "user" : "bot",
+                  text: msg.content || (msg.results?.data || msg.results || ""),
+                  timestamp: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000 + i * 10000).toISOString(),
+                  queryId: qd.query_id
+                }));
+              if (groupedMessages.length > 0) {
+                messages.push({
+                  queryId: qd.query_id,
+                  messages: groupedMessages
+                });
+              }
+            } else {
+              console.warn(`No messages found for query_id: ${qd.query_id} in thread: ${thread.thread_id}`);
+            }
+          });
+
+          return {
+            id: thread.thread_id,
+            title: thread.thread_name,
+            folderId,
+            bookmarkId,
+            bookmarked: !!bookmarkId, // Add bookmarked flag
+            createdAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
+            messages,
+            queryIds: (thread.querydetails || []).map((qd: any) => qd.query_id).filter(Boolean)
+          };
+        })
+        .filter(Boolean); // Remove null/undefined entries
+
+      return { chatSessions, folders, bookmarks };
+    } catch (error) {
+      console.error('Error converting API data:', error);
+      return { chatSessions: [], folders: [], bookmarks: [] };
+    }
+  }, []);
+
+  // Enhanced chat data loading with better error handling
+  const loadChatbotData = useCallback(async () => {
+    if (activeNav !== 'chatbot') return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const data = await getAllChats();
+      console.log('Chatbot data loaded:', data);
+      
+      const chatbotData = convertApiToChatbotData(data);
+      console.log("Processed data - bookmarks:", chatbotData.bookmarks, "chats:", chatbotData.chatSessions.length);
+      
+      setChatbotChats(chatbotData.chatSessions || []);
+      setChatbotFolders(chatbotData.folders || []);
+      setChatbotBookmarks(chatbotData.bookmarks || []);
+      
+      // Reset selection when data loads if no chat is selected
+      if (!selectedChatId && !selectedNewChatId) {
+        setSelectedChatId('');
+      }
+    } catch (err) {
+      console.error('Error loading chatbot data:', err);
+      setError(err instanceof Error ? err : new Error('Failed to load chatbot data'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeNav, convertApiToChatbotData, selectedChatId, selectedNewChatId]);
+
+  // Load chatbot data on nav change
+  useEffect(() => {
+    loadChatbotData();
+  }, [loadChatbotData]);
+
+  // Enhanced new chat handling
+  useEffect(() => {
+    if (newChatStarted) {
+      // Reset states for new chat
+      setSelectedNewChatId('');
+      setNewChatStarted(false);
+      setCurrentChatContext({
+        isBookmarked: false,
+        chatId: null,
+        isNewChat: true
+      });
+      
+      // Reload data after new chat
+      loadChatbotData();
+    }
+  }, [newChatStarted, loadChatbotData]);
+
+  // Enhanced chat selection handler
+  const handleSelectChat = useCallback((id: string) => {
+    console.log(`Selected chat ID layout: ${id}`);
+    setSelectedChatId(id);
+    setSelectedNewChatId(''); // Clear new chat when selecting existing chat
+    
+    // Find the selected chat and determine if it's bookmarked
+    const selectedChat = chatbotChats.find(chat => chat.id === id);
+    setCurrentChatContext({
+      isBookmarked: selectedChat?.bookmarked || !!selectedChat?.bookmarkId || false,
+      chatId: id,
+      isNewChat: false
+    });
+  }, [chatbotChats]);
+
+  // Enhanced bookmark state handler
+  const handleIsBookmarked = useCallback((bookmark: boolean) => {
+    setCurrentChatContext(prev => ({
+      ...prev,
+      isBookmarked: bookmark
+    }));
+  }, []);
+
+  // Enhanced new chat handler
+  const handleNewChat = useCallback(async () => {
+    try {
+      // Create a new chat session
+      const newChat: ChatSession = {
+        id: `chat-${Date.now()}`,
+        title: 'New Chat',
+        messages: [],
+        bookmarked: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        queryIds: []
+      };
+      
+      setSelectedNewChatId(newChat.id);
+      setSelectedChatId("");
+      
+      // Reset bookmark context for new chat
+      setCurrentChatContext({
+        isBookmarked: false,
+        chatId: null,
+        isNewChat: true
+      });
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+      setError(error instanceof Error ? error : new Error('Failed to create new chat'));
+    }
+  }, []);
+
+  // Enhanced folder management with error handling
+  const handleCreateFolder = useCallback(async (name: string) => {
+    try {
+      const folder = await createFolder(name);
+      setChatbotFolders(prev => [...prev, folder]);
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      setError(error instanceof Error ? error : new Error('Failed to create folder'));
+    }
+  }, []);
+
+  const handleDeleteFolder = useCallback(async (folderId: string) => {
+    try {
+      await deleteFolder(folderId);
+      setChatbotFolders(prev => prev.filter(f => f.id !== folderId));
+      setChatbotChats(prev => prev.map(chat => 
+        chat.folderId === folderId ? { ...chat, folderId: undefined } : chat
+      ));
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+      setError(error instanceof Error ? error : new Error('Failed to delete folder'));
+    }
+  }, []);
+
+  // FIXED: Updated handleDeleteChat to work with real API
+  const handleDeleteChat = useCallback(async (chatId: string) => {
+    try {
+      // Don't call the mock deleteChat function since we're using real API
+      // The actual deletion is handled in ChatbotTabs component using deletedThreadById API
+      // This function is just for updating local state after successful deletion
+      
+      setChatbotChats(prev => prev.filter(chat => chat.id !== chatId));
+      
+      if (selectedChatId === chatId) {
+        const remainingChats = chatbotChats.filter(chat => chat.id !== chatId);
+        setSelectedChatId(remainingChats.length > 0 ? remainingChats[0].id : '');
+        setCurrentChatContext({
+          isBookmarked: false,
+          chatId: null,
+          isNewChat: false
+        });
+      }
+    } catch (error) {
+      console.error('Error in handleDeleteChat:', error);
+      setError(error instanceof Error ? error : new Error('Failed to delete chat'));
+    }
+  }, [selectedChatId, chatbotChats]);
+
+  const handleToggleBookmark = useCallback(async (chatId: string) => {
+    try {
+      await toggleBookmark(chatId);
+      setChatbotChats(prev => prev.map(chat => 
+        chat.id === chatId ? { ...chat, bookmarked: !chat.bookmarked } : chat
+      ));
+      
+      // Update current context if this is the selected chat
+      if (selectedChatId === chatId) {
+        setCurrentChatContext(prev => ({
+          ...prev,
+          isBookmarked: !prev.isBookmarked
+        }));
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      setError(error instanceof Error ? error : new Error('Failed to toggle bookmark'));
+    }
+  }, [selectedChatId]);
+
+  const handleMoveToFolder = useCallback(async (chatId: string, folderId: string | null) => {
+    try {
+      await moveToFolder(chatId, folderId);
+      setChatbotChats(prev => prev.map(chat => 
+        chat.id === chatId ? { ...chat, folderId: folderId || undefined } : chat
+      ));
+    } catch (error) {
+      console.error('Error moving to folder:', error);
+      setError(error instanceof Error ? error : new Error('Failed to move chat to folder'));
+    }
+  }, []);
+
+  const handleRenameFolder = useCallback(async (folderId: string, newName: string) => {
+    try {
+      await renameFolder(folderId, newName);
+      setChatbotFolders(prev => prev.map(f => 
+        f.id === folderId ? { ...f, name: newName } : f
+      ));
+    } catch (error) {
+      console.error('Error renaming folder:', error);
+      setError(error instanceof Error ? error : new Error('Failed to rename folder'));
+    }
+  }, []);
+
+  // Enhanced refresh function for chats
+  const refreshChats = useCallback(async () => {
+    try {
+      console.log('Refreshing chat data...');
+      await loadChatbotData();
+    } catch (error) {
+      console.error('Error refreshing chats:', error);
+      setError(error instanceof Error ? error : new Error('Failed to refresh chats'));
+    }
+  }, [loadChatbotData]);
+
+  // Enhanced refresh bookmarks function
+  const refreshBookmarks = useCallback(async () => {
+    try {
+      await loadChatbotData();
+    } catch (error) {
+      console.error('Error refreshing bookmarks:', error);
+      setError(error instanceof Error ? error : new Error('Failed to refresh bookmarks'));
+    }
+  }, [loadChatbotData]);
 
   // Update window chatbotData and notify components when data changes
   useEffect(() => {
@@ -145,7 +486,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     // Cleanup
     return () => {
       if (typeof window !== 'undefined' && activeNav !== 'chatbot') {
-        // Only remove from window when navigating away from chatbot section
         delete (window as any).chatbotData;
       }
     };
@@ -165,24 +505,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     error
   }), [activeNav, activeSubNav, searchTerm, chatbotData, isLoading, error]);
 
-  useEffect(() => {
-    if (newChatStarted) {
-      // Reset new chat state after starting a new chat
-      setSelectedNewChatId('');
-      setNewChatStarted(false);
-       getAllChats().then(data => {
-        console.log('Chatbot data loaded:', data);
-        const chatbotData = convertApiToChatbotData(data); // apiResponse is your pasted JSON
-        console.log("bookmarks", chatbotData.bookmarks);
-        setChatbotChats(chatbotData.chatSessions || []);
-        setChatbotFolders(chatbotData.folders || []);
-        setChatbotBookmarks(chatbotData.bookmarks || []);
-        setSelectedChatId('');
-      });; // Re-fetch chatbot data
-    }
-
-  }, [newChatStarted]);
-  
   // Dynamically import subnav config from each page
   let subNavItems = [];
   switch (activeNav) {
@@ -214,181 +536,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       subNavItems = [];
   }
 
-  // Load chatbot data on nav change
-  useEffect(() => {
-    if (activeNav === 'chatbot') {
-      getAllChats().then(data => {
-        console.log('Chatbot data loaded:', data);
-        const chatbotData = convertApiToChatbotData(data); // apiResponse is your pasted JSON
-        console.log("bookmarks", chatbotData.bookmarks, chatbotData.chatSessions);
-        setChatbotChats(chatbotData.chatSessions || []);
-        setChatbotFolders(chatbotData.folders || []);
-        setChatbotBookmarks(chatbotData.bookmarks || []);
-        setSelectedChatId('');
-      });
-    }
-  }, [activeNav]);
-
-  function convertApiToChatbotData(api: any) {
-    // 1. Build unique folders from aitables
-    const folders = (api.aitables || []).reduce((acc: any[], t: any) => {
-      if (!acc.find((f: any) => f.id === t.table_id)) {
-        acc.push({ id: t.table_id, name: t.table_name });
-      }
-      return acc;
-    }, []);
-
-    // 2. Convert api.bookmarks to ChatFolder[]
-    const bookmarks: ChatFolder[] = (api.bookmarks || []).map((bookmark: any) => ({
-      id: bookmark.bookmark_id || '',
-      name: bookmark.bookmark_name || 'Bookmark'
-    }));
-
-    // 3. Build a map of query_id -> table_id (folder id) from aitables.queries
-    const queryToTableId: Record<string, string> = {};
-    (api.aitables || []).forEach((table: any) => {
-      (table.queries || []).forEach((query: any) => {
-        if (query.query_id) {
-          queryToTableId[query.query_id] = table.table_id;
-        }
-      });
-    });
-
-    // 4. Build a map of query_id -> messages (from api.query)
-    const queryMap: Record<string, any[]> = {};
-    (api.query || []).forEach((q: any) => {
-      if (q.query_id && q.message) {
-        if (Array.isArray(q.message[0])) {
-          queryMap[q.query_id] = q.message[0];
-        } else {
-          queryMap[q.query_id] = q.message;
-        }
-      }
-    });
-
-    // 5. Build a map of query_id -> bookmark_id
-    const queryToBookmarkId: Record<string, string> = {};
-    if (api.bookmarks && Array.isArray(api.bookmarks)) {
-      api.bookmarks.forEach((bookmark: any) => {
-        if (bookmark.queries && Array.isArray(bookmark.queries)) {
-          bookmark.queries.forEach((q: any) => {
-            if (q.query_id) {
-              queryToBookmarkId[q.query_id] = bookmark.id || bookmark.bookmark_id || q.query_id;
-            }
-          });
-        }
-      });
-    }
-
-    // 6. Build chatSessions from threads, grouping messages by query_id
-    const chatSessions = (api.thread || []).map((thread: any, idx: number) => {
-      // Skip threads whose title starts with "SQL Generated by LLM:"
-      if (typeof thread.thread_name === "string" && thread.thread_name.startsWith("SQL Generated by LLM:")) {
-        return null;
-      }
-      let messages: any[] = [];
-      let folderId: string | undefined = undefined;
-      let bookmarkId: string | undefined = undefined;
-
-      (thread.querydetails || []).forEach((qd: any) => {
-        if (qd.query_id && queryMap[qd.query_id]) {
-          if (!folderId && queryToTableId[qd.query_id]) {
-            folderId = queryToTableId[qd.query_id];
-          }
-          // If any query_id in this thread is bookmarked, assign its bookmark id
-          if (!bookmarkId && queryToBookmarkId[qd.query_id]) {
-            bookmarkId = queryToBookmarkId[qd.query_id];
-          }
-          const groupedMessages = queryMap[qd.query_id]
-            .filter((msg: any) => !(typeof msg.content === "string" && msg.content.startsWith("SQL Generated by LLM:")))
-            .map((msg: any, i: number) => ({
-              id: `msg-${qd.query_id}-${i}`,
-              sender: msg.role === "user" ? "user" : "bot",
-              text: msg.content || (msg.results?.data || msg.results || ""),
-              timestamp: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000 + i * 10000).toISOString(),
-              queryId: qd.query_id
-            }));
-          if (groupedMessages.length > 0) {
-            messages.push({
-              queryId: qd.query_id,
-              messages: groupedMessages
-            });
-          }
-        } else {
-          console.warn(`No messages found for query_id: ${qd.query_id} in thread: ${thread.thread_id}`);
-        }
-      });
-      // Do NOT filter out threads with no messages
-      return {
-        id: thread.thread_id,
-        title: thread.thread_name,
-        folderId,
-        bookmarkId,
-        createdAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
-        messages,
-        queryIds: (thread.querydetails || []).map((qd: any) => qd.query_id).filter(Boolean)
-      };
-    });
-
-    return { chatSessions, folders, bookmarks };
-  }
-
-  // Sidebar actions
-  const handleSelectChat = (id: string) => {
-    console.log(`Selected chat ID layout: ${id}`);
-    setSelectedChatId(id);
-    // Optionally update route/query if needed
-  };
-  const handleNewChat = async () => {
-    // Create a new chat session (mock)
-    const newChat: ChatSession = {
-      id: `chat-${Date.now()}`,
-      title: 'New Chat',
-      messages: [],
-      bookmarked: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      queryIds: [] // Always initialize queryIds for new chat
-    };
-    setSelectedNewChatId(newChat.id);
-    setSelectedChatId("");
-  };
-  const handleCreateFolder = async (name: string) => {
-    const folder = await createFolder(name);
-    setChatbotFolders(prev => [...prev, folder]);
-  };
-  const handleDeleteFolder = async (folderId: string) => {
-    await deleteFolder(folderId);
-    setChatbotFolders(prev => prev.filter(f => f.id !== folderId));
-    setChatbotChats(prev => prev.map(chat => chat.folderId === folderId ? { ...chat, folderId: undefined } : chat));
-  };
-  const handleDeleteChat = async (chatId: string) => {
-    await deleteChat(chatId);
-    setChatbotChats(prev => prev.filter(chat => chat.id !== chatId));
-    if (selectedChatId === chatId) {
-      setSelectedChatId(chatbotChats.length > 0 ? chatbotChats[0].id : '');
-    }
-  };
-  const handleToggleBookmark = async (chatId: string) => {
-    await toggleBookmark(chatId);
-    setChatbotChats(prev => prev.map(chat => chat.id === chatId ? { ...chat, bookmarked: !chat.bookmarked } : chat));
-  };
-  const handleMoveToFolder = async (chatId: string, folderId: string | null) => {
-    await moveToFolder(chatId, folderId);
-    setChatbotChats(prev => prev.map(chat => chat.id === chatId ? { ...chat, folderId: folderId || undefined } : chat));
-  };
-  const handleRenameFolder = async (folderId: string, newName: string) => {
-    await renameFolder(folderId, newName);
-    setChatbotFolders(prev => prev.map(f => f.id === folderId ? { ...f, name: newName } : f));
-  };
-
   // Render search box based on current route
-  const renderSearchBox = () => {
+  const renderSearchBox = useCallback(() => {
     if (['schema', 'customer-onboarding', 'dashboard', 'database'].includes(activeNav)) {
       const placeholder =
-        activeNav === 'customer-onboarding' ? "Search by Name, Id.no" :
-          "Search";
+        activeNav === 'customer-onboarding' ? "Search by Name, Id.no" : "Search";
 
       return (
         <div className="search-input-container">
@@ -406,10 +558,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       );
     }
     return null;
-  };
+  }, [activeNav, searchTerm]);
 
   // Render filters based on current route
-  const renderFilters = () => {
+  const renderFilters = useCallback(() => {
     if (['schema', 'dashboard', 'customer-onboarding'].includes(activeNav)) {
       return (
         <button className="filter-button-container">
@@ -421,10 +573,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       );
     }
     return null;
-  };
+  }, [activeNav]);
 
   // Render additional controls based on current route
-  const renderAdditionalControls = () => {
+  const renderAdditionalControls = useCallback(() => {
     if (activeNav === 'customer-onboarding') {
       return (
         <button className="invite-button">
@@ -448,22 +600,43 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
 
     return null;
-  };
+  }, [activeNav]);
 
-  // If there's an error loading chatbot data, we could show an error message
+  // If there's an error loading chatbot data, show error message
   if (activeNav === 'chatbot' && error) {
     return (
       <div className="layout-container">
         <Sidebar items={navItems} />
-        <div className="error-container">
-          <p>There was an error loading the chatbot data. Please try refreshing the page.</p>
-          <button onClick={() => router.reload()}>Refresh</button>
+        <div className="error-container" style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          height: '100vh',
+          padding: '2rem'
+        }}>
+          <p style={{ marginBottom: '1rem', color: '#dc2626' }}>
+            There was an error loading the chatbot data. Please try refreshing the page.
+          </p>
+          <button 
+            onClick={() => router.reload()}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#2563eb',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              cursor: 'pointer'
+            }}
+          >
+            Refresh
+          </button>
         </div>
       </div>
     );
   }
 
-  // Define props for SubcontentBar
+  // UPDATED: Define props for SubcontentBar with refreshChats
   const subContentBarProps = {
     items: subNavItems || [],
     selectedId: selectedChatId,
@@ -475,26 +648,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     sectionType: activeNav,
     chats: chatbotChats,
     folders: chatbotFolders,
-    bookmarks:chatbotBookmarks,
+    bookmarks: chatbotBookmarks,
     onNewChat: handleNewChat,
-    isBookmarked: setIsBookmarked,
+    isBookmarked: handleIsBookmarked,
     onCreateFolder: handleCreateFolder,
     onMoveToFolder: handleMoveToFolder,
     onRenameFolder: handleRenameFolder,
     onDeleteFolder: handleDeleteFolder,
     onDeleteChat: handleDeleteChat,
-    onToggleBookmark: handleToggleBookmark
-  };
-
-  const refreshBookmarks = () => {
-    getAllChats().then(data => {  
-      console.log('Chatbot data loaded:', data);
-      const chatbotData = convertApiToChatbotData(data); // apiResponse is your pasted JSON
-      console.log("bookmarks", chatbotData.bookmarks, chatbotData.chatSessions);
-      setChatbotChats(chatbotData.chatSessions || []);
-      setChatbotFolders(chatbotData.folders || []);
-      setChatbotBookmarks(chatbotData.bookmarks || []);
-    });
+    onToggleBookmark: handleToggleBookmark,
+    refreshChats: refreshChats // ADD: Pass refresh function
   };
 
   return (
@@ -506,8 +669,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <SubcontentBar {...subContentBarProps} />
         )}
 
-        <MainContent navId={activeNav} subNavId={activeSubNav} selectedChatId={selectedChatId} selectedNewChatId={selectedNewChatId} setNewChatStarted={setNewChatStarted} isBookmarked={isBookmarked} bookmarks={chatbotBookmarks} refreshBookmarks={refreshBookmarks}>
-          {/* Render children components */}
+        <MainContent 
+          navId={activeNav} 
+          subNavId={activeSubNav} 
+          selectedChatId={selectedChatId} 
+          selectedNewChatId={selectedNewChatId} 
+          setNewChatStarted={setNewChatStarted} 
+          isBookmarked={currentChatContext.isBookmarked} 
+          bookmarks={chatbotBookmarks} 
+          refreshBookmarks={refreshBookmarks}
+        >
           {children}
         </MainContent>
       </div>

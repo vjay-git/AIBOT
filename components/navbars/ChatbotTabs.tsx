@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { SubNavItem } from '../../types';
 
 interface ChatSession {
@@ -8,6 +8,7 @@ interface ChatSession {
   bookmarked: boolean;
   folderId?: string;
   bookmarkId?: string;
+  messages?: any[];
 }
 
 interface ChatFolder {
@@ -21,7 +22,7 @@ interface ChatbotTabsProps {
   bookmarks: ChatFolder[];
   selectedId: string;
   onSelect: (id: string) => void;
-  isBookmarked: (bookmark:boolean)=> void;
+  isBookmarked: (bookmark: boolean) => void;
   onNewChat?: () => void;
   onCreateFolder?: (name: string) => void;
   onMoveToFolder?: (chatId: string, folderId: string | null) => void;
@@ -29,6 +30,25 @@ interface ChatbotTabsProps {
   onDeleteFolder?: (folderId: string) => void;
   onDeleteChat?: (chatId: string) => void;
   onToggleBookmark?: (chatId: string) => void;
+  refreshChats?: () => void; // Add this prop to refresh chat list after deletion
+}
+
+// API function to delete thread
+async function deletedThreadById(threadId: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/userhistory/thread/${threadId}`;
+  
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to delete thread: ${res.status} ${errorText}`);
+  }
+  
+  return await res.json();
 }
 
 const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
@@ -44,28 +64,109 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   onRenameFolder,
   onDeleteFolder,
   onDeleteChat,
-  onToggleBookmark
+  onToggleBookmark,
+  refreshChats
 }) => {
   // Local state for tab switching (folders, chats, bookmarks)
   const [activeSection, setActiveSection] = useState<'folders' | 'chats' | 'bookmarks'>('chats');
   const [expandedFolders, setExpandedFolders] = useState<{ [key: string]: boolean }>({});
   const [showNewFolderInput, setShowNewFolderInput] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [deletingChats, setDeletingChats] = useState<Set<string>>(new Set());
 
   // Helper functions for folder expand/collapse
-  const toggleFolderExpand = (folderId: string) => {
+  const toggleFolderExpand = useCallback((folderId: string) => {
     setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
-  };
+  }, []);
 
   // Bookmarked and unorganized chats
   const bookmarkedChats = chats.filter(chat => chat?.bookmarked);
-  const unorganizedChats = chats
+  const unorganizedChats = chats;
 
-  const handleFolderSelect = (folderId: string | null, bookmarked: boolean = false) => {
-   console.log(`Selected folder: ${folderId}`);
-   onSelect(folderId || '');
-   isBookmarked(bookmarked);
-  }
+  const handleFolderSelect = useCallback((folderId: string | null, bookmarked: boolean = false) => {
+    console.log(`Selected folder: ${folderId}`);
+    onSelect(folderId || '');
+    isBookmarked(bookmarked);
+  }, [onSelect, isBookmarked]);
+
+  // Enhanced delete handler with API integration
+  const handleDeleteChat = useCallback(async (chatId: string, chatTitle: string) => {
+    // Prevent multiple simultaneous deletions of the same chat
+    if (deletingChats.has(chatId)) {
+      return;
+    }
+
+    // Show confirmation dialog
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the chat "${chatTitle}"?\n\nThis action cannot be undone.`
+    );
+    
+    if (!confirmDelete) {
+      return;
+    }
+
+    // Add to deleting set to prevent multiple deletions
+    setDeletingChats(prev => new Set(prev).add(chatId));
+
+    try {
+      // Call the API to delete the thread
+      await deletedThreadById(chatId);
+      
+      console.log(`Successfully deleted chat: ${chatId}`);
+      
+      // Call the parent's onDeleteChat handler if provided
+      if (onDeleteChat) {
+        onDeleteChat(chatId);
+      }
+      
+      // Refresh the chat list to reflect the deletion
+      if (refreshChats) {
+        refreshChats();
+      }
+      
+      // If the deleted chat was selected, clear the selection
+      if (selectedId === chatId) {
+        onSelect('');
+      }
+
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to delete chat. Please try again.';
+      
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      // Remove from deleting set
+      setDeletingChats(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(chatId);
+        return newSet;
+      });
+    }
+  }, [deletingChats, onDeleteChat, refreshChats, selectedId, onSelect]);
+
+  // Enhanced folder creation handler
+  const handleCreateFolder = useCallback(() => {
+    if (onCreateFolder && newFolderName.trim()) {
+      onCreateFolder(newFolderName.trim());
+      setNewFolderName('');
+      setShowNewFolderInput(false);
+    }
+  }, [onCreateFolder, newFolderName]);
+
+  // Handle keyboard events for folder creation
+  const handleFolderInputKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleCreateFolder();
+    } else if (e.key === 'Escape') {
+      setShowNewFolderInput(false);
+      setNewFolderName('');
+    }
+  }, [handleCreateFolder]);
 
   return (
     <div className="chatbot-sidebar-content">
@@ -109,36 +210,38 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
           <div className="section-header">
             <div className="section-title">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6H12L10 4Z" fill="#0052FF"/>
+                <path d="M10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6H12L10 4Z" fill="currentColor"/>
               </svg>
               <span>Folders</span>
             </div>
-            <button className="add-button" onClick={() => setShowNewFolderInput(true)} aria-label="Add new folder">
+            <button 
+              className="add-button" 
+              onClick={() => setShowNewFolderInput(true)} 
+              aria-label="Add new folder"
+              title="Create new folder"
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" fill="currentColor"/>
               </svg>
             </button>
           </div>
+
           {showNewFolderInput && (
             <div className="new-folder-input-container">
               <input
                 type="text"
                 value={newFolderName}
                 onChange={e => setNewFolderName(e.target.value)}
-                placeholder="Folder name"
+                onKeyDown={handleFolderInputKeyDown}
+                placeholder="Enter folder name..."
                 className="new-folder-input"
+                maxLength={50}
                 autoFocus
               />
               <div className="new-folder-actions">
                 <button
                   className="new-folder-create"
-                  onClick={() => {
-                    if (onCreateFolder && newFolderName.trim()) {
-                      onCreateFolder(newFolderName.trim());
-                      setNewFolderName('');
-                      setShowNewFolderInput(false);
-                    }
-                  }}
+                  onClick={handleCreateFolder}
                   disabled={!newFolderName.trim()}
                 >
                   Create
@@ -155,6 +258,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
               </div>
             </div>
           )}
+
           <div className="folders-list">
             {folders.length === 0 ? (
               <div className="empty-list-message">No folders yet</div>
@@ -186,10 +290,11 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                           if (onRenameFolder) {
                             const newName = prompt('Enter new folder name:', folder.name);
                             if (newName && newName.trim() !== '' && newName !== folder.name) {
-                              onRenameFolder(folder.id, newName);
+                              onRenameFolder(folder.id, newName.trim());
                             }
                           }
                         }}
+                        title="Rename folder"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M3 17.25V21h3.75l11.06-11.06-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/>
@@ -203,6 +308,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                             onDeleteFolder(folder.id);
                           }
                         }}
+                        title="Delete folder"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
@@ -236,23 +342,31 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                                     e.stopPropagation();
                                     onToggleBookmark && onToggleBookmark(chat.id);
                                   }}
+                                  title={chat?.bookmarked ? 'Remove bookmark' : 'Add bookmark'}
                                 >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill={chat.bookmarked ? '#0052FF' : 'currentColor'}/>
                                   </svg>
                                 </button>
                                 <button
-                                  className="delete-button"
+                                  className={`delete-button ${deletingChats.has(chat.id) ? 'deleting' : ''}`}
                                   onClick={e => {
                                     e.stopPropagation();
-                                    if (onDeleteChat && window.confirm(`Delete chat "${chat.title}"?`)) {
-                                      onDeleteChat(chat.id);
-                                    }
+                                    handleDeleteChat(chat.id, chat.title);
                                   }}
+                                  disabled={deletingChats.has(chat.id)}
+                                  title={deletingChats.has(chat.id) ? 'Deleting...' : 'Delete chat'}
                                 >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-                                  </svg>
+                                  {deletingChats.has(chat.id) ? (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
+                                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" opacity="0.25"/>
+                                      <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
+                                    </svg>
+                                  ) : (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+                                    </svg>
+                                  )}
                                 </button>
                               </div>
                             </div>
@@ -273,11 +387,16 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
           <div className="section-header">
             <div className="section-title">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="#0052FF"/>
+                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
               </svg>
               <span>Chats</span>
             </div>
-            <button className="add-button" onClick={onNewChat} aria-label="New chat">
+            <button 
+              className="add-button" 
+              onClick={onNewChat} 
+              aria-label="New chat"
+              title="Start new chat"
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" fill="currentColor"/>
               </svg>
@@ -289,7 +408,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
             ) : (
               unorganizedChats
                 .sort((a, b) => new Date(b?.updatedAt).getTime() - new Date(a?.updatedAt).getTime())
-                .map((chat:any) => chat?.messages?.length>0  &&(
+                .map((chat: any) => chat?.messages?.length > 0 && (
                   <div
                     key={chat.id}
                     className={`chat-item ${selectedId === chat?.id ? 'active' : ''}`}
@@ -308,23 +427,31 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                           e.stopPropagation();
                           onToggleBookmark && onToggleBookmark(chat.id);
                         }}
+                        title={chat.bookmarked ? 'Remove bookmark' : 'Add bookmark'}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill={chat.bookmarked ? '#0052FF' : 'currentColor'}/>
                         </svg>
                       </button>
                       <button
-                        className="delete-button"
+                        className={`delete-button ${deletingChats.has(chat.id) ? 'deleting' : ''}`}
                         onClick={e => {
                           e.stopPropagation();
-                          if (onDeleteChat && window.confirm(`Delete chat "${chat.title}"?`)) {
-                            onDeleteChat(chat.id);
-                          }
+                          handleDeleteChat(chat.id, chat?.title || 'Untitled Chat');
                         }}
+                        disabled={deletingChats.has(chat.id)}
+                        title={deletingChats.has(chat.id) ? 'Deleting...' : 'Delete chat'}
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-                        </svg>
+                        {deletingChats.has(chat.id) ? (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" opacity="0.25"/>
+                            <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
+                          </svg>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+                          </svg>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -340,7 +467,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
           <div className="section-header">
             <div className="section-title">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="#0052FF"/>
+                <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
               </svg>
               <span>Bookmarks</span>
             </div>
@@ -395,23 +522,31 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                                     e.stopPropagation();
                                     onToggleBookmark && onToggleBookmark(chat.id);
                                   }}
+                                  title="Remove bookmark"
                                 >
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill={chat.bookmarked ? '#0052FF' : 'currentColor'}/>
                                   </svg>
                                 </button>
                                 <button
-                                  className="delete-button"
+                                  className={`delete-button ${deletingChats.has(chat.id) ? 'deleting' : ''}`}
                                   onClick={e => {
                                     e.stopPropagation();
-                                    if (onDeleteChat && window.confirm(`Delete chat "${chat.title}"?`)) {
-                                      onDeleteChat(chat.id);
-                                    }
+                                    handleDeleteChat(chat.id, chat.title);
                                   }}
+                                  disabled={deletingChats.has(chat.id)}
+                                  title={deletingChats.has(chat.id) ? 'Deleting...' : 'Delete chat'}
                                 >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-                                  </svg>
+                                  {deletingChats.has(chat.id) ? (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
+                                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" opacity="0.25"/>
+                                      <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
+                                    </svg>
+                                  ) : (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+                                    </svg>
+                                  )}
                                 </button>
                               </div>
                             </div>
@@ -425,6 +560,43 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .delete-button.deleting {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .spinning {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .chat-actions {
+          opacity: 0;
+          transition: opacity 0.2s ease;
+        }
+
+        .chat-item:hover .chat-actions {
+          opacity: 1;
+        }
+
+        .delete-button:hover:not(.deleting) {
+          color: #dc2626;
+        }
+
+        .delete-button:disabled {
+          pointer-events: none;
+        }
+      `}</style>
     </div>
   );
 };
