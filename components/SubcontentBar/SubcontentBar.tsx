@@ -29,6 +29,7 @@ interface SubcontentBarProps {
   onDeleteChat?: (chatId: string) => void;
   onToggleBookmark?: (chatId: string) => void;
   refreshChats?: () => void; // Add refresh function for chat data
+  setIsFromBookmarks?: (isFromBookmarks: boolean) => void; // New prop to set bookmark state
 }
 
 const SubcontentBar: React.FC<SubcontentBarProps> = ({ 
@@ -51,7 +52,8 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
   onDeleteFolder,
   onDeleteChat,
   onToggleBookmark,
-  refreshChats
+  refreshChats,
+  setIsFromBookmarks
 }) => {
   // Enhanced section tabs renderer with better error handling
   const renderSectionTabs = useCallback(() => {
@@ -71,6 +73,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
               selectedId={selectedId}
               onSelect={onSelect}
               isBookmarked={isBookmarked}
+              setIsFromBookmarks={setIsFromBookmarks}
               onNewChat={onNewChat}
               onCreateFolder={onCreateFolder}
               onMoveToFolder={onMoveToFolder}

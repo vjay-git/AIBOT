@@ -32,6 +32,7 @@ interface ChatbotTabsProps {
   onDeleteChat?: (chatId: string) => void;
   onToggleBookmark?: (chatId: string) => void;
   refreshChats?: () => void; // Add this prop to refresh chat list after deletion
+  setIsFromBookmarks?: (isFromBookmarks: boolean) => void; // Optional prop to set bookmark state
 }
 
 // API function to delete thread
@@ -87,7 +88,8 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   onDeleteFolder,
   onDeleteChat,
   onToggleBookmark,
-  refreshChats
+  refreshChats,
+  setIsFromBookmarks
 }) => {
   // Local state for tab switching (folders, chats, bookmarks)
   const [activeSection, setActiveSection] = useState<'folders' | 'chats' | 'bookmarks'>('chats');
@@ -114,10 +116,15 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   const bookmarkedChats = chats.filter(chat => chat?.bookmarked);
   const unorganizedChats = chats;
 
-  const handleFolderSelect = useCallback((folderId: string | null, bookmarked: boolean = false) => {
+  const handleFolderSelect = useCallback((folderId: string | null, bookmarked: boolean = false, isFromBookemarks: boolean = false) => {
     console.log(`Selected folder: ${folderId}`);
     onSelect(folderId || '');
     isBookmarked(bookmarked);
+      debugger;
+
+    if (setIsFromBookmarks && isFromBookemarks !== undefined) {
+      setIsFromBookmarks(isFromBookemarks);
+    }
   }, [onSelect, isBookmarked]);
 
   // Enhanced delete handler with API integration
@@ -312,7 +319,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
             <div className="empty-list-message">No bookmarks yet</div>
           ) : (
             bookmarks.map(bookmark => (
-              <div key={bookmark.id} className="folder-item" style={{display:'flex',alignItems:'center'}}>
+              <div key={bookmark.id} className="folder-item" style={{display:'flex',alignItems:'center'}} onClick={() => handleFolderSelect(bookmark.id, false, true)} tabIndex={0} role="button">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}><path d="M6 4h12v16l-6-4-6 4V4z" stroke="#1a237e" strokeWidth="1.5"/></svg>
                 <span>{bookmark.name}</span>
               </div>

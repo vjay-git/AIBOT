@@ -99,6 +99,7 @@ export interface ChatMessage {
   bookmarked?: boolean; // whether message is bookmarked
   rawAnswer?: any; // for tabular/chatbot table answers, file/audio URLs
   queryId?: string; // ID of the query this message is associated with
+  bookmarkId?: string; // ID of the bookmark if this message is bookmarked
 }
 
 export interface ChatSession {

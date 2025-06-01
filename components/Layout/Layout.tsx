@@ -154,7 +154,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       // 2. Convert api.bookmarks to ChatFolder[]
       const bookmarks: ChatFolder[] = (api.bookmarks || []).map((bookmark: any) => ({
         id: bookmark.bookmark_id || bookmark.id || '',
-        name: bookmark.bookmark_name || bookmark.name || 'Bookmark'
+        name: bookmark.bookmark_name || bookmark.name || 'Bookmark',
+        queries: bookmark.queries || []
       }));
 
       // 3. Build a map of query_id -> table_id (folder id) from aitables.queries
@@ -254,6 +255,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, []);
 
+  const [chatData, setChatData] = useState<any | null>(null);
+
   // Enhanced chat data loading with better error handling
   const loadChatbotData = useCallback(async () => {
     if (activeNav !== 'chatbot') return;
@@ -264,7 +267,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     try {
       const data = await getAllChats();
       console.log('Chatbot data loaded:', data);
-      
+      setChatData(data);
       const chatbotData = convertApiToChatbotData(data);
       console.log("Processed data - bookmarks:", chatbotData.bookmarks, "chats:", chatbotData.chatSessions.length);
       
@@ -635,6 +638,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
     );
   }
+ const [isFromBookmarks, setIsFromBookmarks] = useState(false);
 
   // UPDATED: Define props for SubcontentBar with refreshChats
   const subContentBarProps = {
@@ -649,6 +653,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     chats: chatbotChats,
     folders: chatbotFolders,
     bookmarks: chatbotBookmarks,
+    setIsFromBookmarks: setIsFromBookmarks, 
     onNewChat: handleNewChat,
     isBookmarked: handleIsBookmarked,
     onCreateFolder: handleCreateFolder,
@@ -659,7 +664,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     onToggleBookmark: handleToggleBookmark,
     refreshChats: refreshChats // ADD: Pass refresh function
   };
-
   return (
     <AppStateContext.Provider value={appStateValue}>
       <div className={`layout-container ${!shouldShowSubcontentBar ? 'without-subcontent' : ''}`}>
@@ -678,6 +682,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           isBookmarked={currentChatContext.isBookmarked} 
           bookmarks={chatbotBookmarks} 
           refreshBookmarks={refreshBookmarks}
+          chatData={chatData}
+          isFromBookmarks={isFromBookmarks}
         >
           {children}
         </MainContent>

@@ -369,3 +369,25 @@ export async function throttledApiCall(key, apiFunction, delay = 1000) {
   apiCallQueue.set(key, Date.now());
   return apiFunction();
 }
+
+export async function getQueryById(queryId) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/userhistory/query/${queryId}`;
+  
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch bookmark: ${res.status} ${errorText}`);
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error('Error in getBookmarkById:', error);
+    throw error;
+  }
+}
