@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { SubNavItem } from '../../types';
+import clsx from 'clsx';
 
 interface ChatSession {
   id: string;
@@ -51,6 +52,27 @@ async function deletedThreadById(threadId: string) {
   return await res.json();
 }
 
+const NAV_ITEMS = [
+  {
+    key: 'chats',
+    icon: <svg width="20" height="20" fill="none"><path d="M4 4h12v10H5.17L4 15.17V4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>,
+    label: 'Chats',
+    group: 'main',
+  },
+  {
+    key: 'bookmarks',
+    icon: <svg width="20" height="20" fill="none"><path d="M6 4h8v12l-4-3-4 3V4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>,
+    label: 'Bookmarks',
+    group: 'main',
+  },
+  {
+    key: 'settings',
+    icon: <svg width="20" height="20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5"/><path d="M10 6v4l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+    label: 'Settings',
+    group: 'secondary',
+  },
+];
+
 const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   chats,
   folders,
@@ -73,6 +95,15 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   const [showNewFolderInput, setShowNewFolderInput] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [deletingChats, setDeletingChats] = useState<Set<string>>(new Set());
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [activeTab, setActiveTab] = useState('chats');
+
+  // UI state for expand/collapse
+  const [foldersExpanded, setFoldersExpanded] = useState(true);
+  const [chatsExpanded, setChatsExpanded] = useState(true);
+  const [bookmarksExpanded, setBookmarksExpanded] = useState(true);
+  const [showAllChats, setShowAllChats] = useState(false);
+  const MAX_CHATS_DISPLAY = 5;
 
   // Helper functions for folder expand/collapse
   const toggleFolderExpand = useCallback((folderId: string) => {
@@ -169,435 +200,87 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   }, [handleCreateFolder]);
 
   return (
-    <div className="chatbot-sidebar-content">
-      {/* Navigation tabs */}
-      <div className="chatbot-nav-tabs">
-        <button
-          className={`chatbot-nav-tab ${activeSection === 'folders' ? 'active' : ''}`}
-          onClick={() => setActiveSection('folders')}
-          title="Folders"
-          aria-label="Folders"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6H12L10 4Z" fill="currentColor"/>
-          </svg>
-        </button>
-        <button
-          className={`chatbot-nav-tab ${activeSection === 'chats' ? 'active' : ''}`}
-          onClick={() => setActiveSection('chats')}
-          title="Chats"
-          aria-label="Chats"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
-          </svg>
-        </button>
-        <button
-          className={`chatbot-nav-tab ${activeSection === 'bookmarks' ? 'active' : ''}`}
-          onClick={() => setActiveSection('bookmarks')}
-          title="Bookmarks"
-          aria-label="Bookmarks"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
-          </svg>
+    <aside className="chat-sidebar">
+      {/* New Chat Button at the very top */}
+      <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',marginBottom:12}}>
+        <button className="new-chat-button-sidebar" onClick={onNewChat} title="Start new chat" aria-label="Start new chat">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#1a237e" strokeWidth="2" strokeLinecap="round"/></svg>
         </button>
       </div>
-
       {/* Folders Section */}
-      {activeSection === 'folders' && (
-        <div className="sidebar-section">
-          <div className="section-header">
-            <div className="section-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6H12L10 4Z" fill="currentColor"/>
-              </svg>
-              <span>Folders</span>
-            </div>
-            <button 
-              className="add-button" 
-              onClick={() => setShowNewFolderInput(true)} 
-              aria-label="Add new folder"
-              title="Create new folder"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" fill="currentColor"/>
-              </svg>
-            </button>
-          </div>
-
-          {showNewFolderInput && (
-            <div className="new-folder-input-container">
-              <input
-                type="text"
-                value={newFolderName}
-                onChange={e => setNewFolderName(e.target.value)}
-                onKeyDown={handleFolderInputKeyDown}
-                placeholder="Enter folder name..."
-                className="new-folder-input"
-                maxLength={50}
-                autoFocus
-              />
-              <div className="new-folder-actions">
-                <button
-                  className="new-folder-create"
-                  onClick={handleCreateFolder}
-                  disabled={!newFolderName.trim()}
-                >
-                  Create
-                </button>
-                <button
-                  className="new-folder-cancel"
-                  onClick={() => {
-                    setShowNewFolderInput(false);
-                    setNewFolderName('');
-                  }}
-                >
-                  Cancel
-                </button>
+      <div className="section-title" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span style={{color:'#1a237e',fontWeight:600}}>Folders</span>
+        <button className="new-chat-button-sidebar" onClick={() => setFoldersExpanded(e => !e)} title={foldersExpanded ? 'Collapse folders' : 'Expand folders'} aria-label="Toggle folders" style={{background:'none',color:'#1a237e',boxShadow:'none',border:'none',fontSize:18}}>
+          {foldersExpanded ? <span>&#8722;</span> : <span>&#43;</span>}
+        </button>
+      </div>
+      {foldersExpanded && (
+        <div className="folder-list">
+          {folders.length === 0 ? (
+            <div className="empty-list-message">No folders yet</div>
+          ) : (
+            folders.map(folder => (
+              <div key={folder.id} className="folder-item" style={{display:'flex',alignItems:'center'}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}><path d="M4 4h16v16H4z" stroke="#1a237e" strokeWidth="1.5"/></svg>
+                <span>{folder.name}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+      <hr style={{margin:'16px 0',border:'none',borderTop:'1px solid #eee'}}/>
+      {/* Chats Section */}
+      <div className="section-title" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span style={{color:'#1a237e',fontWeight:600}}>Chats</span>
+        <button className="new-chat-button-sidebar" onClick={() => setChatsExpanded(e => !e)} title={chatsExpanded ? 'Collapse chats' : 'Expand chats'} aria-label="Toggle chats" style={{background:'none',color:'#1a237e',boxShadow:'none',border:'none',fontSize:18}}>
+          {chatsExpanded ? <span>&#8722;</span> : <span>&#43;</span>}
+        </button>
+      </div>
+      {chatsExpanded && (
+        <div className="chat-list">
+          {(showAllChats ? chats : chats.slice(0, MAX_CHATS_DISPLAY)).map(chat => (
+            <div key={chat.id} className={clsx('chat-item', { active: selectedId === chat.id })} onClick={() => onSelect(chat.id)}>
+              {/* Removed chat icon */}
+              <div className="chat-info">
+                <span className="chat-title">{chat.title}</span>
               </div>
             </div>
+          ))}
+          {chats.length > MAX_CHATS_DISPLAY && !showAllChats && (
+            <div style={{padding:'4px 0'}}>
+              <button style={{background:'none',color:'#1a237e',border:'none',fontWeight:600,cursor:'pointer',padding:0}} onClick={()=>setShowAllChats(true)}>View all &gt;</button>
+            </div>
           )}
-
-          <div className="folders-list">
-            {folders.length === 0 ? (
-              <div className="empty-list-message">No folders yet</div>
-            ) : (
-              folders.map(folder => (
-                <div key={folder.id} className="folder-container">
-                  <div
-                    className="folder-header"
-                    onClick={() => toggleFolderExpand(folder.id)}
-                  >
-                    <div className="folder-icon-name">
-                      <svg
-                        className={`folder-expand-icon ${expandedFolders[folder.id] ? 'expanded' : ''}`}
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span className="folder-name">{folder.name}</span>
-                    </div>
-                    <div className="folder-actions">
-                      <button
-                        className="folder-action-button rename-button"
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (onRenameFolder) {
-                            const newName = prompt('Enter new folder name:', folder.name);
-                            if (newName && newName.trim() !== '' && newName !== folder.name) {
-                              onRenameFolder(folder.id, newName.trim());
-                            }
-                          }
-                        }}
-                        title="Rename folder"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M3 17.25V21h3.75l11.06-11.06-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/>
-                        </svg>
-                      </button>
-                      <button
-                        className="folder-action-button delete-button"
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (onDeleteFolder && window.confirm(`Delete folder "${folder.name}"?`)) {
-                            onDeleteFolder(folder.id);
-                          }
-                        }}
-                        title="Delete folder"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  {expandedFolders[folder.id] && (
-                    <div className="folder-content">
-                      {chats.filter(chat => chat && chat.folderId === folder.id).length === 0 ? (
-                        <div className="empty-folder-message">Folder is empty</div>
-                      ) : (
-                        chats
-                          .filter(chat => chat && chat.folderId === folder.id)
-                          .map(chat => (
-                            <div
-                              key={chat.id}
-                              className={`chat-item ${selectedId === chat.id ? 'active' : ''}`}
-                              onClick={() => handleFolderSelect(chat.id)}
-                            >
-                              <div className="chat-icon">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
-                                </svg>
-                              </div>
-                              <span className="chat-title">{chat.title}</span>
-                              <div className="chat-actions">
-                                <button
-                                  className={`bookmark-button ${chat?.bookmarked ? 'bookmarked' : ''}`}
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    onToggleBookmark && onToggleBookmark(chat.id);
-                                  }}
-                                  title={chat?.bookmarked ? 'Remove bookmark' : 'Add bookmark'}
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill={chat.bookmarked ? '#0052FF' : 'currentColor'}/>
-                                  </svg>
-                                </button>
-                                <button
-                                  className={`delete-button ${deletingChats.has(chat.id) ? 'deleting' : ''}`}
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    handleDeleteChat(chat.id, chat.title);
-                                  }}
-                                  disabled={deletingChats.has(chat.id)}
-                                  title={deletingChats.has(chat.id) ? 'Deleting...' : 'Delete chat'}
-                                >
-                                  {deletingChats.has(chat.id) ? (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
-                                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" opacity="0.25"/>
-                                      <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
-                                    </svg>
-                                  ) : (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-                                    </svg>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Chats Section */}
-      {activeSection === 'chats' && (
-        <div className="sidebar-section">
-          <div className="section-header">
-            <div className="section-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
-              </svg>
-              <span>Chats</span>
+          {showAllChats && chats.length > MAX_CHATS_DISPLAY && (
+            <div style={{padding:'4px 0'}}>
+              <button style={{background:'none',color:'#1a237e',border:'none',fontWeight:600,cursor:'pointer',padding:0}} onClick={()=>setShowAllChats(false)}>Show less</button>
             </div>
-            <button 
-              className="add-button" 
-              onClick={onNewChat} 
-              aria-label="New chat"
-              title="Start new chat"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" fill="currentColor"/>
-              </svg>
-            </button>
-          </div>
-          <div className="chats-list">
-            {unorganizedChats.length === 0 ? (
-              <div className="empty-list-message">No chats yet</div>
-            ) : (
-              unorganizedChats
-                .sort((a, b) => new Date(b?.updatedAt).getTime() - new Date(a?.updatedAt).getTime())
-                .map((chat: any) => chat?.messages?.length > 0 && (
-                  <div
-                    key={chat.id}
-                    className={`chat-item ${selectedId === chat?.id ? 'active' : ''}`}
-                    onClick={() => handleFolderSelect(chat?.id)}
-                  >
-                    <div className="chat-icon">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
-                      </svg>
-                    </div>
-                    <span className="chat-title">{chat?.title}</span>
-                    <div className="chat-actions">
-                      <button
-                        className={`bookmark-button ${chat.bookmarked ? 'bookmarked' : ''}`}
-                        onClick={e => {
-                          e.stopPropagation();
-                          onToggleBookmark && onToggleBookmark(chat.id);
-                        }}
-                        title={chat.bookmarked ? 'Remove bookmark' : 'Add bookmark'}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill={chat.bookmarked ? '#0052FF' : 'currentColor'}/>
-                        </svg>
-                      </button>
-                      <button
-                        className={`delete-button ${deletingChats.has(chat.id) ? 'deleting' : ''}`}
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleDeleteChat(chat.id, chat?.title || 'Untitled Chat');
-                        }}
-                        disabled={deletingChats.has(chat.id)}
-                        title={deletingChats.has(chat.id) ? 'Deleting...' : 'Delete chat'}
-                      >
-                        {deletingChats.has(chat.id) ? (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" opacity="0.25"/>
-                            <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
-                          </svg>
-                        ) : (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))
-            )}
-          </div>
+          )}
         </div>
       )}
-
+      <hr style={{margin:'16px 0',border:'none',borderTop:'1px solid #eee'}}/>
       {/* Bookmarks Section */}
-      {activeSection === 'bookmarks' && (
-        <div className="sidebar-section">
-          <div className="section-header">
-            <div className="section-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
-              </svg>
-              <span>Bookmarks</span>
-            </div>
-          </div>
-          <div className="folders-list">
-            {bookmarks.length === 0 ? (
-              <div className="empty-list-message">No bookmarks yet</div>
-            ) : (
-              bookmarks.map(bookmark => (
-                <div key={bookmark.id} className="folder-container">
-                  <div
-                    className="folder-header"
-                    onClick={() => toggleFolderExpand(bookmark.id)}
-                  >
-                    <div className="folder-icon-name">
-                      <svg
-                        className={`folder-expand-icon ${expandedFolders[bookmark.id] ? 'expanded' : ''}`}
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span className="folder-name">{bookmark.name}</span>
-                    </div>
-                  </div>
-                  {expandedFolders[bookmark.id] && (
-                    <div className="folder-content">
-                      {chats.filter(chat => chat && chat.bookmarkId === bookmark.id).length === 0 ? (
-                        <div className="empty-folder-message">No bookmarked chats in this folder</div>
-                      ) : (
-                        chats
-                          .filter(chat => chat && chat.bookmarkId === bookmark.id)
-                          .map(chat => (
-                            <div
-                              key={chat.id}
-                              className={`chat-item ${selectedId === chat.id ? 'active' : ''}`}
-                              onClick={() => handleFolderSelect(chat.id, true)}
-                            >
-                              <div className="chat-icon">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
-                                </svg>
-                              </div>
-                              <span className="chat-title">{chat.title}</span>
-                              <div className="chat-actions">
-                                <button
-                                  className={`bookmark-button ${chat?.bookmarkId ? 'bookmarked' : ''}`}
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    onToggleBookmark && onToggleBookmark(chat.id);
-                                  }}
-                                  title="Remove bookmark"
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill={chat.bookmarked ? '#0052FF' : 'currentColor'}/>
-                                  </svg>
-                                </button>
-                                <button
-                                  className={`delete-button ${deletingChats.has(chat.id) ? 'deleting' : ''}`}
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    handleDeleteChat(chat.id, chat.title);
-                                  }}
-                                  disabled={deletingChats.has(chat.id)}
-                                  title={deletingChats.has(chat.id) ? 'Deleting...' : 'Delete chat'}
-                                >
-                                  {deletingChats.has(chat.id) ? (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
-                                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" opacity="0.25"/>
-                                      <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
-                                    </svg>
-                                  ) : (
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-                                    </svg>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
+      <div className="section-title" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span style={{color:'#1a237e',fontWeight:600}}>Bookmarks</span>
+        <button className="new-chat-button-sidebar" onClick={() => setBookmarksExpanded(e => !e)} title={bookmarksExpanded ? 'Collapse bookmarks' : 'Expand bookmarks'} aria-label="Toggle bookmarks" style={{background:'none',color:'#1a237e',boxShadow:'none',border:'none',fontSize:18}}>
+          {bookmarksExpanded ? <span>&#8722;</span> : <span>&#43;</span>}
+        </button>
+      </div>
+      {bookmarksExpanded && (
+        <div className="folder-list">
+          {bookmarks.length === 0 ? (
+            <div className="empty-list-message">No bookmarks yet</div>
+          ) : (
+            bookmarks.map(bookmark => (
+              <div key={bookmark.id} className="folder-item" style={{display:'flex',alignItems:'center'}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}><path d="M6 4h12v16l-6-4-6 4V4z" stroke="#1a237e" strokeWidth="1.5"/></svg>
+                <span>{bookmark.name}</span>
+              </div>
+            ))
+          )}
         </div>
       )}
-
-      <style jsx>{`
-        .delete-button.deleting {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .spinning {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        .chat-actions {
-          opacity: 0;
-          transition: opacity 0.2s ease;
-        }
-
-        .chat-item:hover .chat-actions {
-          opacity: 1;
-        }
-
-        .delete-button:hover:not(.deleting) {
-          color: #dc2626;
-        }
-
-        .delete-button:disabled {
-          pointer-events: none;
-        }
-      `}</style>
-    </div>
+    </aside>
   );
 };
 
