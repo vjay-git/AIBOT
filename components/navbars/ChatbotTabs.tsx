@@ -120,7 +120,6 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
     console.log(`Selected folder: ${folderId}`);
     onSelect(folderId || '');
     isBookmarked(bookmarked);
-      debugger;
 
     if (setIsFromBookmarks && isFromBookemarks !== undefined) {
       setIsFromBookmarks(isFromBookemarks);
@@ -319,7 +318,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
             <div className="empty-list-message">No bookmarks yet</div>
           ) : (
             bookmarks.map(bookmark => (
-              <div key={bookmark.id} className="folder-item" style={{display:'flex',alignItems:'center'}} onClick={() => handleFolderSelect(bookmark.id, false, true)} tabIndex={0} role="button">
+              <div key={bookmark.id} className={clsx('chat-item', { active: selectedId === bookmark.id })}  style={{display:'flex',alignItems:'center'}} onClick={() => handleFolderSelect(bookmark.id, false, true)} tabIndex={0} role="button">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}><path d="M6 4h12v16l-6-4-6 4V4z" stroke="#1a237e" strokeWidth="1.5"/></svg>
                 <span>{bookmark.name}</span>
               </div>
