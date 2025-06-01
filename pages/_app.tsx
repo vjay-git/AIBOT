@@ -29,6 +29,7 @@ import '../components/Chatbot/styles/ChatWindow.css';
 import '../components/Chatbot/styles/InputBar.css';
 import '../components/Chatbot/styles/MessageBubble.css';
 import '../components/Chatbot/styles/ReplyThread.css';
+import '../components/navbars/ChatbotTabs.css';
 
 // UserSettings component styles
 import '../styles/UserSettings/ProfileSecurity.css';

@@ -219,12 +219,53 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
           {folders.length === 0 ? (
             <div className="empty-list-message">No folders yet</div>
           ) : (
-            folders.map(folder => (
-              <div key={folder.id} className="folder-item" style={{display:'flex',alignItems:'center'}}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}><path d="M4 4h16v16H4z" stroke="#1a237e" strokeWidth="1.5"/></svg>
-                <span>{folder.name}</span>
-              </div>
-            ))
+            folders.map(folder => {
+              const folderChats = chats.filter(chat => chat.folderId === folder.id);
+              const isExpanded = expandedFolders[folder.id] ?? false;
+              return (
+                <div key={folder.id}>
+                  <div
+                    className={clsx('folder-item', { expanded: isExpanded })}
+                    style={{display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}}
+                    onClick={() => toggleFolderExpand(folder.id)}
+                    tabIndex={0}
+                    aria-expanded={isExpanded}
+                    aria-controls={`folder-chats-${folder.id}`}
+                    role="button"
+                  >
+                    <div style={{display:'flex',alignItems:'center'}}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}><path d="M4 4h16v16H4z" stroke="#1a237e" strokeWidth="1.5"/></svg>
+                      <span>{folder.name}</span>
+                    </div>
+                    <span className="folder-chevron" style={{marginLeft:8,fontSize:16,transition:'transform 0.25s'}}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                  </div>
+                  <div
+                    id={`folder-chats-${folder.id}`}
+                    className="chat-list"
+                    style={{
+                      marginLeft:24,
+                      maxHeight: isExpanded ? (folderChats.length * 48 + 32) + 'px' : '0px',
+                      opacity: isExpanded ? 1 : 0,
+                      pointerEvents: isExpanded ? 'auto' : 'none',
+                    }}
+                    aria-hidden={!isExpanded}
+                  >
+                    {isExpanded && folderChats.length > 0 && (
+                      folderChats.map(chat => (
+                        <div key={chat.id} className={clsx('chat-item', { active: selectedId === chat.id })} onClick={() => onSelect(chat.id)} tabIndex={0} role="button">
+                          <div className="chat-info">
+                            <span className="chat-title">{chat.title}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    {isExpanded && folderChats.length === 0 && (
+                      <div className="empty-list-message">No chats in this folder</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       )}
@@ -240,7 +281,6 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
         <div className="chat-list">
           {(showAllChats ? chats : chats.slice(0, MAX_CHATS_DISPLAY)).map(chat => (
             <div key={chat.id} className={clsx('chat-item', { active: selectedId === chat.id })} onClick={() => onSelect(chat.id)}>
-              {/* Removed chat icon */}
               <div className="chat-info">
                 <span className="chat-title">{chat.title}</span>
               </div>

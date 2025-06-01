@@ -1,90 +1,606 @@
-/* ChatbotTabs.css — Oscar-level modern sidebar and chat list styles */
+/* ====================================================================
+   ChatbotTabs.css — Clean Professional UI with Smooth Animations
+   ==================================================================== */
+
+:root {
+    /* ================================
+       DESIGN SYSTEM - COLOR PALETTE
+       ================================ */
+    /* Primary Blues */
+    --primary-blue:           #2563eb;
+    --primary-blue-hover:     #1d4ed8;
+    --primary-blue-light:     #3b82f6;
+    --secondary-blue:         #60a5fa;
+    
+    /* Background Colors - Adaptive to parent background */
+    --background-primary:     transparent;
+    --background-secondary:   rgba(248, 250, 252, 0.5);
+    --background-sidebar:     rgba(255, 255, 255, 0.02);
+    --surface-white:          rgba(255, 255, 255, 0.8);
+    
+    /* Text & Neutral Colors - Enhanced contrast */
+    --text-primary:           #1e293b;
+    --text-secondary:         #475569;
+    --text-muted:             #64748b;
+    --border-light:           rgba(226, 232, 240, 0.6);
+    --border-medium:          rgba(203, 213, 225, 0.8);
+    --hover-bg:               rgba(241, 245, 249, 0.7);
+    --active-bg:              rgba(239, 246, 255, 0.9);
+    
+    /* ================================
+       DESIGN SYSTEM - SHADOWS
+       ================================ */
+    --shadow-xs:              0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm:              0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md:              0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg:              0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-blue:            0 4px 14px 0 rgb(37 99 235 / 0.15);
+    
+    /* ================================
+       DESIGN SYSTEM - TYPOGRAPHY
+       ================================ */
+    --font-size-xs:           12px;
+    --font-size-sm:           14px;
+    --font-size-base:         16px;
+    --font-size-lg:           18px;
+    --font-weight-normal:     400;
+    --font-weight-medium:     500;
+    --font-weight-semibold:   600;
+    --font-weight-bold:       700;
+    
+    /* ================================
+       DESIGN SYSTEM - ANIMATIONS
+       ================================ */
+    --transition-fast:        0.15s ease;
+    --transition-base:        0.2s ease;
+    --transition-slow:        0.3s ease;
+    --ease-out:               cubic-bezier(0, 0, 0.2, 1);
+    --ease-in-out:            cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* ================================
+       DESIGN SYSTEM - SPACING
+       ================================ */
+    --spacing-xs:             4px;
+    --spacing-sm:             8px;
+    --spacing-md:             12px;
+    --spacing-lg:             16px;
+    --spacing-xl:             24px;
+    --spacing-2xl:            32px;
+    
+    /* ================================
+       DESIGN SYSTEM - DIMENSIONS
+       ================================ */
+    --sidebar-collapsed:      64px;
+    --sidebar-expanded:       240px;
+    --sidebar-max:            280px;
+    --border-radius-sm:       6px;
+    --border-radius-md:       8px;
+    --border-radius-full:     50%;
+}
+
+/* ====================================================================
+   MAIN SIDEBAR COMPONENT
+   ==================================================================== */
 
 .cbt-sidebar {
-  display: flex;
-  flex-direction: column;
-  background: var(--clr-surface, #fff);
-  border-right: 1px solid var(--clr-outline, #e0e0e0);
-  min-width: 64px;
-  max-width: 260px;
-  width: 100%;
-  transition: min-width 0.2s var(--ease-spring, cubic-bezier(0.25,0.46,0.45,0.94));
-  box-shadow: 0 2px 8px var(--clr-shadow, rgba(0,0,0,0.04));
-  height: 100vh;
-  position: relative;
-  z-index: 10;
+    display:                  flex;
+    flex-direction:           column;
+    background:               var(--background-sidebar);
+    backdrop-filter:          blur(10px);
+    border-right:             1px solid var(--border-light);
+    min-width:                var(--sidebar-collapsed);
+    max-width:                var(--sidebar-max);
+    width:                    100%;
+    height:                   100vh;
+    position:                 relative;
+    z-index:                  10;
+    transition:               min-width var(--transition-slow) var(--ease-in-out),
+                             background var(--transition-base),
+                             border-color var(--transition-base),
+                             backdrop-filter var(--transition-base);
 }
+
 .cbt-sidebar.expanded {
-  min-width: 200px;
+    min-width:                var(--sidebar-expanded);
 }
+
 .cbt-sidebar.collapsed {
-  min-width: 64px;
-  max-width: 64px;
+    min-width:                var(--sidebar-collapsed);
+    max-width:                var(--sidebar-collapsed);
 }
+
+/* ====================================================================
+   SIDEBAR TOGGLE CONTROL
+   ==================================================================== */
+
 .cbt-sidebar-toggle {
-  display: flex;
-  justify-content: flex-end;
-  padding: 12px 12px 0 0;
+    display:                  flex;
+    justify-content:          flex-end;
+    padding:                  var(--spacing-lg) var(--spacing-lg) var(--spacing-sm) var(--spacing-lg);
 }
+
 .cbt-sidebar-toggle-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 50%;
-  transition: background 0.15s;
+    background:               var(--surface-white);
+    backdrop-filter:          blur(8px);
+    border:                   1px solid var(--border-light);
+    border-radius:            var(--border-radius-md);
+    cursor:                   pointer;
+    padding:                  var(--spacing-sm);
+    width:                    36px;
+    height:                   36px;
+    display:                  flex;
+    align-items:              center;
+    justify-content:          center;
+    color:                    var(--text-secondary);
+    transition:               all var(--transition-base) var(--ease-out),
+                             transform var(--transition-fast);
 }
+
 .cbt-sidebar-toggle-btn:hover {
-  background: var(--clr-accent-bg, #eaf1ff);
+    background:               var(--hover-bg);
+    border-color:             var(--border-medium);
+    color:                    var(--text-primary);
+    transform:                scale(1.05);
 }
+
+.cbt-sidebar-toggle-btn:active {
+    transform:                scale(0.95);
+}
+
+/* ====================================================================
+   NAVIGATION STRUCTURE
+   ==================================================================== */
+
 .cbt-nav-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 12px;
+    display:                  flex;
+    flex-direction:           column;
+    gap:                      var(--spacing-xl);
+    margin-top:               var(--spacing-lg);
+    padding:                  0 var(--spacing-md);
 }
+
 .cbt-nav-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+    display:                  flex;
+    flex-direction:           column;
+    gap:                      2px;
 }
+
 .cbt-nav-divider {
-  height: 1px;
-  background: var(--clr-outline, #e0e0e0);
-  margin: 8px 0;
+    height:                   1px;
+    background:               var(--border-light);
+    margin:                   var(--spacing-lg) 0;
 }
+
+/* ====================================================================
+   NAVIGATION BUTTONS
+   ==================================================================== */
+
 .cbt-nav-btn {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 18px;
-  border: none;
-  background: none;
-  color: var(--clr-icon, #555);
-  font-size: 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  position: relative;
+    display:                  flex;
+    align-items:              center;
+    gap:                      var(--spacing-md);
+    padding:                  10px var(--spacing-md);
+    border:                   none;
+    background:               transparent;
+    color:                    var(--text-secondary);
+    font-size:                var(--font-size-sm);
+    font-weight:              var(--font-weight-medium);
+    border-radius:            var(--border-radius-md);
+    cursor:                   pointer;
+    position:                 relative;
+    transition:               all var(--transition-base) var(--ease-out),
+                             transform var(--transition-fast);
 }
-.cbt-nav-btn.active, .cbt-nav-btn:focus {
-  background: var(--clr-accent-bg, #eaf1ff);
-  color: var(--clr-accent, #0051ff);
-}
+
 .cbt-nav-btn:hover {
-  background: var(--clr-accent-bg, #eaf1ff);
-  color: var(--clr-accent, #0051ff);
+    background:               var(--hover-bg);
+    color:                    var(--text-primary);
+    transform:                translateX(2px);
 }
+
+.cbt-nav-btn.active,
+.cbt-nav-btn:focus {
+    background:               var(--primary-blue);
+    color:                    white;
+    box-shadow:               var(--shadow-blue);
+    transform:                translateX(4px);
+}
+
 .cbt-nav-label {
-  font-weight: 500;
-  font-size: 1rem;
-  white-space: nowrap;
+    font-weight:              var(--font-weight-medium);
+    font-size:                var(--font-size-sm);
+    white-space:              nowrap;
 }
-@media (max-width: 600px) {
-  .cbt-sidebar.expanded {
-    min-width: 120px;
-  }
-  .cbt-nav-label {
-    display: none;
-  }
+
+/* ====================================================================
+   CHAT SIDEBAR SPECIFIC STYLES
+   ==================================================================== */
+
+.chat-sidebar {
+   
+
+}
+
+.section-title {
+    font-size:                var(--font-size-sm);
+    font-weight:              var(--font-weight-semibold);
+    color:                    var(--text-primary);
+    margin-bottom:            var(--spacing-sm);
+    padding:                  0 var(--spacing-lg);
+    user-select:              none;
+    transition:               color var(--transition-base);
+    position:                 relative;
+}
+
+.section-title::before {
+    content:                  '';
+    position:                 absolute;
+    left:                     var(--spacing-lg);
+    bottom:                   -4px;
+    width:                    0;
+    height:                   2px;
+    background:               var(--primary-blue);
+    border-radius:            1px;
+    transition:               width var(--transition-slow) var(--ease-out);
+}
+
+.section-title:hover::before {
+    width:                    var(--spacing-xl);
+}
+
+/* ====================================================================
+   GLASSMORPHISM ENHANCEMENTS
+   ==================================================================== */
+
+.folder-item,
+.chat-item {
+    display:                  flex;
+    align-items:              center;
+    padding:                  10px var(--spacing-lg);
+    border-radius:            var(--border-radius-sm);
+    margin:                   1px var(--spacing-md);
+    cursor:                   pointer;
+    background:               transparent;
+    color:                    var(--text-secondary);
+    font-size:                var(--font-size-sm);
+    position:                 relative;
+    transition:               all var(--transition-base) var(--ease-out),
+                             transform var(--transition-fast);
+}
+
+.folder-item:hover,
+.chat-item:hover {
+    background:               var(--hover-bg);
+    backdrop-filter:          blur(4px);
+    color:                    var(--text-primary);
+    transform:                translateX(4px);
+    box-shadow:               var(--shadow-xs);
+}
+
+.folder-item.active,
+.chat-item.active {
+    background:               var(--active-bg);
+    backdrop-filter:          blur(6px);
+    color:                    var(--primary-blue);
+    font-weight:              var(--font-weight-medium);
+    transform:                translateX(6px);
+    border-left:              2px solid var(--primary-blue);
+    padding-left:             14px;
+    box-shadow:               var(--shadow-sm);
+}
+
+/* ====================================================================
+   FOLDER CHEVRON ANIMATION
+   ==================================================================== */
+
+.folder-item .folder-chevron {
+    margin-left:              auto;
+    font-size:                var(--font-size-xs);
+    color:                    var(--text-muted);
+    transition:               all var(--transition-base) var(--ease-out);
+    transform-origin:         center;
+}
+
+.folder-item:hover .folder-chevron {
+    color:                    var(--text-secondary);
+}
+
+.folder-item.expanded .folder-chevron {
+    transform:                rotate(90deg);
+    color:                    var(--primary-blue);
+}
+
+.folder-item.active .folder-chevron {
+    color:                    var(--primary-blue);
+}
+
+/* ====================================================================
+   ANIMATED CHAT LIST
+   ==================================================================== */
+
+.chat-list {
+    display:                  flex;
+    flex-direction:           column;
+    gap:                      2px;
+    overflow:                 hidden;
+    transition:               max-height var(--transition-slow) var(--ease-in-out),
+                             opacity var(--transition-base);
+}
+
+.chat-list > * {
+    animation:                slideIn 0.3s var(--ease-out) forwards;
+    opacity:                  0;
+    transform:                translateX(-16px);
+}
+
+.chat-list > *:nth-child(1) { animation-delay: 0.05s; }
+.chat-list > *:nth-child(2) { animation-delay: 0.1s; }
+.chat-list > *:nth-child(3) { animation-delay: 0.15s; }
+.chat-list > *:nth-child(4) { animation-delay: 0.2s; }
+.chat-list > *:nth-child(5) { animation-delay: 0.25s; }
+
+@keyframes slideIn {
+    to {
+        opacity:              1;
+        transform:            translateX(0);
+    }
+}
+
+.empty-list-message {
+    font-size:                var(--font-size-xs);
+    color:                    var(--text-muted);
+    text-align:               center;
+    padding:                  var(--spacing-md) var(--spacing-lg);
+    font-style:               italic;
+    background:               var(--hover-bg);
+    border-radius:            var(--border-radius-sm);
+    margin:                   var(--spacing-xs) var(--spacing-md);
+    border:                   1px solid var(--border-light);
+    transition:               all var(--transition-base);
+}
+
+.empty-list-message:hover {
+    background:               var(--active-bg);
+    border-color:             var(--primary-blue);
+}
+
+/* ====================================================================
+   NEW CHAT BUTTON
+   ==================================================================== */
+
+.new-chat-button-sidebar {
+    background:               var(--border-light);
+    border:                   none;
+    border-radius:            var(--border-radius-full);
+    box-shadow:               var(--shadow-md);
+    color:                    white;
+    width:                    40px;
+    height:                   40px;
+    display:                  flex;
+    align-items:              center;
+    justify-content:          center;
+    font-size:                var(--font-size-base);
+    cursor:                   pointer;
+    transition:               all var(--transition-base) var(--ease-out),
+                             transform var(--transition-fast);
+}
+
+.new-chat-button-sidebar:hover {
+    background:               var(--border-medium);
+    box-shadow:               var(--shadow-lg), var(--shadow-blue);
+    transform:                scale(1.1);
+}
+
+.new-chat-button-sidebar:active {
+    transform:                scale(0.95);
+}
+
+/* ====================================================================
+   FOLDER ANIMATIONS
+   ==================================================================== */
+
+.folder-list > div {
+    overflow:                 hidden;
+    transition:               max-height var(--transition-slow) var(--ease-in-out),
+                             opacity var(--transition-base);
+}
+
+/* ====================================================================
+   BOOKMARKS SECTION
+   ==================================================================== */
+
+.bookmarks-section {
+    margin-top:               var(--spacing-xl);
+    padding:                  0 var(--spacing-md);
+}
+
+.bookmarks-title {
+    font-size:                var(--font-size-sm);
+    font-weight:              var(--font-weight-semibold);
+    color:                    var(--text-primary);
+    margin-bottom:            var(--spacing-sm);
+    padding:                  0 var(--spacing-xs);
+}
+
+.bookmark-item {
+    display:                  flex;
+    align-items:              center;
+    gap:                      var(--spacing-sm);
+    padding:                  var(--spacing-sm) var(--spacing-md);
+    border-radius:            var(--border-radius-sm);
+    margin:                   1px 0;
+    cursor:                   pointer;
+    background:               transparent;
+    color:                    var(--text-secondary);
+    font-size:                var(--font-size-sm);
+    position:                 relative;
+    transition:               all var(--transition-base) var(--ease-out),
+                             transform var(--transition-fast);
+}
+
+.bookmark-item:hover {
+    background:               var(--hover-bg);
+    color:                    var(--text-primary);
+    transform:                translateX(2px);
+}
+
+.bookmark-item.active {
+    background:               var(--active-bg);
+    color:                    var(--primary-blue);
+    font-weight:              var(--font-weight-medium);
+}
+
+/* ====================================================================
+   USER PROFILE SECTION
+   ==================================================================== */
+
+.user-profile {
+    margin-top:               auto;
+    padding:                  var(--spacing-lg) var(--spacing-md);
+    border-top:               1px solid var(--border-light);
+    background:               var(--surface-white);
+    backdrop-filter:          blur(8px);
+}
+
+.user-info {
+    display:                  flex;
+    align-items:              center;
+    gap:                      var(--spacing-md);
+    padding:                  var(--spacing-sm) var(--spacing-md);
+    border-radius:            var(--border-radius-md);
+    cursor:                   pointer;
+    transition:               background var(--transition-base);
+}
+
+.user-info:hover {
+    background:               var(--hover-bg);
+}
+
+.user-avatar {
+    width:                    var(--spacing-2xl);
+    height:                   var(--spacing-2xl);
+    border-radius:            var(--border-radius-full);
+    background:               var(--primary-blue);
+    color:                    white;
+    display:                  flex;
+    align-items:              center;
+    justify-content:          center;
+    font-size:                var(--font-size-sm);
+    font-weight:              var(--font-weight-semibold);
+}
+
+.user-details {
+    flex:                     1;
+    min-width:                0;
+}
+
+.user-name {
+    font-size:                var(--font-size-sm);
+    font-weight:              var(--font-weight-medium);
+    color:                    var(--text-primary);
+    margin-bottom:            2px;
+}
+
+.user-email {
+    font-size:                var(--font-size-xs);
+    color:                    var(--text-muted);
+    overflow:                 hidden;
+    text-overflow:            ellipsis;
+    white-space:              nowrap;
+}
+
+/* ====================================================================
+   CUSTOM SCROLLBAR
+   ==================================================================== */
+
+::-webkit-scrollbar {
+    width:                    6px;
+    background:               transparent;
+}
+
+::-webkit-scrollbar-track {
+    background:               var(--background-secondary);
+    border-radius:            3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background:               var(--border-medium);
+    border-radius:            3px;
+    transition:               background var(--transition-base);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background:               var(--text-muted);
+}
+
+/* ====================================================================
+   RESPONSIVE DESIGN
+   ==================================================================== */
+
+@media (max-width: 768px) {
+    .cbt-sidebar.expanded {
+        min-width:            200px;
+    }
+    
+    .cbt-nav-label {
+        font-size:            var(--font-size-xs);
+    }
+    
+    
+    
+    .folder-item,
+    .chat-item {
+        margin:               1px var(--spacing-sm);
+        padding:              var(--spacing-sm) var(--spacing-md);
+    }
+}
+
+@media (max-width: 480px) {
+    .cbt-nav-label {
+        display:              none;
+    }
+    
+    .section-title {
+        font-size:            var(--font-size-xs);
+        padding:              0 var(--spacing-md);
+    }
+}
+
+/* ====================================================================
+   ACCESSIBILITY & PREFERENCES
+   ==================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration:   0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration:  0.01ms !important;
+    }
+}
+
+/* Focus indicators for keyboard navigation */
+.cbt-nav-btn:focus-visible,
+.folder-item:focus-visible,
+.chat-item:focus-visible,
+.cbt-sidebar-toggle-btn:focus-visible,
+.bookmark-item:focus-visible {
+    outline:                  2px solid var(--primary-blue);
+    outline-offset:           2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .cbt-sidebar {
+        border-right:         2px solid var(--text-primary);
+        background:           var(--surface-white);
+    }
+    
+    .folder-item.active,
+    .chat-item.active,
+    .cbt-nav-btn.active {
+        background:           var(--text-primary);
+        color:                var(--surface-white);
+    }
 }
