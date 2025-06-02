@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { SubNavItem } from '../../types';
 import clsx from 'clsx';
+import { deleteBookmark } from '../../utils/api';
 
 interface ChatSession {
   id: string;
@@ -15,6 +16,13 @@ interface ChatSession {
 interface ChatFolder {
   id: string;
   name: string;
+  bookmark_id?: string;
+  bookmark_name?: string;
+  queries?: Array<{
+    query_id: string | string[];
+    messages?: any[];
+  }>;
+
 }
 
 interface ChatbotTabsProps {
@@ -101,6 +109,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   const [showNewFolderInput, setShowNewFolderInput] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [deletingChats, setDeletingChats] = useState<Set<string>>(new Set());
+  const [deletingBookmarks, setDeletingBookmarks] = useState<Set<string>>(new Set());
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState('chats');
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
@@ -250,6 +259,25 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
       });
     }
   }, [deletingChats, onDeleteChat, refreshChats, selectedId, onSelect]);
+
+  // Add: Delete handler for bookmarks
+  const handleDeleteBookmark = useCallback(async (bookmarkId: string, bookmarkName: string) => {
+    if (deletingBookmarks.has(bookmarkId)) return;
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the bookmark "${bookmarkName}"?\n\nThis action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+    setDeletingBookmarks(prev => new Set(prev).add(bookmarkId));
+    try {
+      await deleteBookmark(bookmarkId);
+      if (refreshChats) await refreshChats();
+      if (selectedId === bookmarkId) onSelect('');
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to delete bookmark.'}`);
+    } finally {
+      setDeletingBookmarks(prev => { const newSet = new Set(prev); newSet.delete(bookmarkId); return newSet; });
+    }
+  }, [deletingBookmarks, refreshChats, selectedId, onSelect]);
 
   // Enhanced folder creation handler
   const handleCreateFolder = useCallback(() => {
@@ -403,7 +431,6 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
           ) : (
             folders.map(folder => {
               const folderChats = sortedChats.filter(chat => chat.folderId === folder.id);
-              // Reverse folder chats as well (newest first)
               const reversedFolderChats = [...folderChats].reverse();
               const isExpanded = expandedFolders[folder.id] ?? false;
               return (
@@ -418,14 +445,12 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                     role="button"
                   >
                     <div style={{display:'flex',alignItems:'center'}}>
+                      {/* Modern folder icon */}
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}>
-                        <path d="M4 4h16v16H4z" stroke="#1a237e" strokeWidth="1.5"/>
+                        <path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="#1a237e" strokeWidth="1.5" fill={isExpanded ? '#e3eafe' : 'none'}/>
                       </svg>
                       <span>{folder.name}</span>
                     </div>
-                    <span className="folder-chevron" style={{marginLeft:8,fontSize:16,transition:'transform 0.25s'}}>
-                      {isExpanded ? '\u25BC' : '\u25B6'}
-                    </span>
                   </div>
                   <div
                     id={`folder-chats-${folder.id}`}
@@ -443,13 +468,23 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                         <div 
                           key={chat.id} 
                           className={clsx('chat-item', { active: selectedId === chat.id })} 
-                          onClick={() => handleFolderSelect(chat.id, chat.bookmarked || false, false)} // FIXED: Explicitly pass false for isFromBookmarks
-                          tabIndex={0} 
-                          role="button"
+                          style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}
                         >
-                          <div className="chat-info">
-                            <span className="chat-title">{chat.title}</span>
+                          <div style={{flex:1}} onClick={() => handleFolderSelect(chat.id, chat.bookmarked || false, false)} tabIndex={0} role="button">
+                            <div className="chat-info">
+                              <span className="chat-title">{chat.title}</span>
+                            </div>
                           </div>
+                          <button
+                            className="delete-btn"
+                            title="Delete thread"
+                            aria-label="Delete thread"
+                            style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',padding:'2px',marginLeft:4}}
+                            onClick={e => { e.stopPropagation(); handleDeleteChat(chat.id, chat.title); }}
+                            disabled={deletingChats.has(chat.id)}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M6 8v6m4-6v6M3 6h14M5 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                          </button>
                         </div>
                       ))
                     )}
@@ -489,16 +524,28 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
             <div 
               key={chat.id} 
               className={clsx('chat-item', { active: selectedId === chat.id })} 
-              onClick={() => handleFolderSelect(chat.id, chat.bookmarked || false, false)} // FIXED: Explicitly pass false for isFromBookmarks
+              style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}
             >
-              <div className="chat-info">
-                <span className="chat-title">{chat.title}</span>
-                {chat.updatedAt && (
-                  <span style={{fontSize:'10px',color:'#888',display:'block'}}>
-                    {formatRefreshTime(new Date(chat.updatedAt))}
-                  </span>
-                )}
+              <div style={{flex:1}} onClick={() => handleFolderSelect(chat.id, chat.bookmarked || false, false)}>
+                <div className="chat-info">
+                  <span className="chat-title">{chat.title}</span>
+                  {chat.updatedAt && (
+                    <span style={{fontSize:'10px',color:'#888',display:'block'}}>
+                      {formatRefreshTime(new Date(chat.updatedAt))}
+                    </span>
+                  )}
+                </div>
               </div>
+              <button
+                className="delete-btn"
+                title="Delete thread"
+                aria-label="Delete thread"
+                style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',padding:'2px',marginLeft:4}}
+                onClick={e => { e.stopPropagation(); handleDeleteChat(chat.id, chat.title); }}
+                disabled={deletingChats.has(chat.id)}
+              >
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M6 8v6m4-6v6M3 6h14M5 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
             </div>
           ))}
           {sortedChats.length > MAX_CHATS_DISPLAY && !showAllChats && (
@@ -548,21 +595,34 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
           {sortedBookmarks.length === 0 ? (
             <div className="empty-list-message">No bookmarks yet</div>
           ) : (
-            sortedBookmarks.map(bookmark => (
-              <div 
-                key={bookmark.id || bookmark.bookmark_id} 
-                className={clsx('chat-item', { active: selectedId === (bookmark.id || bookmark.bookmark_id) })}  
-                style={{display:'flex',alignItems:'center'}} 
-                onClick={() => handleFolderSelect(bookmark.id || bookmark.bookmark_id, true, true)} // Pass true for both bookmark flags
-                tabIndex={0} 
-                role="button"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}>
-                  <path d="M6 4h12v16l-6-4-6 4V4z" stroke="#1a237e" strokeWidth="1.5"/>
-                </svg>
-                <span>{bookmark.name || bookmark.bookmark_name || 'Unnamed Bookmark'}</span>
-              </div>
-            ))
+            sortedBookmarks.map(bookmark => {
+              const bookmarkId = bookmark.bookmark_id || bookmark.id;
+              const bookmarkName = bookmark.bookmark_name || bookmark.name || 'Unnamed Bookmark';
+              return (
+                <div 
+                  key={bookmarkId} 
+                  className={clsx('chat-item', { active: selectedId === bookmarkId })}  
+                  style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}
+                >
+                  <div style={{flex:1}} onClick={() => handleFolderSelect(bookmarkId, true, true)} tabIndex={0} role="button">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}>
+                      <path d="M6 4h12v16l-6-4-6 4V4z" stroke="#1a237e" strokeWidth="1.5"/>
+                    </svg>
+                    <span>{bookmarkName}</span>
+                  </div>
+                  <button
+                    className="delete-btn"
+                    title="Delete bookmark"
+                    aria-label="Delete bookmark"
+                    style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',padding:'2px',marginLeft:4}}
+                    onClick={e => { e.stopPropagation(); handleDeleteBookmark(bookmarkId, bookmarkName); }}
+                    disabled={deletingBookmarks.has(bookmarkId)}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M6 8v6m4-6v6M3 6h14M5 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  </button>
+                </div>
+              );
+            })
           )}
         </div>
       )}
