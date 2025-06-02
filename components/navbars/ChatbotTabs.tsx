@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { SubNavItem } from '../../types';
 import clsx from 'clsx';
 
@@ -33,6 +33,8 @@ interface ChatbotTabsProps {
   onToggleBookmark?: (chatId: string) => void;
   refreshChats?: () => void; // Add this prop to refresh chat list after deletion
   setIsFromBookmarks?: (isFromBookmarks: boolean) => void; // Optional prop to set bookmark state
+  autoRefreshInterval?: number; // Auto-refresh interval in milliseconds (default: 30000ms = 30s)
+  enableAutoRefresh?: boolean; // Enable/disable auto-refresh (default: true)
 }
 
 // API function to delete thread
@@ -89,7 +91,9 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   onDeleteChat,
   onToggleBookmark,
   refreshChats,
-  setIsFromBookmarks
+  setIsFromBookmarks,
+  autoRefreshInterval = 30000, // Default 30 seconds
+  enableAutoRefresh = true // Default enabled
 }) => {
   // Local state for tab switching (folders, chats, bookmarks)
   const [activeSection, setActiveSection] = useState<'folders' | 'chats' | 'bookmarks'>('chats');
@@ -99,6 +103,8 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   const [deletingChats, setDeletingChats] = useState<Set<string>>(new Set());
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState('chats');
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // UI state for expand/collapse
   const [foldersExpanded, setFoldersExpanded] = useState(true);
@@ -107,24 +113,83 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   const [showAllChats, setShowAllChats] = useState(false);
   const MAX_CHATS_DISPLAY = 5;
 
+  // Simple reverse of chats array (newest first - assuming API returns oldest first)
+  const sortedChats = useMemo(() => {
+    return [...chats].reverse();
+  }, [chats]);
+
+  // Simple reverse of bookmarks array (newest first - assuming API returns oldest first)
+  const sortedBookmarks = useMemo(() => {
+    return [...bookmarks].reverse();
+  }, [bookmarks]);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (!enableAutoRefresh || !refreshChats) return;
+
+    const handleAutoRefresh = async () => {
+      try {
+        setIsRefreshing(true);
+        await refreshChats();
+        setLastRefreshTime(new Date());
+      } catch (error) {
+        console.error('Auto-refresh failed:', error);
+      } finally {
+        setIsRefreshing(false);
+      }
+    };
+
+    const intervalId = setInterval(handleAutoRefresh, autoRefreshInterval);
+
+    // Initial refresh on mount
+    handleAutoRefresh();
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [enableAutoRefresh, refreshChats, autoRefreshInterval]);
+
+  // Manual refresh handler
+  const handleManualRefresh = useCallback(async () => {
+    if (!refreshChats || isRefreshing) return;
+
+    try {
+      setIsRefreshing(true);
+      await refreshChats();
+      setLastRefreshTime(new Date());
+    } catch (error) {
+      console.error('Manual refresh failed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshChats, isRefreshing]);
+
   // Helper functions for folder expand/collapse
   const toggleFolderExpand = useCallback((folderId: string) => {
     setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
   }, []);
 
   // Bookmarked and unorganized chats
-  const bookmarkedChats = chats.filter(chat => chat?.bookmarked);
-  const unorganizedChats = chats;
+  const bookmarkedChats = sortedChats.filter(chat => chat?.bookmarked);
+  const unorganizedChats = sortedChats;
 
-  const handleFolderSelect = useCallback((folderId: string | null, bookmarked: boolean = false, isFromBookemarks: boolean = false) => {
-    console.log(`Selected folder: ${folderId}`);
+  // FIXED: Updated ChatbotTabs bookmark selection logic
+  const handleFolderSelect = useCallback((folderId: string | null, bookmarked: boolean = false, isFromBookmarks: boolean = false) => {
+    console.log(`Selected folder: ${folderId}, isFromBookmarks: ${isFromBookmarks}`);
     onSelect(folderId || '');
-    isBookmarked(bookmarked);
-
-    if (setIsFromBookmarks && isFromBookemarks !== undefined) {
-      setIsFromBookmarks(isFromBookemarks);
+    
+    // IMPORTANT: For bookmarks, always pass true for the bookmark status
+    if (isFromBookmarks) {
+      isBookmarked(true); // Always true for bookmarks
+    } else {
+      isBookmarked(bookmarked);
     }
-  }, [onSelect, isBookmarked]);
+
+    // FIXED: Always set the isFromBookmarks state, whether true or false
+    if (setIsFromBookmarks) {
+      setIsFromBookmarks(isFromBookmarks);
+    }
+  }, [onSelect, isBookmarked, setIsFromBookmarks]);
 
   // Enhanced delete handler with API integration
   const handleDeleteChat = useCallback(async (chatId: string, chatTitle: string) => {
@@ -158,7 +223,8 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
       
       // Refresh the chat list to reflect the deletion
       if (refreshChats) {
-        refreshChats();
+        await refreshChats();
+        setLastRefreshTime(new Date());
       }
       
       // If the deleted chat was selected, clear the selection
@@ -205,18 +271,128 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
     }
   }, [handleCreateFolder]);
 
+  // Format last refresh time
+  const formatRefreshTime = useCallback((date: Date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+
+    if (diffSeconds < 10) return 'Just now';
+    if (diffSeconds < 60) return `${diffSeconds}s ago`;
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }, []);
+
   return (
     <aside className="chat-sidebar">
-      {/* New Chat Button at the very top */}
-      <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',marginBottom:12}}>
-        <button className="new-chat-button-sidebar" onClick={onNewChat} title="Start new chat" aria-label="Start new chat">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#1a237e" strokeWidth="2" strokeLinecap="round"/></svg>
+      {/* Header with New Chat and Refresh buttons */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {/* Refresh button */}
+          <button 
+            className="refresh-button-sidebar" 
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            title={`Last updated: ${formatRefreshTime(lastRefreshTime)}${enableAutoRefresh ? ` (Auto-refresh every ${autoRefreshInterval/1000}s)` : ''}`}
+            aria-label="Refresh chats"
+            style={{
+              background: 'none',
+              border: '1px solid #e0e0e0',
+              borderRadius: '6px',
+              padding: '6px',
+              cursor: isRefreshing ? 'not-allowed' : 'pointer',
+              color: '#1a237e',
+              opacity: isRefreshing ? 0.6 : 1,
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <svg 
+              width="16" 
+              height="16" 
+              viewBox="0 0 24 24" 
+              fill="none"
+              style={{
+                transform: isRefreshing ? 'rotate(360deg)' : 'rotate(0deg)',
+                transition: 'transform 1s linear'
+              }}
+            >
+              <path 
+                d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+              <path 
+                d="M21 3v5h-5" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+              <path 
+                d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+              <path 
+                d="M3 21v-5h5" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          
+          {/* Last refresh time indicator */}
+          <span style={{fontSize:'10px',color:'#666',whiteSpace:'nowrap'}}>
+            {formatRefreshTime(lastRefreshTime)}
+          </span>
+        </div>
+
+        {/* New Chat Button */}
+        <button 
+          className="new-chat-button-sidebar" 
+          onClick={onNewChat} 
+          title="Start new chat" 
+          aria-label="Start new chat"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5v14M5 12h14" stroke="#1a237e" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
         </button>
       </div>
+
+      {/* Auto-refresh status indicator */}
+      {enableAutoRefresh && (
+        <div style={{
+          fontSize: '10px',
+          color: '#888',
+          textAlign: 'center',
+          marginBottom: '8px',
+          padding: '2px 8px',
+          background: '#f8f9fa',
+          borderRadius: '4px',
+          border: '1px solid #e9ecef'
+        }}>
+          Auto-refresh: {autoRefreshInterval / 1000}s
+        </div>
+      )}
+
       {/* Folders Section */}
       <div className="section-title" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <span style={{color:'#1a237e',fontWeight:600}}>Folders</span>
-        <button className="new-chat-button-sidebar" onClick={() => setFoldersExpanded(e => !e)} title={foldersExpanded ? 'Collapse folders' : 'Expand folders'} aria-label="Toggle folders" style={{background:'none',color:'#1a237e',boxShadow:'none',border:'none',fontSize:18}}>
+        <button 
+          className="new-chat-button-sidebar" 
+          onClick={() => setFoldersExpanded(e => !e)} 
+          title={foldersExpanded ? 'Collapse folders' : 'Expand folders'} 
+          aria-label="Toggle folders" 
+          style={{background:'none',color:'#1a237e',boxShadow:'none',border:'none',fontSize:18}}
+        >
           {foldersExpanded ? <span>&#8722;</span> : <span>&#43;</span>}
         </button>
       </div>
@@ -226,7 +402,9 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
             <div className="empty-list-message">No folders yet</div>
           ) : (
             folders.map(folder => {
-              const folderChats = chats.filter(chat => chat.folderId === folder.id);
+              const folderChats = sortedChats.filter(chat => chat.folderId === folder.id);
+              // Reverse folder chats as well (newest first)
+              const reversedFolderChats = [...folderChats].reverse();
               const isExpanded = expandedFolders[folder.id] ?? false;
               return (
                 <div key={folder.id}>
@@ -240,32 +418,42 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                     role="button"
                   >
                     <div style={{display:'flex',alignItems:'center'}}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}><path d="M4 4h16v16H4z" stroke="#1a237e" strokeWidth="1.5"/></svg>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}>
+                        <path d="M4 4h16v16H4z" stroke="#1a237e" strokeWidth="1.5"/>
+                      </svg>
                       <span>{folder.name}</span>
                     </div>
-                    <span className="folder-chevron" style={{marginLeft:8,fontSize:16,transition:'transform 0.25s'}}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                    <span className="folder-chevron" style={{marginLeft:8,fontSize:16,transition:'transform 0.25s'}}>
+                      {isExpanded ? '\u25BC' : '\u25B6'}
+                    </span>
                   </div>
                   <div
                     id={`folder-chats-${folder.id}`}
                     className="chat-list"
                     style={{
                       marginLeft:24,
-                      maxHeight: isExpanded ? (folderChats.length * 48 + 32) + 'px' : '0px',
+                      maxHeight: isExpanded ? (reversedFolderChats.length * 48 + 32) + 'px' : '0px',
                       opacity: isExpanded ? 1 : 0,
                       pointerEvents: isExpanded ? 'auto' : 'none',
                     }}
                     aria-hidden={!isExpanded}
                   >
-                    {isExpanded && folderChats.length > 0 && (
-                      folderChats.map(chat => (
-                        <div key={chat.id} className={clsx('chat-item', { active: selectedId === chat.id })} onClick={() => onSelect(chat.id)} tabIndex={0} role="button">
+                    {isExpanded && reversedFolderChats.length > 0 && (
+                      reversedFolderChats.map(chat => (
+                        <div 
+                          key={chat.id} 
+                          className={clsx('chat-item', { active: selectedId === chat.id })} 
+                          onClick={() => handleFolderSelect(chat.id, chat.bookmarked || false, false)} // FIXED: Explicitly pass false for isFromBookmarks
+                          tabIndex={0} 
+                          role="button"
+                        >
                           <div className="chat-info">
                             <span className="chat-title">{chat.title}</span>
                           </div>
                         </div>
                       ))
                     )}
-                    {isExpanded && folderChats.length === 0 && (
+                    {isExpanded && reversedFolderChats.length === 0 && (
                       <div className="empty-list-message">No chats in this folder</div>
                     )}
                   </div>
@@ -276,51 +464,103 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
         </div>
       )}
       <hr style={{margin:'16px 0',border:'none',borderTop:'1px solid #eee'}}/>
+      
       {/* Chats Section */}
       <div className="section-title" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <span style={{color:'#1a237e',fontWeight:600}}>Chats</span>
-        <button className="new-chat-button-sidebar" onClick={() => setChatsExpanded(e => !e)} title={chatsExpanded ? 'Collapse chats' : 'Expand chats'} aria-label="Toggle chats" style={{background:'none',color:'#1a237e',boxShadow:'none',border:'none',fontSize:18}}>
+        <span style={{color:'#1a237e',fontWeight:600}}>
+          Chats 
+          <span style={{fontSize:'12px',color:'#888',marginLeft:'4px'}}>
+            ({sortedChats.length})
+          </span>
+        </span>
+        <button 
+          className="new-chat-button-sidebar" 
+          onClick={() => setChatsExpanded(e => !e)} 
+          title={chatsExpanded ? 'Collapse chats' : 'Expand chats'} 
+          aria-label="Toggle chats" 
+          style={{background:'none',color:'#1a237e',boxShadow:'none',border:'none',fontSize:18}}
+        >
           {chatsExpanded ? <span>&#8722;</span> : <span>&#43;</span>}
         </button>
       </div>
       {chatsExpanded && (
         <div className="chat-list">
-          {(showAllChats ? chats : chats.slice(0, MAX_CHATS_DISPLAY)).map(chat => (
-            <div key={chat.id} className={clsx('chat-item', { active: selectedId === chat.id })} onClick={() => onSelect(chat.id)}>
+          {(showAllChats ? sortedChats : sortedChats.slice(0, MAX_CHATS_DISPLAY)).map(chat => (
+            <div 
+              key={chat.id} 
+              className={clsx('chat-item', { active: selectedId === chat.id })} 
+              onClick={() => handleFolderSelect(chat.id, chat.bookmarked || false, false)} // FIXED: Explicitly pass false for isFromBookmarks
+            >
               <div className="chat-info">
                 <span className="chat-title">{chat.title}</span>
+                {chat.updatedAt && (
+                  <span style={{fontSize:'10px',color:'#888',display:'block'}}>
+                    {formatRefreshTime(new Date(chat.updatedAt))}
+                  </span>
+                )}
               </div>
             </div>
           ))}
-          {chats.length > MAX_CHATS_DISPLAY && !showAllChats && (
+          {sortedChats.length > MAX_CHATS_DISPLAY && !showAllChats && (
             <div style={{padding:'4px 0'}}>
-              <button style={{background:'none',color:'#1a237e',border:'none',fontWeight:600,cursor:'pointer',padding:0}} onClick={()=>setShowAllChats(true)}>View all &gt;</button>
+              <button 
+                style={{background:'none',color:'#1a237e',border:'none',fontWeight:600,cursor:'pointer',padding:0}} 
+                onClick={()=>setShowAllChats(true)}
+              >
+                View all {sortedChats.length} &gt;
+              </button>
             </div>
           )}
-          {showAllChats && chats.length > MAX_CHATS_DISPLAY && (
+          {showAllChats && sortedChats.length > MAX_CHATS_DISPLAY && (
             <div style={{padding:'4px 0'}}>
-              <button style={{background:'none',color:'#1a237e',border:'none',fontWeight:600,cursor:'pointer',padding:0}} onClick={()=>setShowAllChats(false)}>Show less</button>
+              <button 
+                style={{background:'none',color:'#1a237e',border:'none',fontWeight:600,cursor:'pointer',padding:0}} 
+                onClick={()=>setShowAllChats(false)}
+              >
+                Show less
+              </button>
             </div>
           )}
         </div>
       )}
       <hr style={{margin:'16px 0',border:'none',borderTop:'1px solid #eee'}}/>
+      
       {/* Bookmarks Section */}
       <div className="section-title" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <span style={{color:'#1a237e',fontWeight:600}}>Bookmarks</span>
-        <button className="new-chat-button-sidebar" onClick={() => setBookmarksExpanded(e => !e)} title={bookmarksExpanded ? 'Collapse bookmarks' : 'Expand bookmarks'} aria-label="Toggle bookmarks" style={{background:'none',color:'#1a237e',boxShadow:'none',border:'none',fontSize:18}}>
+        <span style={{color:'#1a237e',fontWeight:600}}>
+          Bookmarks
+          <span style={{fontSize:'12px',color:'#888',marginLeft:'4px'}}>
+            ({sortedBookmarks.length})
+          </span>
+        </span>
+        <button 
+          className="new-chat-button-sidebar" 
+          onClick={() => setBookmarksExpanded(e => !e)} 
+          title={bookmarksExpanded ? 'Collapse bookmarks' : 'Expand bookmarks'} 
+          aria-label="Toggle bookmarks" 
+          style={{background:'none',color:'#1a237e',boxShadow:'none',border:'none',fontSize:18}}
+        >
           {bookmarksExpanded ? <span>&#8722;</span> : <span>&#43;</span>}
         </button>
       </div>
       {bookmarksExpanded && (
         <div className="folder-list">
-          {bookmarks.length === 0 ? (
+          {sortedBookmarks.length === 0 ? (
             <div className="empty-list-message">No bookmarks yet</div>
           ) : (
-            bookmarks.map(bookmark => (
-              <div key={bookmark.id} className={clsx('chat-item', { active: selectedId === bookmark.id })}  style={{display:'flex',alignItems:'center'}} onClick={() => handleFolderSelect(bookmark.id, false, true)} tabIndex={0} role="button">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}><path d="M6 4h12v16l-6-4-6 4V4z" stroke="#1a237e" strokeWidth="1.5"/></svg>
-                <span>{bookmark.name}</span>
+            sortedBookmarks.map(bookmark => (
+              <div 
+                key={bookmark.id || bookmark.bookmark_id} 
+                className={clsx('chat-item', { active: selectedId === (bookmark.id || bookmark.bookmark_id) })}  
+                style={{display:'flex',alignItems:'center'}} 
+                onClick={() => handleFolderSelect(bookmark.id || bookmark.bookmark_id, true, true)} // Pass true for both bookmark flags
+                tabIndex={0} 
+                role="button"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{marginRight:8}}>
+                  <path d="M6 4h12v16l-6-4-6 4V4z" stroke="#1a237e" strokeWidth="1.5"/>
+                </svg>
+                <span>{bookmark.name || bookmark.bookmark_name || 'Unnamed Bookmark'}</span>
               </div>
             ))
           )}

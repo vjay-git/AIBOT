@@ -7,6 +7,7 @@ import MessageBubble from '../../components/Chatbot/MessageBubble';
 import { set } from 'date-fns';
 
 const DEFAULT_USER_ID = '56376e63-0377-413d-8c9e-359028e2380d';
+
 // --- ChatbotProps and state ---
 interface ChatbotProps {
   selectedChatId: string;
@@ -89,9 +90,6 @@ const Chatbot: React.FC<ChatbotProps> = ({
   isFromBookmarks = false
 }) => {
 
-
-
-
   // Enhanced state management
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -112,6 +110,13 @@ const Chatbot: React.FC<ChatbotProps> = ({
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
+
+  // Helper function to check if a query ID exists in bookmarks
+  const isQueryIdBookmarked = useCallback((queryId: string): boolean => {
+    return bookmarks.some(bookmark => 
+      bookmark.queries?.some((q: any) => q.query_id === queryId)
+    );
+  }, [bookmarks]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -135,33 +140,61 @@ const Chatbot: React.FC<ChatbotProps> = ({
     }
   }, [selectedNewChatId]);
 
-  // Enhanced existing chat loading
+  // FIXED: Enhanced existing chat loading with better state management
   useEffect(() => {
+    console.log('Chatbot useEffect triggered:', {
+      selectedChatId,
+      selectedNewChatId,
+      isFromBookmarks,
+      bookmarksCount: bookmarks.length
+    });
+    
     const loadExistingChat = async () => {
       if (!selectedChatId) return;
 
       if (isFromBookmarks) {
+        console.log('Loading bookmark with ID:', selectedChatId);
         const allBookmarkMessages: ChatMessage[] = [];
         let selectedBookmark = bookmarks.find(b => b.id === selectedChatId || b.bookmark_id === selectedChatId);
 
+        // Check if bookmark was found
+        if (!selectedBookmark) {
+          console.error('Bookmark not found with ID:', selectedChatId);
+          setError('Bookmark not found');
+          setLoading(false);
+          return;
+        }
+
+        // Check if bookmark has queries
         if (selectedBookmark.queries && Array.isArray(selectedBookmark.queries)) {
           for (const q of selectedBookmark.queries) {
-            let id = q.query_id ;
+            let id = q.query_id;
             if (q.query_id == null) continue; // Skip if no query_id
             if(Array.isArray(q.query_id) && q.query_id.length === 0) id = q.query_id[0]; 
-            const queryObj = await getQueryById(q.query_id); // You may want to use Promise.all for parallel requests
-            // const queryObj = chatData?.queries?.find((item: any) => item.query_id === id);
-            if (!queryObj) continue; // Skip if not found
+            
+            try {
+              const queryObj = await getQueryById(q.query_id);
+              if (!queryObj) {
+                console.warn('Query not found:', q.query_id);
+                continue; // Skip if not found
+              }
 
-            const msgs = convertQueryResponseToChatMessages(queryObj, selectedBookmark.id || selectedBookmark.bookmark_id);
-            allBookmarkMessages.push(...msgs);
+              const msgs = convertQueryResponseToChatMessages(queryObj, selectedBookmark.id || selectedBookmark.bookmark_id);
+              allBookmarkMessages.push(...msgs);
+            } catch (error) {
+              console.error('Error fetching query:', q.query_id, error);
+              continue; // Skip this query and continue with others
+            }
           }
           setMessages(allBookmarkMessages);
+        } else {
+          console.warn('Bookmark has no queries or queries is not an array:', selectedBookmark);
+          setMessages([]);
         }
-        return
-
+        return;
       }
-      console.log('Loading existing chat:', selectedChatId);
+      
+      console.log('Loading regular chat with ID:', selectedChatId);
       setMessages([]);
       setReplyTo(null);
       setIsNewChatContext(false);
@@ -187,7 +220,7 @@ const Chatbot: React.FC<ChatbotProps> = ({
     if (selectedChatId && selectedChatId !== selectedNewChatId) {
       loadExistingChat();
     }
-  }, [selectedChatId, selectedNewChatId, isBookmarked]);
+  }, [selectedChatId, selectedNewChatId, isFromBookmarks, bookmarks]);
 
   // Focus input when replying
   useEffect(() => {
@@ -196,54 +229,55 @@ const Chatbot: React.FC<ChatbotProps> = ({
     }
   }, [replyTo]);
 
-  const convertQueryResponseToChatMessages = (response: any, bookmarkId?: string): ChatMessage[] => {
-    const messages: ChatMessage[] = [];
-    const messageGroups = Array.isArray(response.message) && Array.isArray(response.message[0])
-      ? response.message[0]
-      : response.message;
+// Fixed convertQueryResponseToChatMessages function to handle query_id arrays
 
-    for (let idx = 0; idx < messageGroups?.length; idx++) {
-      const msg = messageGroups[idx];
-      let sender: "user" | "bot" = msg.role === "user" ? "user" : "bot";
-      let text = "";
-      let type: ChatMessage["type"] = "text";
-      let rawAnswer: any = undefined;
+const convertQueryResponseToChatMessages = (response: any, bookmarkId?: string): ChatMessage[] => {
+  const messages: ChatMessage[] = [];
+  const messageGroups = Array.isArray(response.message) && Array.isArray(response.message[0])
+    ? response.message[0]
+    : response.message;
 
-      // Skip system/SQL messages
-      if (typeof msg.content === "string" && msg.content.startsWith("SQL Generated by LLM:")) continue;
-      if (msg.table_used) continue;
+  for (let idx = 0; idx < messageGroups?.length; idx++) {
+    const msg = messageGroups[idx];
+    let sender: "user" | "bot" = msg.role === "user" ? "user" : "bot";
+    let text = "";
+    let type: ChatMessage["type"] = "text";
+    let rawAnswer: any = undefined;
 
-      if (typeof msg.content === "string") {
-        text = msg.content;
-      } else if (typeof msg.results === "string") {
-        text = msg.results;
-      } else if (typeof msg.results === "object" && msg.results?.data) {
-        rawAnswer = msg.results.type == 'table' ? msg.results.data.data : msg.results.data;
-        text = msg.results.data || msg.results.data.data;
-        type = msg.results.type as ChatMessage["type"] || "text";
-      } else {
-        text = "";
-      }
+    // Skip system/SQL messages
+    if (typeof msg.content === "string" && msg.content.startsWith("SQL Generated by LLM:")) continue;
+    if (msg.table_used) continue;
 
-      if (text === null || text === undefined || (typeof text === "string" && text.trim() === "")) continue;
-
-      messages.push({
-        id: `${response.query_id}-${idx}`,
-        sender,
-        text,
-        timestamp: new Date().toISOString(),
-        type,
-        rawAnswer,
-        queryId: response.query_id,
-        bookmarkId,
-        bookmarked: true
-      });
+    if (typeof msg.content === "string") {
+      text = msg.content;
+    } else if (typeof msg.results === "string") {
+      text = msg.results;
+    } else if (typeof msg.results === "object" && msg.results?.data) {
+      rawAnswer = msg.results.type == 'table' ? msg.results.data.data : msg.results.data;
+      text = msg.results.data || msg.results.data.data;
+      type = msg.results.type as ChatMessage["type"] || "text";
+    } else {
+      text = "";
     }
-    return messages;
+
+    if (text === null || text === undefined || (typeof text === "string" && text.trim() === "")) continue;
+
+    messages.push({
+      id: `${response.query_id}-${idx}`,
+      sender,
+      text,
+      timestamp: new Date().toISOString(),
+      type,
+      rawAnswer,
+      queryId: response.query_id,
+      bookmarkId,
+      bookmarked: true
+    });
   }
+  return messages;
+}
 
   // Welcome message component that shows when no messages exist
-
   WelcomeMessage.displayName = 'WelcomeMessage';
 
   // Helper to check greetings/non-question phrases
@@ -318,6 +352,9 @@ const Chatbot: React.FC<ChatbotProps> = ({
       const allMessages: ChatMessage[] = [];
 
       for (const query of apiData.Thread.queries) {
+        // Check if this query is bookmarked
+        const isThisQueryBookmarked = isQueryIdBookmarked(query.query_id);
+
         // Flatten messages if it's an array of arrays, else use as is
         let flatMessages: any[] = [];
         if (Array.isArray(query.messages) && Array.isArray(query.messages[0])) {
@@ -376,7 +413,8 @@ const Chatbot: React.FC<ChatbotProps> = ({
                         timestamp: new Date().toISOString(),
                         type: fileType,
                         rawAnswer: fileUrl,
-                        queryId: query.query_id
+                        queryId: query.query_id,
+                        bookmarked: isThisQueryBookmarked
                       });
                     }
                   }
@@ -407,7 +445,8 @@ const Chatbot: React.FC<ChatbotProps> = ({
             timestamp: new Date().toISOString(),
             type,
             rawAnswer,
-            queryId: query.query_id
+            queryId: query.query_id,
+            bookmarked: isThisQueryBookmarked
           });
         }
       }
@@ -612,70 +651,82 @@ const Chatbot: React.FC<ChatbotProps> = ({
     };
   }
 
-  // Enhanced send message handler
-  const handleSend = useCallback(
-    async (msg: string | Blob, isAudio = false) => {
-      setReplyTo(null);
-      setLoading(true);
-      setError('');
+// Fixed handleSend function with proper message sequencing
+const handleSend = useCallback(
+  async (msg: string | Blob, isAudio = false) => {
+    setReplyTo(null);
+    setLoading(true);
+    setError('');
 
-      try {
-        const {
-          userMessage,
-          botMessages,
-          res,
-          newThreadId,
-        } = await askDbAndFormatResponse({
-          msg,
-          isAudio,
-          replyTo,
-          messages,
-          threadId,
-          isNewChatContext,
-          setNewChatStarted,
-        });
+    try {
+      const {
+        userMessage,
+        botMessages,
+        res,
+        newThreadId,
+      } = await askDbAndFormatResponse({
+        msg,
+        isAudio,
+        replyTo,
+        messages,
+        threadId,
+        isNewChatContext,
+        setNewChatStarted,
+      });
 
-        // Add user message immediately
-        setMessages(msgs => [...msgs, userMessage]);
+      // Step 1: Add user message immediately
+      setMessages(msgs => [...msgs, userMessage]);
 
-        // Handle new thread creation
-        if (!threadId && newThreadId) {
-          setThreadId(newThreadId);
-          setIsNewChatContext(false);
-        }
-
-        // Update query IDs and assign query_id to user message
-        if (res?.query_id) {
-          setQueryIds(prev => prev.includes(res.query_id) ? prev : [...prev, res.query_id]);
-          setMessages(msgs => {
-            const updated = [...msgs];
-            for (let i = updated.length - 1; i >= 0; i--) {
-              if (updated[i].sender === 'user' && !updated[i].queryId) {
-                updated[i] = { ...updated[i], queryId: res.query_id };
-                break;
-              }
-            }
-            return updated;
-          });
-        }
-
-        // Add bot messages
-        setMessages(msgs => [...msgs, ...botMessages]);
-      } catch (err: any) {
-        const errorMessage: ChatMessage = {
-          id: `msg-${Date.now() + 1}`,
-          sender: 'bot',
-          text: 'Sorry, there was an error processing your request. Please try again.',
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(msgs => [...msgs, errorMessage]);
-        setError(err.message || 'Failed to send message');
-      } finally {
-        setLoading(false);
+      // Step 2: Handle new thread creation
+      if (!threadId && newThreadId) {
+        setThreadId(newThreadId);
+        setIsNewChatContext(false);
       }
-    },
-    [replyTo, messages, threadId, isNewChatContext, setNewChatStarted]
-  );
+
+      // Step 3: Update query IDs and assign query_id to user message with bookmark check
+      if (res?.query_id) {
+        // Check if the returned query_id exists in bookmarks
+        const isQueryBookmarked = isQueryIdBookmarked(res.query_id);
+        
+        setQueryIds(prev => prev.includes(res.query_id) ? prev : [...prev, res.query_id]);
+        
+        // Update user message with queryId and bookmark status
+        setMessages(msgs => {
+          const updated = [...msgs];
+          for (let i = updated.length - 1; i >= 0; i--) {
+            if (updated[i].sender === 'user' && !updated[i].queryId) {
+              updated[i] = { 
+                ...updated[i], 
+                queryId: res.query_id,
+                bookmarked: isQueryBookmarked
+              };
+              break;
+            }
+          }
+          return updated;
+        });
+      }
+
+      // Step 4: Add bot messages after a small delay for proper sequencing
+      setTimeout(() => {
+        setMessages(msgs => [...msgs, ...botMessages]);
+        setLoading(false);
+      }, 300); // 300ms delay to ensure user message renders first
+
+    } catch (err: any) {
+      const errorMessage: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'bot',
+        text: 'Sorry, there was an error processing your request. Please try again.',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(msgs => [...msgs, errorMessage]);
+      setError(err.message || 'Failed to send message');
+      setLoading(false);
+    }
+  },
+  [replyTo, messages, threadId, isNewChatContext, setNewChatStarted, isQueryIdBookmarked]
+);
 
   // Enhanced theme toggle
   const toggleTheme = useCallback(() => {

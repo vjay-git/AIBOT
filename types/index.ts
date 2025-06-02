@@ -1,3 +1,5 @@
+// Updated types.ts with correct interfaces based on API response
+
 export interface NavItem {
   id: string;
   title: string;
@@ -8,6 +10,45 @@ export interface SubNavItem {
   id: string;
   title: string;
   parentId: string;
+}
+
+// Fixed ChatFolder interface to match actual bookmark structure
+export interface ChatFolder {
+  id: string;
+  name: string;
+  bookmark_id?: string; // API uses this field
+  bookmark_name?: string; // API uses this field  
+  queries?: Array<{
+    query_id: string | string[]; // Can be string or array of strings
+    messages?: any[];
+  }>;
+}
+
+// Updated ChatMessage interface
+export interface ChatMessage {
+  id: string;
+  sender: "user" | "bot";
+  text: string | any;
+  timestamp: string;
+  replyTo?: string;
+  type?: 'text' | 'search_query' | 'search_result' | 'db_answer' | 'tabular' | 'audio' | 'pdf' | 'xlsx' | 'docx' | 'file' | 'table';
+  bookmarked?: boolean;
+  rawAnswer?: any;
+  queryId?: string;
+  bookmarkId?: string;
+}
+
+// Updated ChatSession interface
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: any[]; // Keep as any[] to match actual usage
+  bookmarked: boolean;
+  createdAt: string;
+  updatedAt: string;
+  folderId?: string;
+  bookmarkId?: string;
+  queryIds?: string[];
 }
 
 export interface DashboardDataType {
@@ -87,35 +128,6 @@ export interface LLMModelType {
     frequencyPenalty: number;
     presencePenalty: number;
   };
-}
-
-export interface ChatMessage {
-  id: string;
-  sender: "user" | "bot";
-  text: string;
-  timestamp: string;
-  replyTo?: string; // for replies
-  type?: 'text' | 'search_query' | 'search_result' | 'db_answer' | 'tabular' | 'audio' | 'pdf' | 'xlsx' | 'docx' | 'file' | 'table'; // message type for different modes
-  bookmarked?: boolean; // whether message is bookmarked
-  rawAnswer?: any; // for tabular/chatbot table answers, file/audio URLs
-  queryId?: string; // ID of the query this message is associated with
-  bookmarkId?: string; // ID of the bookmark if this message is bookmarked
-}
-
-export interface ChatSession {
-  id: string;
-  title: string;
-  messages: ChatMessage[];
-  bookmarked: boolean;
-  createdAt: string;
-  updatedAt: string;
-  folderId?: string;
-  queryIds?: string[]; // Track all queryIds for this thread/session
-}
-
-export interface ChatFolder {
-  id: string;
-  name: string;
 }
 
 export interface ChatbotDataType {
