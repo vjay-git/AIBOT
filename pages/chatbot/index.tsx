@@ -112,11 +112,19 @@ const Chatbot: React.FC<ChatbotProps> = ({
   }, []);
 
   // Helper function to check if a query ID exists in bookmarks
-  const isQueryIdBookmarked = useCallback((queryId: string): boolean => {
-    return bookmarks.some(bookmark => 
-      bookmark.queries?.some((q: any) => q.query_id === queryId)
-    );
-  }, [bookmarks]);
+const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): boolean => {
+  return bookmarks.some(bookmark => 
+    bookmark.queries?.some((q: any) => {
+      // Check if this specific query_id is bookmarked
+      if (typeof q.query_id === 'string') {
+        return q.query_id === queryId;
+      } else if (Array.isArray(q.query_id)) {
+        return q.query_id.includes(queryId);
+      }
+      return false;
+    })
+  );
+}, [bookmarks]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -461,7 +469,7 @@ const Chatbot: React.FC<ChatbotProps> = ({
 
       for (const query of apiData.Thread.queries) {
         // Check if this query is bookmarked
-        const isThisQueryBookmarked = isQueryIdBookmarked(query.query_id);
+        const isThisQueryBookmarked = isQueryIdBookmarked(query.query_id, `${query.query_id}-0`);
 
         // Flatten messages if it's an array of arrays, else use as is
         let flatMessages: any[] = [];
@@ -782,7 +790,7 @@ const handleSend = useCallback(
         setNewChatStarted,
       });
 
-      // Step 1: Add user message immediately
+      // Step 1: Add user message immediately (without bookmark check)
       setMessages(msgs => [...msgs, userMessage]);
 
       // Step 2: Handle new thread creation
@@ -791,14 +799,11 @@ const handleSend = useCallback(
         setIsNewChatContext(false);
       }
 
-      // Step 3: Update query IDs and assign query_id to user message with bookmark check
+      // Step 3: Update query IDs
       if (res?.query_id) {
-        // Check if the returned query_id exists in bookmarks
-        const isQueryBookmarked = isQueryIdBookmarked(res.query_id);
-        
         setQueryIds(prev => prev.includes(res.query_id) ? prev : [...prev, res.query_id]);
         
-        // Update user message with queryId and bookmark status
+        // Step 4: Update ONLY the user message with queryId (no automatic bookmarking)
         setMessages(msgs => {
           const updated = [...msgs];
           for (let i = updated.length - 1; i >= 0; i--) {
@@ -806,7 +811,8 @@ const handleSend = useCallback(
               updated[i] = { 
                 ...updated[i], 
                 queryId: res.query_id,
-                bookmarked: isQueryBookmarked
+                // Don't auto-bookmark - let user decide
+                bookmarked: false
               };
               break;
             }
@@ -815,11 +821,18 @@ const handleSend = useCallback(
         });
       }
 
-      // Step 4: Add bot messages after a small delay for proper sequencing
+      // Step 5: Add bot messages after user message is visible
       setTimeout(() => {
-        setMessages(msgs => [...msgs, ...botMessages]);
+        setMessages(msgs => [
+          ...msgs, 
+          ...botMessages.map(botMsg => ({
+            ...botMsg,
+            queryId: res?.query_id || '',
+            bookmarked: false // Bot messages are never bookmarked
+          }))
+        ]);
         setLoading(false);
-      }, 300); // 300ms delay to ensure user message renders first
+      }, 100); // Reduced delay to 100ms for better UX
 
     } catch (err: any) {
       const errorMessage: ChatMessage = {
@@ -833,7 +846,7 @@ const handleSend = useCallback(
       setLoading(false);
     }
   },
-  [replyTo, messages, threadId, isNewChatContext, setNewChatStarted, isQueryIdBookmarked]
+  [replyTo, messages, threadId, isNewChatContext, setNewChatStarted]
 );
 
   // Enhanced theme toggle

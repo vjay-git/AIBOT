@@ -64,9 +64,15 @@ const bookmarkInfo = useMemo(() => {
 
 // Simplified bookmark status checking
 const isMessageBookmarked = useMemo(() => {
-  // Priority: message.bookmarked > bookmarkInfo exists > isBookmarked prop
-  return message.bookmarked || !!bookmarkInfo || isBookmarked;
-}, [message.bookmarked, bookmarkInfo, isBookmarked]);
+  // Check if THIS specific message was explicitly bookmarked
+  if (message.bookmarked === true) return true;
+  
+  // Check if this message's queryId appears in bookmarks
+  if (message.queryId && bookmarkInfo) return true;
+  
+  // Fallback to prop (for backward compatibility)
+  return false;
+}, [message.bookmarked, message.queryId, bookmarkInfo]);
 
   // Format timestamp (simple, can be improved)
   const formatTime = (ts: string) => {
@@ -130,37 +136,37 @@ const isMessageBookmarked = useMemo(() => {
     setShowBookmarkPrompt(true);
   };
 
-  const handleBookmarkSubmit = async () => {
-    if (!bookmarkName.trim() || !message.queryId) return;
+ const handleBookmarkSubmit = async () => {
+  if (!bookmarkName.trim() || !message.queryId) return;
+  
+  try {
+    const existingBookmark = bookmarks.find(
+      (b: any) => (b.name === bookmarkName.trim()) 
+    );
     
-    try {
-      const existingBookmark = bookmarks.find(
-        (b: any) => (b.name === bookmarkName.trim()) 
-      );
-      
-      if (existingBookmark?.id) {
-        // Update existing bookmark
-        await bookmarkMessageAPIUpdate(message.queryId, existingBookmark.id);
-      } else {
-        // Create new bookmark
-        await bookmarkMessageAPI([message.queryId], bookmarkName.trim());
-      }
-      
-      setShowBookmarkPrompt(false);
-      setBookmarkName('');
-      
-      // Update message state
-      if (onMessageUpdate) {
-        onMessageUpdate(message.id, { bookmarked: true });
-      }
-      
-      if (refreshBookmarks) {
-        refreshBookmarks();
-      }
-    } catch (error) {
-      console.error('Error bookmarking message:', error);
+    if (existingBookmark?.id) {
+      // Update existing bookmark
+      await bookmarkMessageAPIUpdate(message.queryId, existingBookmark.id);
+    } else {
+      // Create new bookmark
+      await bookmarkMessageAPI([message.queryId], bookmarkName.trim());
     }
-  };
+    
+    setShowBookmarkPrompt(false);
+    setBookmarkName('');
+    
+    // Update ONLY this specific message state
+    if (onMessageUpdate) {
+      onMessageUpdate(message.id, { bookmarked: true });
+    }
+    
+    if (refreshBookmarks) {
+      refreshBookmarks();
+    }
+  } catch (error) {
+    console.error('Error bookmarking message:', error);
+  }
+};
 
   const handleBookmarkMouseEnter = useCallback(() => {
     if (isMessageBookmarked && bookmarkInfo) {

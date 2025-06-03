@@ -208,15 +208,40 @@
                 border var(--dur-short) var(--ease-spring);
   }
   
-  .inner-container {
-    height: 100%;
-    padding: 26px 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
-  }
+ .inner-container {
+  height: 100%;
+  padding: 26px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #3232322e #ffffff;
+}
+
+/* WebKit‐based browsers */
+.inner-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.inner-container::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.inner-container::-webkit-scrollbar-thumb {
+  background-color: #c0c0c0;
+  border: 2px solid #f0f0f0;
+  border-radius: 4px;
+}
+
+.inner-container::-webkit-scrollbar-thumb:hover {
+  background-color: #a8a8a8;
+}
+
   
   .subnav-header {
     font-family: var(--font-heading);
