@@ -132,8 +132,14 @@ const Sidebar: React.FC<SidebarProps> = ({ items }) => {
       </div>
       
       <div className="user-profile">
-        <div className="avatarr">
-          <span>VK</span>
+        <div className="avatar1">
+          <Image 
+            src="/assets/icons/Avatar.png" 
+            alt="Logo" 
+            width={20} 
+            height={20}
+            className="logo-image" 
+          />
         </div>
         <div className="tooltip">Vijay Kumar<br></br>vijaykumar.g@sap.in</div>
       </div>

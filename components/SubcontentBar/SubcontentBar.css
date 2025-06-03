@@ -91,8 +91,8 @@
   }
   
   .nav-item-container:hover,
-  .add-button:hover,
-  .user-profile:hover {
+  .add-button:hover
+ {
     background: var(--clr-accent-bg);
   }
   

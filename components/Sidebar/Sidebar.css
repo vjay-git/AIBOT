@@ -92,8 +92,7 @@
   }
   
   .nav-item-container:hover,
-  .add-button:hover,
-  .user-profile:hover {
+  .add-button:hover{
     background: var(--clr-accent-bg);
   }
   
@@ -184,14 +183,14 @@
   }
   
   .nav-item-container:hover .tooltip,
-  .add-button:hover .tooltip,
-  .user-profile:hover .tooltip {
+  .add-button:hover .tooltip
+  {
     opacity: 1;
     scale: 1;
   }
   
   /* ---- Avatar ---- */
-  .avatarr {
+  .avatar1{
     width: 34px;
     height: 34px;
     background: linear-gradient(135deg, hsl(222 100% 59%), hsl(222 82% 66%));

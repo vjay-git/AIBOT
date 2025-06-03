@@ -28,8 +28,9 @@ interface SubcontentBarProps {
   onDeleteFolder?: (folderId: string) => void;
   onDeleteChat?: (chatId: string) => void;
   onToggleBookmark?: (chatId: string) => void;
-  refreshChats?: () => void; // Add refresh function for chat data
-  setIsFromBookmarks?: (isFromBookmarks: boolean) => void; // New prop to set bookmark state
+  refreshChats?: () => void;
+  setIsFromBookmarks?: (isFromBookmarks: boolean) => void;
+  setIsFromFolder?: (isFromFolder: boolean) => void; // NEW: Add folder context prop
 }
 
 const SubcontentBar: React.FC<SubcontentBarProps> = ({ 
@@ -53,7 +54,8 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
   onDeleteChat,
   onToggleBookmark,
   refreshChats,
-  setIsFromBookmarks
+  setIsFromBookmarks,
+  setIsFromFolder // NEW: Add folder context prop
 }) => {
   // Enhanced section tabs renderer with better error handling
   const renderSectionTabs = useCallback(() => {
@@ -74,6 +76,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
               onSelect={onSelect}
               isBookmarked={isBookmarked}
               setIsFromBookmarks={setIsFromBookmarks}
+              setIsFromFolder={setIsFromFolder} // NEW: Pass folder context
               onNewChat={onNewChat}
               onCreateFolder={onCreateFolder}
               onMoveToFolder={onMoveToFolder}
@@ -81,7 +84,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
               onDeleteFolder={onDeleteFolder}
               onDeleteChat={onDeleteChat}
               onToggleBookmark={onToggleBookmark}
-              refreshChats={refreshChats} // Pass refresh function
+              refreshChats={refreshChats}
             />
           );
         
@@ -121,7 +124,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
   }, [
     sectionType, selectedId, onSelect, chats, folders, bookmarks, isBookmarked,
     onNewChat, onCreateFolder, onMoveToFolder, onRenameFolder, onDeleteFolder,
-    onDeleteChat, onToggleBookmark, refreshChats
+    onDeleteChat, onToggleBookmark, refreshChats, setIsFromBookmarks, setIsFromFolder
   ]);
 
   // Check if we should show the default items list

@@ -178,6 +178,48 @@ export async function fetchThreadById(threadId) {
   }
 }
 
+// 🔧 ENHANCED: Fetch AI Table (folder) data by table_id with better error handling
+export async function fetchAiTableById(tableId) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/userhistory/aitable/${tableId}`;
+  
+  try {
+    console.log(`📡 Fetching AI Table data for ID: ${tableId}`);
+    console.log(`🔗 API URL: ${url}`);
+    
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`❌ API Error Response: ${res.status} ${errorText}`);
+      throw new Error(`Failed to fetch AI table: ${res.status} ${errorText}`);
+    }
+    
+    const data = await res.json();
+    console.log(`✅ AI Table data received for ${tableId}:`, data);
+    
+    // 🔧 VALIDATE: Check if the response has the expected structure
+    if (!data || typeof data !== 'object') {
+      console.error('❌ Invalid AI Table response: not an object', data);
+      throw new Error('Invalid AI Table response format');
+    }
+    
+    // Check for the "AI Table" key
+    if (!data["AI Table"]) {
+      console.warn('⚠️ No "AI Table" key found in response. Available keys:', Object.keys(data));
+      console.warn('⚠️ Full response:', data);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('❌ Error in fetchAiTableById:', error);
+    throw error;
+  }
+}
+
 // Enhanced get all chats API
 export async function getAllChats() {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -327,6 +369,28 @@ export async function getBookmarkById(bookmarkId) {
   }
 }
 
+export async function getQueryById(queryId) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/userhistory/query/${queryId}`;
+  
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch query: ${res.status} ${errorText}`);
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error('Error in getQueryById:', error);
+    throw error;
+  }
+}
+
 // Generic error handler for API responses
 export function handleApiError(error, context = 'API call') {
   console.error(`${context} failed:`, error);
@@ -368,26 +432,4 @@ export async function throttledApiCall(key, apiFunction, delay = 1000) {
   
   apiCallQueue.set(key, Date.now());
   return apiFunction();
-}
-
-export async function getQueryById(queryId) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const url = `${baseUrl}/userhistory/query/${queryId}`;
-  
-  try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Failed to fetch bookmark: ${res.status} ${errorText}`);
-    }
-    
-    return await res.json();
-  } catch (error) {
-    console.error('Error in getBookmarkById:', error);
-    throw error;
-  }
 }

@@ -47,29 +47,87 @@ function useThemeMode(): 'light' | 'dark' {
   return 'light';
 }
 
+// Smart axis detection function
+function detectAxes(data: Record<string, any>[]) {
+  if (!data?.length) return { xCandidates: [], yCandidates: [], needsXSelection: false };
+  
+  const allCols = Object.keys(data[0]);
+  const xCandidates: string[] = [];
+  const yCandidates: string[] = [];
+  
+  // Analyze each column
+  allCols.forEach(col => {
+    const values = data.map(row => row[col]);
+    const hasNumbers = values.some(val => typeof val === 'number' && !isNaN(val));
+    const hasStrings = values.some(val => typeof val === 'string');
+    const uniqueValues = new Set(values).size;
+    const totalValues = values.length;
+    
+    // Heuristics for X-axis candidates (categorical data, dates, or low-cardinality)
+    if (
+      hasStrings || 
+      uniqueValues <= Math.min(20, totalValues * 0.5) || // Low cardinality
+      col.toLowerCase().includes('date') ||
+      col.toLowerCase().includes('time') ||
+      col.toLowerCase().includes('month') ||
+      col.toLowerCase().includes('year') ||
+      col.toLowerCase().includes('category') ||
+      col.toLowerCase().includes('type') ||
+      col.toLowerCase().includes('name') ||
+      col.toLowerCase().includes('group')
+    ) {
+      xCandidates.push(col);
+    }
+    
+    // Y-axis candidates (numeric data)
+    if (hasNumbers) {
+      yCandidates.push(col);
+    }
+  });
+  
+  // If no clear X candidates, use first column
+  if (xCandidates.length === 0 && allCols.length > 0) {
+    xCandidates.push(allCols[0]);
+  }
+  
+  // Remove X candidates from Y candidates to avoid overlap
+  const filteredYCandidates = yCandidates.filter(col => !xCandidates.includes(col));
+  
+  // Determine if X-axis selection is needed
+  const needsXSelection = xCandidates.length > 1 && filteredYCandidates.length > 1;
+  
+  return { 
+    xCandidates, 
+    yCandidates: filteredYCandidates, 
+    needsXSelection 
+  };
+}
+
 const PlotlyChart: FC<PlotlyChartProps> = ({
   data,
   chartType = 'bar',
   title = 'AskDB Chart',
 }) => {
   if (!data?.length) return null;
-  const allCols = Object.keys(data[0]);
-  const [xCol, setXCol] = useState<string>(allCols[0]);
+  
+  const { xCandidates, yCandidates, needsXSelection } = useMemo(() => detectAxes(data), [data]);
+  const [xCol, setXCol] = useState<string>(xCandidates[0] || '');
 
-  // When columns change, reset xCol to first
+  // When data changes, reset xCol to the best candidate
   useEffect(() => {
-    setXCol(allCols[0]);
-  }, [JSON.stringify(allCols)]);
+    if (xCandidates.length > 0) {
+      setXCol(xCandidates[0]);
+    }
+  }, [xCandidates]);
 
   // y columns are all except xCol
-  const yCols = allCols.filter((c) => c !== xCol);
   const x = data.map((r) => r[xCol]);
-  const y = yCols.length === 1 ? data.map((r) => r[yCols[0]]) : undefined;
+  const y = yCandidates.length === 1 ? data.map((r) => r[yCandidates[0]]) : undefined;
 
   // debug to verify we have data
   useEffect(() => {
-    console.log(`Plotting ${chartType}`, { x, y, xCol, yCols });
-  }, [chartType, x, y, xCol, yCols]);
+    console.log(`Plotting ${chartType}`, { x, y, xCol, yCandidates, needsXSelection });
+  }, [chartType, x, y, xCol, yCandidates, needsXSelection]);
 
   const mode = useThemeMode();
   const isDark = mode === 'dark';
@@ -93,8 +151,8 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
       }];
     }
     // For bar/line/scatter, support multiple Y columns
-    if (yCols.length > 1) {
-      return yCols.map((col, idx) => {
+    if (yCandidates.length > 1) {
+      return yCandidates.map((col, idx) => {
         const base: any = {
           type: chartType === 'line' ? 'scatter' : chartType,
           x,
@@ -118,8 +176,8 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
       x,
       y,
       marker: { color: shades },
-      hovertemplate: `<b>%{x}</b><br>${yCols[0]}: %{y}<extra></extra>`,
-      name: yCols[0],
+      hovertemplate: `<b>%{x}</b><br>${yCandidates[0]}: %{y}<extra></extra>`,
+      name: yCandidates[0],
     };
     if (chartType === 'line') {
       base.mode = 'lines';
@@ -129,7 +187,7 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
       base.line = { color: shades[shades.length - 1], width: 2 };
     }
     return [base];
-  }, [chartType, x, y, yCols, data, shades]);
+  }, [chartType, x, y, yCandidates, data, shades]);
 
   // Layout
   const layout = useMemo(() => {
@@ -141,7 +199,7 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
         chartType === 'pie'
           ? { t: 20, b: 20, l: 20, r: 20 }
           : { t: 30, b: 50, l: 50, r: 30 },
-      showlegend: chartType === 'pie' || yCols.length > 1,
+      showlegend: chartType === 'pie' || yCandidates.length > 1,
       legend:
         chartType === 'pie'
           ? { orientation: 'h', y: -0.2, x: 0.5, xanchor: 'center' }
@@ -152,12 +210,12 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
       common.height = 360;
     } else {
       common.xaxis = { title: xCol };
-      common.yaxis = { title: yCols.length > 1 ? '' : yCols[0] };
+      common.yaxis = { title: yCandidates.length > 1 ? '' : yCandidates[0] };
       common.width = 480;
       common.height = 360;
     }
     return common;
-  }, [chartType, xCol, yCols, isDark]);
+  }, [chartType, xCol, yCandidates, isDark]);
 
   const config = {
     responsive: true,
@@ -175,9 +233,9 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
       ? '0 12px 32px rgba(0,0,0,0.4)'
       : '0 12px 32px rgba(0,0,0,0.08)',
     margin: '2rem 0',
-    maxWidth: 640, // Prevents chart from being too wide
+    maxWidth: 640,
     width: '100%',
-    overflow: 'auto', // Ensures scrollbars if content overflows
+    overflow: 'auto',
   };
 
   return (
@@ -208,61 +266,100 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
           }}
         />
       </h3>
-      <div style={{
-        marginBottom: 24,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        gap: 8,
-        flexWrap: 'wrap',
-      }}>
-        <label
-          style={{
-            fontWeight: 600,
-            fontSize: 15,
-            color: isDark ? '#B0B8D1' : '#2C3A4B',
-            letterSpacing: 0.2,
-            marginRight: 4,
+      
+      {/* Only show X-axis selector when needed */}
+      {needsXSelection && chartType !== 'pie' && (
+        <div style={{
+          marginBottom: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+        }}>
+          <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style={{marginRight: 2, verticalAlign: 'middle'}} xmlns="http://www.w3.org/2000/svg">
-            <rect x="3" y="9" width="14" height="2" rx="1" fill="#4472C4"/>
-            <rect x="9" y="3" width="2" height="14" rx="1" fill="#4472C4"/>
-          </svg>
-          X Axis:
-        </label>
-        <select
-          value={xCol}
-          onChange={e => setXCol(e.target.value)}
-          style={{
-            fontSize: 15,
-            padding: '6px 18px 6px 10px',
-            borderRadius: 6,
-            border: isDark ? '1px solid #334155' : '1px solid #B0B8D1',
-            background: isDark ? '#23273A' : '#F7F9FB',
-            color: isDark ? '#FFF' : '#222',
-            boxShadow: isDark ? '0 1px 4px rgba(0,0,0,0.12)' : '0 1px 4px rgba(68,114,196,0.06)',
-            outline: 'none',
-            minWidth: 120,
-            cursor: 'pointer',
-            transition: 'border 0.2s, box-shadow 0.2s',
-            appearance: 'none',
-            WebkitAppearance: 'none',
-            MozAppearance: 'none',
-            backgroundImage:
-              'url("data:image/svg+xml,%3Csvg width=\'16\' height=\'16\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M4 6l4 4 4-4\' stroke=\'%234472C4\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E")',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 10px center',
-          }}
-        >
-          {allCols.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
-      </div>
+            gap: 8,
+            background: isDark ? 'rgba(35,39,50,0.8)' : 'rgba(247,249,251,0.9)',
+            padding: '8px 16px',
+            borderRadius: 12,
+            border: `1px solid ${isDark ? 'rgba(75,85,99,0.3)' : 'rgba(209,213,219,0.4)'}`,
+            backdropFilter: 'blur(8px)',
+            boxShadow: isDark 
+              ? '0 4px 6px rgba(0,0,0,0.1)' 
+              : '0 2px 4px rgba(68,114,196,0.08)',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              color: isDark ? '#9CA3AF' : '#6B7280',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              letterSpacing: '0.025em',
+            }}>
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 20 20" 
+                fill="none" 
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ marginRight: 2 }}
+              >
+                <rect x="3" y="9" width="14" height="2" rx="1" fill="#4472C4"/>
+                <rect x="9" y="3" width="2" height="14" rx="1" fill="#4472C4"/>
+              </svg>
+              X-Axis:
+            </div>
+            <select
+              value={xCol}
+              onChange={e => setXCol(e.target.value)}
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                padding: '6px 28px 6px 10px',
+                borderRadius: 8,
+                border: 'none',
+                background: isDark ? 'rgba(17,24,39,0.9)' : 'rgba(255,255,255,0.95)',
+                color: isDark ? '#F9FAFB' : '#1F2937',
+                boxShadow: isDark 
+                  ? 'inset 0 1px 2px rgba(0,0,0,0.2)' 
+                  : 'inset 0 1px 2px rgba(0,0,0,0.05)',
+                outline: 'none',
+                minWidth: 120,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='7' viewBox='0 0 12 7' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='${isDark ? '%23A0AEC0' : '%234472C4'}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 10px center',
+              }}
+              onFocus={(e) => {
+                e.target.style.boxShadow = isDark 
+                  ? 'inset 0 1px 2px rgba(0,0,0,0.2), 0 0 0 3px rgba(68,114,196,0.2)' 
+                  : 'inset 0 1px 2px rgba(0,0,0,0.05), 0 0 0 3px rgba(68,114,196,0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.boxShadow = isDark 
+                  ? 'inset 0 1px 2px rgba(0,0,0,0.2)' 
+                  : 'inset 0 1px 2px rgba(0,0,0,0.05)';
+              }}
+            >
+              {xCandidates.map(col => (
+                <option key={col} value={col} style={{
+                  background: isDark ? '#1F2937' : '#FFFFFF',
+                  color: isDark ? '#F9FAFB' : '#1F2937',
+                }}>
+                  {col}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+      
       <div style={{ width: '100%', minHeight: layout.height, overflow: 'auto' }}>
         <Plot
           data={traces}
