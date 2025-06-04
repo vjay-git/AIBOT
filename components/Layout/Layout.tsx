@@ -715,9 +715,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     refreshChats: refreshChats
   };
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    const handleSidebarToggle = (e: any) => {
+      setSidebarCollapsed(!!(e.detail && e.detail.collapsed));
+    };
+    window.addEventListener('sidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
+  }, []);
+
   return (
     <AppStateContext.Provider value={appStateValue}>
-      <div className={`layout-container ${!shouldShowSubcontentBar ? 'without-subcontent' : ''}`}>
+      <div className={`layout-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${!shouldShowSubcontentBar ? 'without-subcontent' : ''}`}>
         <Sidebar items={navItems} />
 
         {shouldShowSubcontentBar && (

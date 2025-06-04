@@ -771,12 +771,39 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
 const handleSend = useCallback(
   async (msg: string | Blob, isAudio = false) => {
     setReplyTo(null);
-    setLoading(true);
     setError('');
+
+    // Optimistically create user message
+    let userMessage: ChatMessage;
+    let concatenatedQuestion = msg as string;
+    if (replyTo && typeof msg === 'string') {
+      const original = getTrueOriginalQuestion(replyTo, messages);
+      concatenatedQuestion = `Original Questions: ${original} | New Question: ${msg}`;
+    }
+    if (isAudio && msg instanceof Blob) {
+      userMessage = {
+        id: `msg-${Date.now()}`,
+        sender: 'user',
+        text: '[Voice message]',
+        timestamp: new Date().toISOString(),
+        replyTo: replyTo?.id,
+        type: 'audio',
+        rawAnswer: msg,
+      };
+    } else {
+      userMessage = {
+        id: `msg-${Date.now()}`,
+        sender: 'user',
+        text: concatenatedQuestion,
+        timestamp: new Date().toISOString(),
+        replyTo: replyTo?.id,
+      };
+    }
+    setMessages(msgs => [...msgs, userMessage]); // Show user message immediately
+    setLoading(true); // Now show loading spinner
 
     try {
       const {
-        userMessage,
         botMessages,
         res,
         newThreadId,
@@ -784,14 +811,11 @@ const handleSend = useCallback(
         msg,
         isAudio,
         replyTo,
-        messages,
+        messages: [...messages, userMessage], // include the new user message
         threadId,
         isNewChatContext,
         setNewChatStarted,
       });
-
-      // Step 1: Add user message immediately (without bookmark check)
-      setMessages(msgs => [...msgs, userMessage]);
 
       // Step 2: Handle new thread creation
       if (!threadId && newThreadId) {
@@ -802,16 +826,14 @@ const handleSend = useCallback(
       // Step 3: Update query IDs
       if (res?.query_id) {
         setQueryIds(prev => prev.includes(res.query_id) ? prev : [...prev, res.query_id]);
-        
         // Step 4: Update ONLY the user message with queryId (no automatic bookmarking)
         setMessages(msgs => {
           const updated = [...msgs];
           for (let i = updated.length - 1; i >= 0; i--) {
             if (updated[i].sender === 'user' && !updated[i].queryId) {
-              updated[i] = { 
-                ...updated[i], 
+              updated[i] = {
+                ...updated[i],
                 queryId: res.query_id,
-                // Don't auto-bookmark - let user decide
                 bookmarked: false
               };
               break;
@@ -824,16 +846,15 @@ const handleSend = useCallback(
       // Step 5: Add bot messages after user message is visible
       setTimeout(() => {
         setMessages(msgs => [
-          ...msgs, 
+          ...msgs,
           ...botMessages.map(botMsg => ({
             ...botMsg,
             queryId: res?.query_id || '',
-            bookmarked: false // Bot messages are never bookmarked
+            bookmarked: false
           }))
         ]);
         setLoading(false);
-      }, 100); // Reduced delay to 100ms for better UX
-
+      }, 100);
     } catch (err: any) {
       const errorMessage: ChatMessage = {
         id: `msg-${Date.now() + 1}`,

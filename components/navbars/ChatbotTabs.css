@@ -1,6 +1,10 @@
-/* Add these styles to your existing ChatbotTabs.css */
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* chatbottabs.css                                                            */
+/* All selectors are now prefixed under `.chatbot-tabs-container` to prevent  */
+/* conflicts with other global CSS.                                            */
+/* ─────────────────────────────────────────────────────────────────────────── */
 
-/* Sidebar transition and responsive layout */
+/* ── Container ─────────────────────────────────────────────────────────────── */
 .chatbot-tabs-container {
   width: 280px;
   height: 100vh;
@@ -11,167 +15,183 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   transition: width 0.3s ease-in-out;
   overflow: hidden;
+  position: relative;
 }
 
-/* Collapsed state */
 .chatbot-tabs-container.collapsed {
   width: 60px;
 }
 
-/* Toggle button styling */
-.sidebar-toggle-btn {
-  background: none;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 6px;
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.chatbot-tabs-container .chatbot-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: background-color 0.15s ease;
-  width: 32px;
-  height: 32px;
-}
-
-.sidebar-toggle-btn:hover {
-  background-color: #f3f4f6;
-}
-
-.sidebar-toggle-btn:focus {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
-}
-
-/* Header adjustments */
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
   border-bottom: 1px solid #e9ecef;
   min-height: 60px;
-  transition: padding 0.3s ease-in-out;
+  background-color: #ffffff;
 }
 
-.sidebar-header.collapsed {
+.chatbot-tabs-container.collapsed .chatbot-header {
   justify-content: center;
-  padding: 16px 0;
+  padding: 16px 8px;
 }
 
-.sidebar-title {
-  fontSize: 18px;
-  fontWeight: 600;
-  color: #1f2937;
-  margin: 0;
-  transition: opacity 0.3s ease-in-out;
-}
-
-.sidebar-title.collapsed {
-  opacity: 0;
-  display: none;
-}
-
-/* Collapsed icons styling */
-.collapsed-icons-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 20px 0;
-  flex: 1;
-}
-
-.collapsed-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-  position: relative;
-}
-
-.collapsed-icon:hover {
-  background-color: #f3f4f6;
-}
-
-/* Tooltip for collapsed icons */
-.collapsed-icon::after {
-  content: attr(title);
-  position: absolute;
-  left: calc(100% + 12px);
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: #1f2937;
-  color: white;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-  z-index: 1000;
-}
-
-.collapsed-icon:hover::after {
-  opacity: 1;
-}
-
-/* Content transition */
-.sidebar-content {
-  transition: opacity 0.3s ease-in-out;
-}
-
-.sidebar-content.collapsed {
-  opacity: 0;
-  display: none;
-}
-
-/* Section headers adjustments */
-.section-header {
-  display: flex;
-  align-items: center;
+.chatbot-tabs-container:not(.collapsed) .chatbot-header {
   justify-content: space-between;
-  padding: 0 20px;
-  margin-bottom: 12px;
-  transition: padding 0.3s ease-in-out;
+  padding: 16px 20px;
 }
 
-.section-header.collapsed {
-  padding: 0;
-  justify-content: center;
-}
-
-.section-title-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: opacity 0.3s ease-in-out;
-}
-
-.section-title-container.collapsed {
-  opacity: 0;
-}
-
-.section-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #2563eb;
-}
-
-.section-title {
-  font-size: 16px;
+.chatbot-tabs-container .header-title {
+  font-size: 18px;
   font-weight: 600;
   color: #1f2937;
   margin: 0;
 }
 
-.add-button {
+.chatbot-tabs-container .toggle-button {
+  background: none;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  width: 28px;
+  height: 28px;
+  background-color: #ffffff;
+}
+
+.chatbot-tabs-container .toggle-button:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+/* ── Section Headers ─────────────────────────────────────────────────────── */
+.chatbot-tabs-container .folders-section,
+.chatbot-tabs-container .chats-section,
+.chatbot-tabs-container .bookmarks-section {
+  padding-top: 20px;
+}
+
+.chatbot-tabs-container .folders-section,
+.chatbot-tabs-container .chats-section {
+  border-bottom: 1px solid #e9ecef;
+}
+
+.chatbot-tabs-container .section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  margin-bottom: 8px;
+  min-height: 28px;
+}
+
+.chatbot-tabs-container .section-header svg {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-right: 6px;
+  align-self: center;
+}
+
+.chatbot-tabs-container .section-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #2563eb;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+/* Message when there are no items */
+.chatbot-tabs-container .empty-message {
+  padding: 0 20px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* ── Folders List ────────────────────────────────────────────────────────── */
+.chatbot-tabs-container .folder-list {
+  padding-bottom: 20px;
+}
+
+.chatbot-tabs-container .folder-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.chatbot-tabs-container .folder-item.selected {
+  background-color: #e0e7ff;
+}
+
+.chatbot-tabs-container .folder-item.selected .folder-name {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.chatbot-tabs-container .folder-item:not(.selected):hover {
+  background-color: #f1f5f9;
+}
+
+.chatbot-tabs-container .folder-icon {
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.chatbot-tabs-container .folder-name {
+  font-size: 14px;
+  color: #4b5563;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Chats List ─────────────────────────────────────────────────────────── */
+.chatbot-tabs-container .chat-list {
+  padding-bottom: 12px;
+}
+
+.chatbot-tabs-container .chat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.chatbot-tabs-container .chat-item.selected {
+  background-color: #e0e7ff;
+}
+
+.chatbot-tabs-container .chat-item.selected .chat-name {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.chatbot-tabs-container .chat-item:not(.selected):hover {
+  background-color: #f1f5f9;
+}
+
+.chatbot-tabs-container .chat-name {
+  font-size: 14px;
+  color: #4b5563;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 1;
+}
+
+/* “+ New chat” button */
+.chatbot-tabs-container .add-button {
   background: none;
   border: none;
   color: #2563eb;
@@ -180,173 +200,235 @@
   padding: 2px;
   line-height: 1;
   transition: color 0.15s ease, opacity 0.3s ease-in-out;
+  margin-left: auto;
 }
 
-.add-button:hover {
-  color: #1d4ed8;
+.chatbot-tabs-container .add-button:hover {
+  color: #1e40af;
 }
 
-.add-button.collapsed {
-  opacity: 0;
-}
-
-/* Main content area adjustments */
-.chatbot-main-layout {
-  display: flex;
-  height: 100vh;
-}
-
-.chatbot-content-area {
-  flex: 1;
-  transition: margin-left 0.3s ease-in-out;
-  margin-left: 280px; /* Default sidebar width */
-}
-
-.chatbot-content-area.sidebar-collapsed {
-  margin-left: 60px; /* Collapsed sidebar width */
-}
-
-/* Alternative approach using CSS Grid for better control */
-.chatbot-page-grid {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  height: 100vh;
-  transition: grid-template-columns 0.3s ease-in-out;
-}
-
-.chatbot-page-grid.sidebar-collapsed {
-  grid-template-columns: 60px 1fr;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .chatbot-tabs-container {
-    position: fixed;
-    left: 0;
-    top: 0;
-    height: 100vh;
-    z-index: 50;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
-  }
-  
-  .chatbot-tabs-container.mobile-open {
-    transform: translateX(0);
-  }
-  
-  .chatbot-content-area {
-    margin-left: 0;
-  }
-  
-  .chatbot-page-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  /* Mobile overlay */
-  .mobile-sidebar-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 40;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-  }
-  
-  .mobile-sidebar-overlay.active {
-    opacity: 1;
-    visibility: visible;
-  }
-}
-
-/* Focus and accessibility improvements */
-.sidebar-item:focus,
-.collapsed-icon:focus,
-.sidebar-toggle-btn:focus {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
-}
-
-/* Animation for smooth transitions */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.sidebar-item {
-  animation: slideIn 0.2s ease-out;
-}
-
-/* Improved hover states */
-.sidebar-item:hover {
-  background-color: #f1f5f9;
-  transform: translateX(2px);
-  transition: all 0.15s ease;
-}
-
-.sidebar-item.active {
-  background-color: #e0e7ff;
-  border-right: 3px solid #2563eb;
-}
-
-/* Loading states */
-.sidebar-loading {
+/* Delete icon (for both chats & bookmarks) */
+.chatbot-tabs-container .delete-button {
+  background: none;
+  border: none;
+  padding: 4px;
+  margin-left: 8px;
+  cursor: pointer;
+  color: #6b7280;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  color: #6b7280;
+  transition: color 0.15s ease;
 }
 
-.sidebar-loading::after {
-  content: '';
-  width: 20px;
-  height: 20px;
-  border: 2px solid #e5e7eb;
-  border-top-color: #2563eb;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+.chatbot-tabs-container .delete-button:hover {
+  color: #dc2626;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.chatbot-tabs-container .delete-button:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
 }
 
-/* Empty state styling */
-.empty-state {
-  padding: 20px;
-  text-align: center;
-  color: #6b7280;
+/* “View all” / “View less” toggle */
+.chatbot-tabs-container .view-toggle {
+  padding: 8px 20px;
+  cursor: pointer;
+  color: #2563eb;
   font-size: 14px;
-  font-style: italic;
+  font-weight: 500;
 }
 
-.empty-state.collapsed {
-  padding: 10px;
+/* ── Bookmarks List ─────────────────────────────────────────────────────── */
+.chatbot-tabs-container .bookmark-list {
+  flex: 1;
 }
 
-/* Scrollbar styling for sidebar content */
-.sidebar-content::-webkit-scrollbar {
-  width: 4px;
+.chatbot-tabs-container .bookmark-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
-.sidebar-content::-webkit-scrollbar-track {
+.chatbot-tabs-container .bookmark-item.selected {
+  background-color: #e0e7ff;
+}
+
+.chatbot-tabs-container .bookmark-item.selected .bookmark-name {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.chatbot-tabs-container .bookmark-item:not(.selected):hover {
+  background-color: #f1f5f9;
+}
+
+.chatbot-tabs-container .bookmark-name {
+  font-size: 14px;
+  color: #4b5563;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 1;
+}
+
+/* ── Collapsed State ────────────────────────────────────────────────────── */
+.chatbot-tabs-container .collapsed-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0;
+  flex: 1;
+}
+
+.chatbot-tabs-container .collapsed-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.chatbot-tabs-container .collapsed-icon:hover {
+  background-color: #f3f4f6;
+}
+
+/* Horizontal dots menu button (beautified) */
+.chatbot-tabs-container .kebab-menu-btn {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  margin-left: 8px;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(37,99,235,0.04);
+  position: relative;
+  z-index: 2;
+  font-size: 20px;
+}
+.chatbot-tabs-container .chat-item:hover .kebab-menu-btn,
+.chatbot-tabs-container .chat-item.selected .kebab-menu-btn,
+.chatbot-tabs-container .bookmark-item:hover .kebab-menu-btn,
+.chatbot-tabs-container .bookmark-item.selected .kebab-menu-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+.chatbot-tabs-container .kebab-menu-btn:hover,
+.chatbot-tabs-container .kebab-menu-btn:focus {
+  background: #f3f4f6;
+  color: #2563eb;
+  box-shadow: 0 2px 8px #2563eb22;
+}
+
+/* Popup menu for chat/bookmark actions (beautified) */
+.chatbot-tabs-container .popup-menu {
+  position: absolute;
+  top: 36px;
+  right: 12px;
+  min-width: 140px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(37,99,235,0.10), 0 1.5px 6px rgba(0,0,0,0.04);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  animation: fadeIn 0.15s;
+}
+.chatbot-tabs-container .popup-menu-item {
+  background: none;
+  border: none;
+  color: #374151;
+  font-size: 15px;
+  text-align: left;
+  padding: 10px 20px 10px 18px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.chatbot-tabs-container .popup-menu-item:hover,
+.chatbot-tabs-container .popup-menu-item:focus {
+  background: #f3f4f6;
+  color: #2563eb;
+}
+.chatbot-tabs-container .popup-menu-item.delete {
+  color: #dc2626;
+}
+.chatbot-tabs-container .popup-menu-item.delete:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Backdrop for closing menu on outside click */
+.chatbot-tabs-container .popup-menu-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 99;
   background: transparent;
 }
 
-.sidebar-content::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 2px;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.sidebar-content::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+/* Make the main list area scrollable, header/footer fixed */
+.chatbot-tabs-container .sidebar-scroll-area {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  /* Prevent horizontal scroll */
+  overflow-x: hidden;
+  /* For smooth scroll and nice look */
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb #f8f9fa;
+}
+
+.chatbot-tabs-container .sidebar-scroll-area::-webkit-scrollbar {
+  width: 8px;
+}
+.chatbot-tabs-container .sidebar-scroll-area::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 6px;
+}
+.chatbot-tabs-container .sidebar-scroll-area::-webkit-scrollbar-track {
+  background: #f8f9fa;
+}
+
+/* Ensure sections don't grow too much individually */
+.chatbot-tabs-container .folders-section,
+.chatbot-tabs-container .chats-section,
+.chatbot-tabs-container .bookmarks-section {
+  flex-shrink: 0;
+}
+
+/* Make sure .sidebar-scroll-area fills available space */
+.chatbot-tabs-container {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Collapsed state: hide scroll area, keep icons centered */
+.chatbot-tabs-container.collapsed .sidebar-scroll-area {
+  display: none;
 }
