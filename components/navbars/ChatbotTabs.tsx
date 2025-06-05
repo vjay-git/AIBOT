@@ -275,7 +275,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
       }`}
     >
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="chatbot-header">
+      {/* <div className="chatbot-header">
         {!isCollapsed && (
           <h2 className="header-title">Chat History</h2>
         )}
@@ -291,14 +291,14 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
           )}
         </button>
       </div>
-
+ */}
       {/* ── Main Content ────────────────────────────────────────────────── */}
       {!isCollapsed ? (
         <div className="sidebar-scroll-area">
           {/* Folders Section */}
           <div className="folders-section">
             <div className="section-header">
-              <svg
+              {/* <svg
                 width="18"
                 height="18"
                 viewBox="0 0 20 20"
@@ -311,7 +311,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                   strokeWidth="1.5"
                   fill="none"
                 />
-              </svg>
+              </svg> */}
               <span className="section-title">Folders</span>
             </div>
 
@@ -358,7 +358,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
           {/* Chats Section */}
           <div className="chats-section">
             <div className="section-header">
-              <svg
+              {/* <svg
                 width="18"
                 height="18"
                 viewBox="0 0 20 20"
@@ -371,7 +371,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                   strokeWidth="1.5"
                   fill="none"
                 />
-              </svg>
+              </svg> */}
               <span className="section-title">Chats</span>
               <button
                 className="add-button"
@@ -442,7 +442,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
           {/* Bookmarks Section */}
           <div className="bookmarks-section">
             <div className="section-header">
-              <svg
+             {/*  <svg
                 width="18"
                 height="18"
                 viewBox="0 0 20 20"
@@ -453,7 +453,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                   d="M5 3a2 2 0 0 0-2 2v12a1 1 0 0 0 1.447.894L10 16.118l5.553 1.776A1 1 0 0 0 17 17V5a2 2 0 0 0-2-2H5zm0 2h10v11.382l-4.553-1.455a1 1 0 0 0-.894 0L5 16.382V5z"
                   fill="#2563eb"
                 />
-              </svg>
+              </svg> */}
               <span className="section-title">Bookmarks</span>
             </div>
 
