@@ -619,6 +619,8 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
     threadId,
     isNewChatContext,
     setNewChatStarted,
+    queryType = 'CHAT', // NEW: Accept queryType
+    mode = null // NEW: Accept mode
   }: {
     msg: string | Blob;
     isAudio: boolean;
@@ -627,6 +629,8 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
     threadId: string | null;
     isNewChatContext: boolean;
     setNewChatStarted: (started: boolean) => void;
+    queryType?: 'CHAT' | 'DB_QUERY' | 'SEARCH';
+    mode?: 'db' | 'web' | null;
   }) {
     let userMessage: ChatMessage;
     let concatenatedQuestion = msg as string;
@@ -660,19 +664,24 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
     let botMessages: ChatMessage[] = [];
     let newThreadId: string | null = threadId;
 
+    // --- NEW: Build API request body with query_type ---
+    const apiRequestBody = {
+      user_id: DEFAULT_USER_ID,
+      question: concatenatedQuestion,
+      dashboard: '',
+      tile: '',
+      thread_id: threadId || '',
+      query_type: queryType // Pass query_type to API
+    };
+
     if (isAudio && msg instanceof Blob) {
       const formData = new FormData();
       formData.append('audio', msg, 'audio.webm');
+      // Optionally add query_type and other fields to formData if backend supports
       response = await fetch('/ask_db', { method: 'POST', body: formData });
       contentType = response.headers.get('Content-Type');
     } else {
-      res = await askDB({
-        user_id: DEFAULT_USER_ID,
-        question: concatenatedQuestion,
-        dashboard: '',
-        tile: '',
-        thread_id: threadId || '',
-      });
+      res = await askDB(apiRequestBody);
       contentType = res?.contentType || 'application/json';
     }
 
@@ -767,9 +776,9 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
     };
   }
 
-// Fixed handleSend function with proper message sequencing
+// --- Update handleSend to accept and forward queryType ---
 const handleSend = useCallback(
-  async (msg: string | Blob, isAudio = false) => {
+  async (msg: string | Blob, queryType = 'CHAT', isAudio = false) => {
     setReplyTo(null);
     setError('');
 
@@ -815,6 +824,7 @@ const handleSend = useCallback(
         threadId,
         isNewChatContext,
         setNewChatStarted,
+        queryType: queryType as 'CHAT' | 'DB_QUERY' | 'SEARCH' // Type assertion to fix error
       });
 
       // Step 2: Handle new thread creation

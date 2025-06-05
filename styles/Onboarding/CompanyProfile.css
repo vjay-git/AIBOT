@@ -1,242 +1,423 @@
-/* === Theme Variables === */
-:root {
-  --primary-color: #0052FF;
-  --primary-hover: #0048E5;
-  --background-light: #FFFFFF;
-  --background-muted: #EEF4FF;
-  --border-color: #E4E4E7;
-  --text-primary: #1A1A1A;
-  --text-secondary: #71717A;
-  --hint-color: #71717A;
-  --logo-bg: #D4E0FF;
+/* Scoped Company Profile Styles */
+.cp-container * {
+  box-sizing: border-box;
 }
 
-/* === Container === */
-.company-profile-container {
-  padding: 32px;
-  max-width: 1200px;
+.cp-container .company-profile-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0f5f7 0%, #ffffff 100%);
+  padding: 2rem 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.cp-container .company-profile-container {
+  max-width: 900px;
   margin: 0 auto;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  animation: cp-slideUp 0.6s ease-out;
 }
 
-/* === Typography === */
-.page-title {
-  font-size: 24px;
+@keyframes cp-slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cp-container .page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 0.5rem 0;
+  padding: 2rem 2rem 0 2rem;
+  background: linear-gradient(135deg, #002fff, #4b75a2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.cp-container .page-description {
+  color: #718096;
+  font-size: 1.1rem;
+  margin: 0 0 2rem 0;
+  padding: 0 2rem;
+  font-weight: 400;
+}
+
+.cp-container .company-profile-form {
+  padding: 0 2rem 2rem 2rem;
+}
+
+.cp-container .form-row {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+}
+
+.cp-container .form-row.single-column {
+  flex-direction: column;
+}
+
+.cp-container .form-column {
+  flex: 1;
+}
+
+.cp-container .logo-column {
+  max-width: 280px;
+}
+
+.cp-container .details-column {
+  flex: 2;
+}
+
+.cp-container .section-title {
+  font-size: 1.4rem;
   font-weight: 600;
-  color: var(--primary-color);
-  margin-bottom: 8px;
-}
-
-.page-description {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 32px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text-primary);
-  margin-bottom: 4px;
-}
-
-.section-description {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-top: 0;
-  margin-bottom: 16px;
-}
-
-/* === Form Layout === */
-.company-profile-form {
+  color: #2d3748;
+  margin: 0 0 0.5rem 0;
   display: flex;
-  flex-direction: column;
-  gap: 40px;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 32px;
-  align-items: flex-start;
+.cp-container .section-title::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 2px;
 }
 
-.domain-section {
-  grid-template-columns: 1fr;
+.cp-container .section-description {
+  color: #718096;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.5;
 }
 
-.form-column {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.logo-column {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-/* === Logo Upload === */
-.logo-upload-container {
+.cp-container .logo-upload-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-  cursor: pointer;
+  gap: 1rem;
 }
 
-.logo-placeholder,
-.logo-preview {
+.cp-container .logo-preview,
+.cp-container .logo-placeholder {
   width: 120px;
   height: 120px;
-  border-radius: 50%;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.logo-placeholder {
-  background-color: var(--logo-bg);
+.cp-container .logo-preview:hover,
+.cp-container .logo-placeholder:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
 }
 
-.logo-letter {
-  font-size: 48px;
-  font-weight: 600;
-  color: var(--primary-color);
-}
-
-.logo-preview img {
+.cp-container .logo-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-/* === Form Fields === */
-.form-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  margin-top: 8px;
+.cp-container .logo-placeholder {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
 }
 
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.cp-container .logo-letter {
+  font-size: 3rem;
+  font-weight: 700;
 }
 
-.form-field label {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-/* === Inputs === */
-.text-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  background-color: var(--background-light);
-  color: var(--text-primary);
-  transition: border-color 0.2s;
-}
-
-.text-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.3);
-}
-
-/* Inputs with icons */
-.input-container {
-  position: relative;
-  width: 100%;
-}
-
-.input-icon {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 16px;
-  color: var(--text-secondary);
-  pointer-events: none;
-}
-
-.text-input.with-icon {
-  padding-left: 40px;
-}
-
-/* === Field Hint === */
-.field-hint {
-  font-size: 12px;
-  color: var(--hint-color);
-  margin-top: 4px;
-}
-
-/* === Buttons === */
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
-
-.save-button {
-  padding: 12px 32px;
-  background-color: var(--primary-color);
+.cp-container .upload-button {
+  background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 14px;
+  padding: 0.875rem 1.75rem;
+  border-radius: 16px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+  text-transform: none;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 140px;
+  justify-content: center;
 }
 
-.save-button:hover,
-.save-button:focus-visible {
-  background-color: var(--primary-hover);
+.cp-container .upload-button::before {
+  content: '📁';
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+.cp-container .upload-button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.cp-container .upload-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5);
+  background: linear-gradient(135deg, #7c93f0, #8b5fb8);
+}
+
+.cp-container .upload-button:hover::after {
+  left: 100%;
+}
+
+.cp-container .upload-button:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.cp-container .form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cp-container .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cp-container .form-field label {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cp-container .input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cp-container .input-icon {
+  position: absolute;
+  left: 1rem;
+  font-size: 1.2rem;
+  z-index: 1;
+}
+
+.cp-container .text-input {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: white;
+  color: #2d3748;
+}
+
+.cp-container .text-input.with-icon {
+  padding-left: 3rem;
+}
+
+.cp-container .text-input:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 72, 229, 0.5);
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
 }
 
-.upload-button {
-  margin-top: 16px;
-  padding: 8px 16px;
-  background-color: var(--background-muted);
-  color: var(--primary-color);
-  border: 1px solid var(--logo-bg);
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+.cp-container .text-input::placeholder {
+  color: #a0aec0;
+}
+
+.cp-container .field-hint {
+  font-size: 0.85rem;
+  color: #718096;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+
+.cp-container .form-actions {
+  margin-top: 2.5rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cp-container .save-button {
+  background: linear-gradient(135deg, #48bb78, #38a169);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
-  text-align: center;
-  transition: background-color 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+  min-width: 150px;
 }
 
-.upload-button:hover,
-.upload-button:focus-visible {
-  background-color: var(--logo-bg);
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(212, 224, 255, 0.8);
+.cp-container .save-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(72, 187, 120, 0.6);
 }
 
-/* === Responsive === */
+.cp-container .save-button:active {
+  transform: translateY(0);
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-  .company-profile-container {
-    padding: 16px;
+  .cp-container .company-profile-page {
+    padding: 1rem;
   }
+  
+  .cp-container .page-title {
+    font-size: 2rem;
+    padding: 1.5rem 1.5rem 0 1.5rem;
+  }
+  
+  .cp-container .page-description {
+    padding: 0 1.5rem;
+  }
+  
+  .cp-container .company-profile-form {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+  }
+  
+  .cp-container .form-row {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .cp-container .logo-column {
+    max-width: none;
+  }
+  
+  .cp-container .form-actions {
+    justify-content: stretch;
+  }
+  
+  .cp-container .save-button {
+    width: 100%;
+  }
+}
 
-  .form-row {
-    grid-template-columns: 1fr;
+@media (max-width: 480px) {
+  .cp-container .logo-preview,
+  .cp-container .logo-placeholder {
+    width: 100px;
+    height: 100px;
   }
+  
+  .cp-container .logo-letter {
+    font-size: 2.5rem;
+  }
+  
+  .cp-container .page-title {
+    font-size: 1.75rem;
+  }
+}
 
-  .logo-column {
-    align-items: center;
-    text-align: center;
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .cp-container .company-profile-container {
+    background: rgba(26, 32, 44, 0.95);
   }
+  
+  .cp-container .page-title {
+    color: #e2e8f0;
+  }
+  
+  .cp-container .section-title {
+    color: #e2e8f0;
+  }
+  
+  .cp-container .page-description,
+  .cp-container .section-description,
+  .cp-container .field-hint {
+    color: #a0aec0;
+  }
+  
+  .cp-container .form-field label {
+    color: #e2e8f0;
+  }
+  
+  .cp-container .text-input {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+  
+  .cp-container .text-input::placeholder {
+    color: #718096;
+  }
+  
+  .cp-container .text-input:focus {
+    border-color: #667eea;
+    background: #2d3748;
+  }
+}
+
+/* Smooth animations */
+.cp-container .text-input,
+.cp-container .upload-button,
+.cp-container .save-button,
+.cp-container .logo-preview,
+.cp-container .logo-placeholder {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus indicators for accessibility */
+.cp-container .upload-button:focus,
+.cp-container .save-button:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Improved hover states */
+.cp-container .text-input:hover {
+  border-color: #cbd5e0;
+}
+
+/* Loading state animation */
+@keyframes cp-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.cp-container .save-button:disabled {
+  animation: cp-pulse 1.5s infinite;
+  cursor: not-allowed;
 }

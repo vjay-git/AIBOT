@@ -692,8 +692,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // UPDATED: Define props for SubcontentBar with folder support
   const subContentBarProps = {
     items: subNavItems || [],
-    selectedId: selectedChatId,
-    onSelect: handleSelectChat,
+    selectedId: ['onboarding', 'llm', 'settings'].includes(activeNav) ? activeSubNav : selectedChatId,
+    onSelect: ['onboarding', 'llm', 'settings'].includes(activeNav) ? handleSubNavSelect : handleSelectChat,
     title: navItems.find(item => item.id === activeNav)?.title || '',
     searchBox: renderSearchBox(),
     filters: renderFilters(),

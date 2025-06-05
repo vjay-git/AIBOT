@@ -125,9 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({ items }) => {
               <div className="tooltip">{item.title}</div>
             </div>
           ))}
-          <div className="add-button">
-            <div className="plus-icon"></div>
-          </div>
+          
         </div>
       </div>
       

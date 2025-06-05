@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } f
 import { motion } from 'framer-motion';
 import { Database, Globe } from 'lucide-react';
 
+type QueryType = 'CHAT' | 'DB_QUERY' | 'SEARCH';
+
 type InputBarProps = {
-  onSend: (msg: string) => void;
+  onSend: (msg: string, queryType: QueryType) => void;
   theme: 'light' | 'dark';
   suggestions?: string[];
 };
@@ -18,7 +20,10 @@ const InputBar = forwardRef(function InputBar(
   const [suggestions, setSuggestions] = useState<string[]>(propSuggestions);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
-  const [mode, setMode] = useState<'db' | 'web'>('db');
+  
+  // Updated mode state - initially null (no selection)
+  const [mode, setMode] = useState<'db' | 'web' | null>(null);
+  
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -51,12 +56,36 @@ const InputBar = forwardRef(function InputBar(
     }
   };
 
+  // Function to determine query type based on mode selection
+  const getQueryType = (): QueryType => {
+    if (mode === 'db') return 'DB_QUERY';
+    if (mode === 'web') return 'SEARCH';
+    return 'CHAT'; // Default for no selection or initial state
+  };
+
+  // Function to get placeholder text based on mode
+  const getPlaceholderText = (): string => {
+    if (mode === 'db') return 'Search for Analysis, Summary, etc...';
+    if (mode === 'web') return 'Search the web...';
+    return 'Type your message...'; // Default placeholder when no mode is selected
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // If no message and no mode selected, send initial "Hi" message
+    if (!message.trim() && mode === null) {
+      onSend('Hi', 'CHAT');
+      return;
+    }
+    
     if (!message.trim()) return;
-    onSend(message);
+    
+    const queryType = getQueryType();
+    onSend(message, queryType);
     setMessage('');
     setShowSuggestions(false);
+    
     // Reset textarea height
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
@@ -90,8 +119,9 @@ const InputBar = forwardRef(function InputBar(
 
   const handleVoiceSend = (audioBlob: Blob) => {
     if (onSend) {
-      // Pass audio blob and isAudio flag
-      (onSend as any)(audioBlob, true);
+      // For voice messages, determine query type and pass audio blob
+      const queryType = getQueryType();
+      (onSend as any)(audioBlob, queryType, true); // Add isAudio flag
     }
   };
 
@@ -125,7 +155,12 @@ const InputBar = forwardRef(function InputBar(
   };
 
   const handleModeChange = (newMode: 'db' | 'web') => {
-    setMode(newMode);
+    // Toggle mode - if same mode is clicked, deselect it
+    if (mode === newMode) {
+      setMode(null);
+    } else {
+      setMode(newMode);
+    }
     inputRef.current?.focus();
   };
 
@@ -190,7 +225,7 @@ const InputBar = forwardRef(function InputBar(
               className={`mode-btn-icon${mode === 'db' ? ' active' : ''}`}
               onClick={() => handleModeChange('db')}
               aria-label="Ask DB"
-              title="Ask DB"
+              title="Ask Database"
             >
               <Database size={20} />
             </button>
@@ -209,7 +244,7 @@ const InputBar = forwardRef(function InputBar(
             value={message}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder={mode === 'db' ? "Search for Analysis, Summary, etc..." : "Search the web..."}
+            placeholder={getPlaceholderText()}
             className={`chatbot-input ${theme}`}
             rows={1}
             style={{ resize: 'none' }}
@@ -225,7 +260,6 @@ const InputBar = forwardRef(function InputBar(
                 <path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 <path d="M9 9h1M9 13h6M9 17h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
-              
             </motion.button>
             <motion.button
               type="button"
@@ -262,8 +296,8 @@ const InputBar = forwardRef(function InputBar(
             </motion.button>
             <motion.button
               type="submit"
-              className={`send-button ${!message.trim() ? 'disabled' : ''}`}
-              disabled={!message.trim()}
+              className={`send-button ${!message.trim() && mode !== null ? 'disabled' : ''}`}
+              disabled={!message.trim() && mode !== null}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >

@@ -132,92 +132,94 @@ const RolesPermissions = () => {
   });
 
   return (
-    <div className="roles-permissions-container">
-      <div className="header-row">
-        <div className="header-content">
-          <h1 className="page-title">Roles & Permissions</h1>
-          <p className="page-description">Manage roles and permissions to control employee access and features within the software.</p>
-        </div>
-        <button className="add-role-button" onClick={handleAddRole}>
-          <span className="button-icon">+</span>
-          Add Role
-        </button>
-      </div>
-      
-      <div className="search-container">
-        <div className="search-input-wrapper">
-          <span className="search-icon">🔍</span>
-          <input 
-            type="text" 
-            placeholder="Search action" 
-            className="search-input"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-      
-      {filteredGroups.map(group => (
-        <div key={group.id} className="permission-group">
-          <div className="group-header">
-            <h2 className="group-title">{group.name}</h2>
-            <p className="group-description">{group.description}</p>
+    <div className="roles-permissions-page">
+      <div className="roles-permissions-container">
+        <div className="header-row">
+          <div className="header-content">
+            <h1 className="page-title">Roles & Permissions</h1>
+            <p className="page-description">Manage roles and permissions to control employee access and features within the software.</p>
           </div>
-          
-          <div className="permissions-table">
-            <div className="table-header">
-              <div className="permission-action-column">{group.name} Actions</div>
-              <div className="role-column">Sub-admin</div>
-              <div className="role-column">Manager</div>
-              <div className="role-column">Employee</div>
+          <button className="add-role-button" onClick={handleAddRole}>
+            <span className="button-icon">+</span>
+            Add Role
+          </button>
+        </div>
+        
+        <div className="search-container">
+          <div className="search-input-wrapper">
+            <span className="search-icon">🔍</span>
+            <input 
+              type="text" 
+              placeholder="Search action" 
+              className="search-input"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+        
+        {filteredGroups.map(group => (
+          <div key={group.id} className="permission-group">
+            <div className="group-header">
+              <h2 className="group-title">{group.name}</h2>
+              <p className="group-description">{group.description}</p>
             </div>
             
-            {group.permissions.map(permission => (
-              <div key={permission.id} className="table-row">
-                <div className="permission-action-column">
-                  <div className="permission-name">{permission.name}</div>
-                  <div className="permission-description">{permission.description}</div>
-                </div>
-                <div className="role-column">
-                  <label className="toggle-switch">
-                    <input 
-                      type="checkbox"
-                      checked={permission.roles.subAdmin}
-                      onChange={() => handleTogglePermission(group.id, permission.id, 'subAdmin')}
-                      className="toggle-input"
-                    />
-                    <span className="toggle-slider"></span>
-                  </label>
-                </div>
-                <div className="role-column">
-                  <label className="toggle-switch">
-                    <input 
-                      type="checkbox"
-                      checked={permission.roles.manager}
-                      onChange={() => handleTogglePermission(group.id, permission.id, 'manager')}
-                      className="toggle-input"
-                    />
-                    <span className="toggle-slider"></span>
-                  </label>
-                </div>
-                <div className="role-column">
-                  <label className="toggle-switch">
-                    <input 
-                      type="checkbox"
-                      checked={permission.roles.employee}
-                      onChange={() => handleTogglePermission(group.id, permission.id, 'employee')}
-                      className="toggle-input"
-                    />
-                    <span className="toggle-slider"></span>
-                  </label>
-                </div>
+            <div className="permissions-table">
+              <div className="table-header">
+                <div className="permission-action-column">{group.name} Actions</div>
+                <div className="role-column">Sub-admin</div>
+                <div className="role-column">Manager</div>
+                <div className="role-column">Employee</div>
               </div>
-            ))}
+              
+              {group.permissions.map(permission => (
+                <div key={permission.id} className="table-row">
+                  <div className="permission-action-column">
+                    <div className="permission-name">{permission.name}</div>
+                    <div className="permission-description">{permission.description}</div>
+                  </div>
+                  <div className="role-column">
+                    <label className="toggle-switch">
+                      <input 
+                        type="checkbox"
+                        checked={permission.roles.subAdmin}
+                        onChange={() => handleTogglePermission(group.id, permission.id, 'subAdmin')}
+                        className="toggle-input"
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div className="role-column">
+                    <label className="toggle-switch">
+                      <input 
+                        type="checkbox"
+                        checked={permission.roles.manager}
+                        onChange={() => handleTogglePermission(group.id, permission.id, 'manager')}
+                        className="toggle-input"
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div className="role-column">
+                    <label className="toggle-switch">
+                      <input 
+                        type="checkbox"
+                        checked={permission.roles.employee}
+                        onChange={() => handleTogglePermission(group.id, permission.id, 'employee')}
+                        className="toggle-input"
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };
 
-export default RolesPermissions; 
+export default RolesPermissions;
