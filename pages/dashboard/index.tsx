@@ -1,180 +1,1015 @@
-import React, { useState, useEffect } from 'react';
-import { fetchDashboardData, askDatabase, AskDatabaseRequest } from '../../utils/apiMocks';
-import { DashboardDataType } from '../../types';
+"use client";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  SelectChangeEvent,
+  TextField,
+} from "@mui/material";
+import Card, { ChartType } from "@/components/Common/cards";
+import dynamic from "next/dynamic";
+import DashboardSidebar from "./DashboardSidebar";
+import { getAiTables, askDBDashboard, dashboardUpdate, getUserDashboard, dashboardCreate } from "../../utils/api";
+import AddIcon from "@mui/icons-material/Add"; // Add this import at the top
 
-// Subnav items for dashboard
-export const dashboardTabs = [
-  { id: 'patient-retention', title: 'Patient Retention Analytics' },
-  { id: 'doctor-performance', title: 'Doctor Performance' },
-  { id: 'patient-demographics', title: 'Patient Demographics' },
-  { id: 'treatment-analytics', title: 'Treatment Analytics' },
-  { id: 'operational-efficiency', title: 'Operational Efficiency' },
-  { id: 'insurance-analytics', title: 'Insurance Analytics' },
-];
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+
+interface ChartConfig {
+  id: string;
+  type: ChartType;
+  data: any;
+  title?: string;
+  layout: any;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  question?: string;
+}
+
+const generateDummyData = (type: ChartType) => {
+  switch (type) {
+    case "bar":
+      return {
+        data: [{ x: ["A", "B", "C"], y: [10, 20, 15], type: "bar" }],
+        layout: { title: "Bar Chart" },
+      };
+    case "line":
+      return {
+        data: [{ x: [1, 2, 3], y: [2, 6, 3], type: "scatter", mode: "lines+markers" }],
+        layout: { title: "Line Chart" },
+      };
+    case "pie":
+      return {
+        data: [{ values: [19, 26, 55], labels: ["A", "B", "C"], type: "pie" }],
+        layout: { title: "Pie Chart" },
+      };
+    case "scatter":
+      return {
+        data: [{ x: [1, 2, 3, 4], y: [10, 15, 13, 17], mode: "markers", type: "scatter" }],
+        layout: { title: "Scatter Plot" },
+      };
+    case "text":
+      return {
+        data: "This is a text block inside a card.",
+        layout: {},
+      };
+  }
+};
+
+const DEFAULT_USER_ID = '56376e63-0377-413d-8c9e-359028e2380d';
+const DEFAULT_USER_NAME = 'johndoes';
 
 const Dashboard = () => {
-  const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState<DashboardDataType | null>(null);
-  const [classDistribution, setClassDistribution] = useState<any>(null);
-  const [classDataLoading, setClassDataLoading] = useState(false);
+  // --- State ---
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardKeys, setDashboardKeys] = useState<string[]>([]);
+  const [defaultDashboardId, setDefaultDashboardId] = useState<string>("");
+  const [selectedDashboard, setSelectedDashboard] = useState<string>("");
+  const [cards, setCards] = useState<ChartConfig[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [newChartType, setNewChartType] = useState<ChartType>("bar");
+  const [newChartTitle, setNewChartTitle] = useState<string>("");
+  const [newChartQuestion, setNewChartQuestion] = useState<string>("");
+  const [editTileId, setEditTileId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteCardId, setDeleteCardId] = useState<string | null>(null);
+  const [addDashboardDialogOpen, setAddDashboardDialogOpen] = useState(false);
+  const [newDashboardTitle, setNewDashboardTitle] = useState("");
+  const [newDashboardDescription, setNewDashboardDescription] = useState("");
+  const [aiTablesOptions, setAiTablesOptions] = useState<{ table_id: string; table_name: string }[]>([]);
+  const [selectedAiTables, setSelectedAiTables] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [pinnedCards, setPinnedCards] = useState<string[]>([]);
+  const [pinWarning, setPinWarning] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
+  // Fetch dashboard data on load
   useEffect(() => {
-    const loadData = async () => {
+    const fetchDashboard = async () => {
+      setLoading(true);
       try {
-        const data = await fetchDashboardData();
+        const apiRes = await getUserDashboard(DEFAULT_USER_NAME);
+        const data = apiRes.data; // <-- updated to use .data
         setDashboardData(data);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
+        const keys = Object.keys(data.dashboards);
+        setDashboardKeys(keys);
+        setDefaultDashboardId(data.default_dashboard);
+        setSelectedDashboard(data.default_dashboard);
+        // Load tiles for default dashboard
+        handleDashboardSelect(data.default_dashboard, data);
       } finally {
         setLoading(false);
       }
     };
-    
-    loadData();
+    fetchDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fetch AI tables when add dashboard dialog opens
   useEffect(() => {
-    const fetchClassDistribution = async () => {
-      setClassDataLoading(true);
-      try {
-        // Using the ask_db API request format
-        const dbRequest: AskDatabaseRequest = {
-          user_id: "4044e57d-1630-44e3-b990-1f8320237cd1",
-          thread_id: "",
-          question: "Show the distribution based on class",
-          dashboard: "dashboard_1",
-          tile: "tile_1"
-        };
-        
-        const response = await askDatabase(dbRequest);
-        if (response?.data) {
-          setClassDistribution(response.data);
-        }
-      } catch (error) {
-        console.error('Error fetching class distribution:', error);
-      } finally {
-        setClassDataLoading(false);
-      }
-    };
-    
-    // Fetch class distribution after main dashboard data is loaded
-    if (!loading && dashboardData) {
-      fetchClassDistribution();
+    if (addDashboardDialogOpen) {
+      getAiTables().then((res) => {
+        // Remove duplicates by table_id
+        const uniqueTables = Array.from(
+          new Map(res.map((t: any) => [t.table_id, t])).values()
+        ) as { table_id: string; table_name: string }[];
+        setAiTablesOptions(uniqueTables);
+      });
     }
-  }, [loading, dashboardData]);
+  }, [addDashboardDialogOpen]);
 
-  const renderPieChart = (data: any) => {
-    if (!data || !data.labels || !data.values) return null;
-    
-    const total = data.values.reduce((sum: number, value: number) => sum + value, 0);
-    
-    return (
-      <div className="pie-chart">
-        <div className="pie-chart-visualization">
-          {/* Simple visualization of the pie chart segments */}
-          <div className="pie-segments">
-            {data.labels.map((label: string, index: number) => (
-              <div key={index} className="pie-segment">
-                <div 
-                  className="segment-color" 
-                  style={{ 
-                    backgroundColor: getColorForIndex(index),
-                    width: '20px',
-                    height: '20px',
-                    borderRadius: '50%',
-                    marginRight: '8px'
-                  }}
-                ></div>
-                <div className="segment-label">
-                  <span className="text-scale-03-medium">{label}:</span>
-                  <span className="text-scale-03-regular"> {data.values[index]}%</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+  // Handle dashboard selection and load tiles as cards
+  const handleDashboardSelect = async (dashboardId: string, dataOverride?: any) => {
+    setLoading(true);
+    try {
+      const data = dataOverride || dashboardData;
+      setSelectedDashboard(dashboardId);
+      const dashboard = data.dashboards[dashboardId];
+      if (!dashboard) return;
+
+      // Get all tile keys except "description"
+      const tileKeys = Object.keys(dashboard).filter((key) => key !== "description");
+
+      // Prepare cards from tiles
+      const newCards: ChartConfig[] = [];
+      let yOffset = 20;
+      let xOffset = 20;
+      const cardWidth = 400;
+      const cardHeight = 300;
+      const margin = 20;
+      const maxWidth = window.innerWidth || 1200; // fallback for SSR
+
+      for (const tileKey of tileKeys) {
+        const tile = dashboard[tileKey];
+        if (!tile?.question) continue;
+
+        // Use position and size from tile if available
+        const position = tile.position || { x: xOffset, y: yOffset };
+        const size = tile.size || { width: cardWidth, height: cardHeight };
+
+        try {
+          const res = await askDBDashboard({
+            user_id: DEFAULT_USER_ID,
+            question: tile.question,
+            dashboard: '',
+            tile: tileKey,
+          });
+
+          // Extract chart data and type from new response structure
+          let chartData: any = {};
+          let chartLayout: any = {};
+          let chartType: ChartType = (tile.graph_type as ChartType) || "bar";
+
+          if (
+            res?.response?.data?.data?.data &&
+            Array.isArray(res.response.data.data.data)
+          ) {
+            // Table/tabular data: show as bar chart instead of table
+            const tableData = res.response.data.data.data;
+            const headers = tableData[0];
+            const rows = tableData.slice(1);
+
+            if (headers.length >= 2) {
+              chartData = [
+                {
+                  x: rows.map((row: any[]) => row[0]),
+                  y: rows.map((row: any[]) => row[1]),
+                  type: "bar",
+                  marker: { color: "#2563eb" },
+                },
+              ];
+              chartLayout = { title: tile.graph_title || tileKey };
+            }
+            newCards.push({
+              id: `${dashboardId}-${tileKey}`,
+              type: chartType,
+              title: tile.graph_title || tileKey,
+              data: chartData,
+              layout: chartLayout,
+              position,
+              size,
+              question: tile.question,
+            });
+            yOffset += 320;
+            continue;
+          } else if (
+            res?.response?.data?.type === "text" &&
+            typeof res.response.data.data === "string"
+          ) {
+            // Handle text response
+            chartType = "text";
+            chartData = res.response.data.data;
+            chartLayout = {};
+          } else if (res?.response?.data?.type) {
+            chartType = res.response.data.type as ChartType;
+          } else {
+            chartType = (tile.graph_type as ChartType) || "bar";
+          }
+          const dummy = generateDummyData(chartType) || { data: [], layout: {} };
+
+          if (!chartData || (Array.isArray(chartData) && chartData.length === 0)) {
+            chartData = dummy.data;
+            chartLayout = dummy.layout;
+          }
+
+          newCards.push({
+            id: `${dashboardId}-${tileKey}`,
+            type: chartType,
+            data: chartData,
+            layout: chartLayout,
+            position,
+            size,
+            question: tile.question,
+          });
+          yOffset += 320;
+        } catch (err) {
+          const chartType: ChartType = (tile.graph_type as ChartType) || "bar";
+          const dummy = generateDummyData(chartType);
+          newCards.push({
+            id: `${dashboardId}-${tileKey}`,
+            type: chartType,
+            data: dummy?.data,
+            layout: dummy?.layout,
+            position,
+            size,
+            question: tile.question,
+          });
+          yOffset += 320;
+        }
+
+        // Calculate next position: try to add to the right, else move to next row
+        xOffset += cardWidth + margin;
+        if (xOffset + cardWidth > maxWidth - 240) { // 240px for sidebar
+          xOffset = 20;
+          yOffset += cardHeight + margin;
+        }
+      }
+      setCards(newCards);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteCard = async (id: string) => {
+    // Remove from cards state
+    setCards(cards.filter((c) => c.id !== id));
+
+    // Remove from dashboardData and update backend
+    const tileKey = id.split("-").slice(1).join("-");
+    if (
+      dashboardData &&
+      dashboardData.dashboards &&
+      dashboardData.dashboards[selectedDashboard] &&
+      dashboardData.dashboards[selectedDashboard][tileKey]
+    ) {
+      delete dashboardData.dashboards[selectedDashboard][tileKey];
+
+      const updatePayload = {
+        default_dashboard: selectedDashboard,
+        dashboards: dashboardData.dashboards, // send all dashboards, not just the edited one
+        ai_tables: dashboardData.ai_tables,   // include ai_tables if your backend expects it
+      };
+      await dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
+    }
+  };
+
+  const editCard = (id: string) => {
+    const newType = prompt(
+      "Enter new chart type (bar, line, pie, scatter, text):",
+      "bar"
+    ) as ChartType;
+    if (newType) {
+      const updatedData = generateDummyData(newType);
+      setCards(cards.map((c) => (c.id === id ? { ...c, type: newType, ...updatedData } : c)));
+    }
+  };
+
+  const handleSelectChange = (event: SelectChangeEvent) => {
+    setNewChartType(event.target.value as ChartType);
+  };
+
+  // --- Pin/Unpin Handlers ---
+  const handlePinCard = (id: string) => {
+    setPinnedCards((prev) => prev.includes(id) ? prev : [...prev, id]);
+  };
+  const handleUnpinCard = (id: string) => {
+    setPinnedCards((prev) => prev.filter((pid) => pid !== id));
+  };
+
+  // --- Modified handleDragStop ---
+  const handleDragStop = (
+    id: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ) => {
+    const margin = 20;
+    const sidebarWidth = 240;
+    const maxWidth = (window.innerWidth || 1200) - sidebarWidth;
+
+    // Update the dragged card's position
+    let updatedCards = cards.map((card) =>
+      card.id === id
+        ? { ...card, position: { x, y }, size: { width, height } }
+        : { ...card }
     );
-  };
-  
-  const getColorForIndex = (index: number): string => {
-    const colors = [
-      '#0052FF', '#4C82FB', '#7BABFF', '#A3D0FF', '#D8EBFF', 
-      '#FF5252', '#FF9D9D', '#FFC107', '#FFE082', '#AFCA09'
-    ];
-    return colors[index % colors.length];
+
+    // Helper to check overlap
+    const isOverlapping = (a: ChartConfig, b: ChartConfig) => {
+      return !(
+        a.position.x + a.size.width <= b.position.x ||
+        a.position.x >= b.position.x + b.size.width ||
+        a.position.y + a.size.height <= b.position.y ||
+        a.position.y >= b.position.y + b.size.height
+      );
+    };
+
+    // Only move the overlapped cards, not the dragged one
+    const draggedCard = updatedCards.find((c) => c.id === id);
+    if (!draggedCard) return;
+
+    // Check for overlap with pinned cards
+    for (const card of updatedCards) {
+      if (card.id !== id && pinnedCards.includes(card.id) && isOverlapping(draggedCard, card)) {
+        setPinWarning("You cannot drag a card over a pinned card.");
+        // Revert the dragged card's position
+        setCards(cards);
+        setTimeout(() => setPinWarning(null), 2000);
+        return;
+      }
+    }
+
+    let moved = true;
+    while (moved) {
+      moved = false;
+      for (let i = 0; i < updatedCards.length; i++) {
+        const card = updatedCards[i];
+        if (card.id === id) continue;
+        if (isOverlapping(draggedCard, card) && !pinnedCards.includes(card.id)) {
+          // Try to move the overlapped card to the right
+          let newX = draggedCard.position.x + draggedCard.size.width + margin;
+          let newY = card.position.y;
+          if (newX + card.size.width <= maxWidth) {
+            updatedCards[i] = {
+              ...card,
+              position: { ...card.position, x: newX }
+            };
+          } else {
+            // Move overlapped card below the dragged card
+            newX = 20;
+            newY = draggedCard.position.y + draggedCard.size.height + margin;
+            updatedCards[i] = {
+              ...card,
+              position: { x: newX, y: newY }
+            };
+          }
+          moved = true;
+        }
+      }
+    }
+
+    setCards(updatedCards);
+
+    // Update the tile's position and size in dashboardData and call dashboardUpdate
+    const tileKey = id.split("-").slice(1).join("-");
+    if (
+      dashboardData &&
+      dashboardData.dashboards &&
+      dashboardData.dashboards[selectedDashboard] &&
+      dashboardData.dashboards[selectedDashboard][tileKey]
+    ) {
+      dashboardData.dashboards[selectedDashboard][tileKey].position = { x, y };
+      dashboardData.dashboards[selectedDashboard][tileKey].size = { width, height };
+
+      const updatePayload = {
+        default_dashboard: selectedDashboard,
+        dashboards: dashboardData.dashboards,
+        ai_tables: dashboardData.ai_tables,
+      };
+      dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
+    }
   };
 
-  if (loading) {
-    return <div className="loading">Loading dashboard data...</div>;
-  }
+  // Open dialog for editing a tile
+  const handleEditTile = (id: string) => {
+    const tile = cards.find((c) => c.id === id);
+    if (tile) {
+      setNewChartType(tile.type);
+      setNewChartTitle(tile.title || "");
+      setNewChartQuestion(tile.question || "");
+      setEditTileId(id);
+      setDialogOpen(true);
+    }
+  };
 
+  // Add or Edit Chart Handler
+  const handleAddOrEditChart = async () => {
+    if (!newChartTitle || !newChartQuestion) return;
+    setLoading(true);
+    try {
+      // Determine dashboard and tile keys
+      const dashboardKey = selectedDashboard;
+      let tileKey = "";
+
+      if (editTileId) {
+        // Editing: extract tile key from id
+        tileKey = editTileId.split("-").slice(1).join("-");
+      } else {
+        // Adding: generate a new tile key in the form tile1, tile2, ...
+        const existingTiles = Object.keys(dashboardData.dashboards[selectedDashboard])
+          .filter((k) => k.startsWith("tile"));
+        let maxNum = 0;
+        existingTiles.forEach((k) => {
+          const num = parseInt(k.replace("tile", ""), 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        });
+        tileKey = `tile${maxNum + 1}`;
+      }
+
+      // Make askDBDashboard call with dashboard and tile keys
+      const res = await askDBDashboard({
+        user_id: DEFAULT_USER_ID,
+        question: newChartQuestion,
+        dashboard: dashboardKey,
+        tile: tileKey
+      });
+
+      // Extract chart data and type from response
+      let chartData: any = {};
+      let chartLayout: any = {};
+      let chartType: ChartType = newChartType;
+
+      if (
+        res?.response?.data?.data?.data &&
+        Array.isArray(res.response.data.data.data)
+      ) {
+        // Table/tabular data: show as bar chart
+        const tableData = res.response.data.data.data;
+        const headers = tableData[0];
+        const rows = tableData.slice(1);
+
+        if (headers.length >= 2) {
+          chartData = [
+            {
+              x: rows.map((row: any[]) => row[0]),
+              y: rows.map((row: any[]) => row[1]),
+              type: newChartType,
+              marker: { color: "#2563eb" },
+            },
+          ];
+          chartLayout = { title: newChartTitle };
+        }
+      } else if (
+        res?.response?.data?.type === "text" &&
+        typeof res.response.data.data === "string"
+      ) {
+        // Handle text response
+        chartType = "text";
+        chartData = res.response.data.data;
+        chartLayout = {};
+      } else if (res?.response?.data?.type) {
+        // chartType = res.response.data.type as ChartType;
+      } else {
+        chartType = newChartType;
+      }
+
+      // Fallback to dummy if no data
+      if (!chartData || (Array.isArray(chartData) && chartData.length === 0)) {
+        const dummy = generateDummyData(chartType);
+        chartData = dummy?.data;
+        chartLayout = dummy?.layout;
+      }
+
+      if (editTileId) {
+        // Edit existing card
+        setCards((prev) =>
+          prev.map((c) =>
+            c.id === editTileId
+              ? {
+                  ...c,
+                  type: chartType,
+                  title: newChartTitle,
+                  data: chartData,
+                  layout: chartLayout,
+                  question: newChartQuestion,
+                }
+              : c
+          )
+        );
+
+        // Update dashboardData in memory
+        dashboardData.dashboards[selectedDashboard][tileKey] = {
+          graph_title: newChartTitle,
+          graph_type: chartType,
+          question: newChartQuestion,
+        };
+
+        const updatePayload = {
+          default_dashboard: selectedDashboard,
+          dashboards: dashboardData.dashboards,
+          ai_tables: dashboardData.ai_tables,
+        };
+
+        await dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
+      } else {
+        // Add new card
+        const cardWidth = 400;
+        const cardHeight = 300;
+        const margin = 20;
+        const sidebarWidth = 240;
+        const maxWidth = (window.innerWidth || 1200) - sidebarWidth;
+
+        let xOffset = 20;
+        let yOffset = 20;
+
+        // Find a position to the right of existing cards, else below
+        outer: for (let y = 20; ; y += cardHeight + margin) {
+          for (let x = 20; x + cardWidth <= maxWidth; x += cardWidth + margin) {
+            const overlap = cards.some(
+              (c) =>
+                Math.abs((c.position?.x || 0) - x) < cardWidth &&
+                Math.abs((c.position?.y || 0) - y) < cardHeight
+            );
+            if (!overlap) {
+              xOffset = x;
+              yOffset = y;
+              break outer;
+            }
+          }
+        }
+
+        const cardId = `${selectedDashboard}-${tileKey}`;
+        const newCard = {
+          id: cardId,
+          type: chartType,
+          title: newChartTitle,
+          data: chartData,
+          layout: chartLayout,
+          position: { x: xOffset, y: yOffset },
+          size: { width: cardWidth, height: cardHeight },
+          question: newChartQuestion,
+        };
+        setCards([...cards, newCard]);
+
+        // Add to dashboardData in memory with position and size
+        dashboardData.dashboards[selectedDashboard][tileKey] = {
+          graph_title: newChartTitle,
+          graph_type: chartType,
+          question: newChartQuestion,
+          position: { x: xOffset, y: yOffset },
+          size: { width: cardWidth, height: cardHeight },
+        };
+
+        const updatePayload = {
+          default_dashboard: selectedDashboard,
+          dashboards: dashboardData.dashboards,
+          ai_tables: dashboardData.ai_tables,
+        };
+
+        await dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
+      }
+
+      // Reset dialog fields and close
+      setNewChartTitle("");
+      setNewChartQuestion("");
+      setNewChartType(newChartType || "bar");
+      setDialogOpen(false);
+      setEditTileId(null);
+    } catch (err) {
+      alert("Failed to add/edit chart. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update deleteCard to just open the dialog
+  const handleDeleteRequest = (id: string) => {
+    setDeleteCardId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  // Actual delete logic
+  const confirmDeleteCard = async () => {
+    if (!deleteCardId) return;
+    setLoading(true);
+    try {
+      setCards(cards.filter((c) => c.id !== deleteCardId));
+
+      const tileKey = deleteCardId.split("-").slice(1).join("-");
+      if (
+        dashboardData &&
+        dashboardData.dashboards &&
+        dashboardData.dashboards[selectedDashboard] &&
+        dashboardData.dashboards[selectedDashboard][tileKey]
+      ) {
+        delete dashboardData.dashboards[selectedDashboard][tileKey];
+
+        const updatePayload = {
+          default_dashboard: selectedDashboard,
+          dashboards: dashboardData.dashboards, // send all dashboards, not just the edited one
+          ai_tables: dashboardData.ai_tables,   // include ai_tables if your backend expects it
+        };
+        await dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
+      }
+    } finally {
+      setLoading(false);
+      setDeleteDialogOpen(false);
+      setDeleteCardId(null);
+    }
+  };
+
+  // --- Add Dashboard handler ---
+  const handleAddDashboard = async () => {
+    if (!newDashboardTitle) return;
+    setLoading(true);
+    try {
+      // --- For create ---
+      if (!dashboardData || !dashboardData.dashboards || Object.keys(dashboardData.dashboards).length === 0) {
+        const now = new Date().toUTCString();
+        let newKeyNum = 1;
+        while (dashboardData?.dashboards?.[`dashboard_${newKeyNum}`]) {
+          newKeyNum++;
+        }
+        const newDashboardKey = `dashboard_${newKeyNum}`;
+        const newDashboards = {
+          [newDashboardKey]: {
+            description: {
+              dashboard_title: newDashboardTitle,
+              dashboard_description: newDashboardDescription,
+              dashboard_last_update: now,
+            },
+          },
+        };
+        // Use selectedAiTables for ai_tables
+        const newAiTables = { [newDashboardKey]: selectedAiTables };
+
+        await dashboardCreate(DEFAULT_USER_NAME, JSON.stringify({
+          username: DEFAULT_USER_NAME,
+          dashboards: newDashboards,
+          ai_tables: newAiTables,
+          default_dashboard: newDashboardKey,
+        }));
+
+        setDashboardData({
+          ...dashboardData,
+          dashboards: newDashboards,
+          ai_tables: newAiTables,
+          default_dashboard: newDashboardKey,
+        });
+        setDashboardKeys([newDashboardKey]);
+        setDefaultDashboardId(newDashboardKey);
+        setSelectedDashboard(newDashboardKey);
+        setAddDashboardDialogOpen(false);
+        setNewDashboardTitle("");
+        setNewDashboardDescription("");
+        setSelectedAiTables([]);
+        return;
+      }
+
+      // --- For update ---
+      let newKeyNum = 1;
+      while (dashboardData.dashboards[`dashboard_${newKeyNum}`]) {
+        newKeyNum++;
+      }
+      const newDashboardKey = `dashboard_${newKeyNum}`;
+      const now = new Date().toUTCString();
+
+      dashboardData.dashboards[newDashboardKey] = {
+        description: {
+          dashboard_title: newDashboardTitle,
+          dashboard_description: newDashboardDescription,
+          dashboard_last_update: now,
+        },
+      };
+      dashboardData.ai_tables[newDashboardKey] = selectedAiTables;
+
+      const updatePayload = {
+        username: DEFAULT_USER_NAME,
+        dashboards: dashboardData.dashboards,
+        ai_tables: dashboardData.ai_tables,
+        default_dashboard: dashboardData.default_dashboard,
+      };
+      await dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
+
+      setDashboardData({ ...dashboardData });
+      setDashboardKeys(Object.keys(dashboardData.dashboards));
+      setAddDashboardDialogOpen(false);
+      setNewDashboardTitle("");
+      setNewDashboardDescription("");
+      setSelectedAiTables([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save new positions and sizes after editing
+  const handleSaveLayout = async () => {
+    if (!dashboardData) return;
+    // Update dashboardData with new positions and sizes
+    const updatedDashboard = { ...dashboardData.dashboards[selectedDashboard] };
+    cards.forEach((card) => {
+      const tileKey = card.id.split("-").slice(1).join("-");
+      if (updatedDashboard[tileKey]) {
+        updatedDashboard[tileKey].position = card.position;
+        updatedDashboard[tileKey].size = card.size;
+      }
+    });
+    dashboardData.dashboards[selectedDashboard] = updatedDashboard;
+
+    const updatePayload = {
+      username: DEFAULT_USER_NAME,
+      dashboards: dashboardData.dashboards,
+      ai_tables: dashboardData.ai_tables,
+      default_dashboard: dashboardData.default_dashboard,
+    };
+    setLoading(true);
+    try {
+      await dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
+      setEditMode(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Sidebar rendering ---
   return (
-    <div className="dashboard-page">
-      <div className="header">
-        <h1 className="header-title text-scale-06">Patient Retention Analytics</h1>
-        <button className="action-button">
-          <span>Add Card</span>
-        </button>
-      </div>
-
-      {dashboardData && (
-        <>
-          <div className="dashboard-cards">
-            <div className="dashboard-card">
-              <div className="card-title">Products</div>
-              <div className="card-value">{dashboardData.metrics.products.toLocaleString()}</div>
-            </div>
-            <div className="dashboard-card">
-              <div className="card-title">Orders</div>
-              <div className="card-value">{dashboardData.metrics.orders.toLocaleString()}</div>
-            </div>
-            <div className="dashboard-card">
-              <div className="card-title">Customers</div>
-              <div className="card-value">{dashboardData.metrics.customers.toLocaleString()}</div>
-            </div>
-          </div>
-
-          <div className="charts-container">
-            <div className="chart">
-              <h2 className="card-title">Class Distribution</h2>
-              {classDataLoading ? (
-                <div className="chart-placeholder">Loading class data...</div>
-              ) : classDistribution ? (
-                renderPieChart(classDistribution)
-              ) : (
-                <div className="chart-placeholder">No class data available</div>
-              )}
-            </div>
-            <div className="chart">
-              <h2 className="card-title">Customers</h2>
-              <div className="chart-placeholder">Donut chart visualization will be here</div>
-            </div>
-          </div>
-
-          <div className="customer-table">
-            <h2 className="card-title">Customers</h2>
-            <p className="table-subtitle">These companies have purchased in the last 12 months.</p>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Company</th>
-                  <th>About</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dashboardData.customerList.map((customer, index) => (
-                  <tr key={index}>
-                    <td>{customer.company}</td>
-                    <td>{customer.about}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+    <Box display="flex" minHeight="100vh" bgcolor="#f9f9f9">
+      {loading && (
+        <div className="oscar-loading-overlay">
+          <div className="oscar-spinner"></div>
+          <div className="oscar-loading-text">Loading...</div>
+        </div>
       )}
-    </div>
+      {/* Sidebar */}
+      {dashboardData && (
+        <DashboardSidebar
+          dashboardKeys={dashboardKeys}
+          dashboards={dashboardData.dashboards}
+          selectedDashboard={selectedDashboard}
+          setSelectedDashboard={(id) => handleDashboardSelect(id)}
+          onAddDashboard={() => setAddDashboardDialogOpen(true)}
+        />
+      )}
+
+      {/* Main content */}
+      <Box flex={1} p={3} position="relative">
+        <Box display="flex" justifyContent="flex-end" alignItems="center" mb={2} gap={2}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setEditTileId(null);
+              setDialogOpen(true);
+            }}
+            sx={{
+              bgcolor: "#0a2fff",
+              color: "#fff",
+              fontWeight: 600,
+              borderRadius: "10px",
+              textTransform: "none",
+              boxShadow: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "&:hover": {
+                bgcolor: "#0039cb"
+              }
+            }}
+          >
+            Add Card
+          </Button>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => setEditMode((prev) => !prev)}
+            sx={{
+              borderColor: "#0a2fff",
+              color: "#0a2fff",
+              fontWeight: 600,
+              borderRadius: "10px",
+              textTransform: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "&:hover": {
+                borderColor: "#0039cb",
+                color: "#0039cb",
+                background: "#f5f8ff"
+              }
+            }}
+          >
+            {editMode ? "Cancel Edit" : "Edit Layout"}
+          </Button>
+          {editMode && (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleSaveLayout}
+              sx={{
+                borderRadius: "10px",
+                textTransform: "none",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              Save Layout
+            </Button>
+          )}
+        </Box>
+
+        <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditTileId(null); }}>
+          <DialogTitle>{editTileId ? "Edit Chart" : "Add Chart"}</DialogTitle>
+          <DialogContent sx={{pt:1}}>
+            <FormControl fullWidth sx={{ mb: 2}}>
+              <InputLabel id="chart-type-label">Chart Type</InputLabel>
+              <Select
+                labelId="chart-type-label"
+                value={newChartType}
+                label="Chart Type"
+                onChange={(e) => setNewChartType(e.target.value as ChartType)}
+              >
+                <MenuItem value="bar">Bar</MenuItem>
+                <MenuItem value="line">Line</MenuItem>
+                <MenuItem value="pie">Pie</MenuItem>
+                <MenuItem value="scatter">Scatter</MenuItem>
+                <MenuItem value="text">Text</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Title"
+              value={newChartTitle}
+              onChange={(e) => setNewChartTitle(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Question"
+              value={newChartQuestion}
+              onChange={(e) => setNewChartQuestion(e.target.value)}
+              multiline
+              minRows={2}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => { setDialogOpen(false); setEditTileId(null); }}>Cancel</Button>
+            <Button variant="contained" onClick={handleAddOrEditChart}>
+              {editTileId ? "Update" : "Add"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Box position="relative" minHeight="100vh" display="flex" bgcolor="#f9f9f9">
+          {cards.map((card) => (
+            <Card
+              key={card.id}
+              {...card}
+              onDelete={handleDeleteRequest}
+              onEdit={handleEditTile}
+              onDragStop={editMode ? handleDragStop : undefined}
+              disableDragging={!editMode}
+              disableResizing={!editMode}
+              isPinned={pinnedCards.includes(card.id)}
+              onPin={() => handlePinCard(card.id)}
+              onUnpin={() => handleUnpinCard(card.id)}
+              // Add this prop for chart type dropdown
+              chartTypeDropdown={
+                <FormControl size="small" sx={{ minWidth: 120, mb: 1 }}>
+                  <Select
+                    value={card.type}
+                    onChange={(e) => {
+                      const newType = e.target.value as ChartType;
+                      const updatedData = generateDummyData(newType);
+                      setCards((prev) =>
+                        prev.map((c) =>
+                          c.id === card.id
+                            ? { ...c, type: newType, ...updatedData }
+                            : c
+                        )
+                      );
+                      // Optionally update dashboardData as well if you want to persist type change
+                      const tileKey = card.id.split("-").slice(1).join("-");
+                      if (
+                        dashboardData &&
+                        dashboardData.dashboards &&
+                        dashboardData.dashboards[selectedDashboard] &&
+                        dashboardData.dashboards[selectedDashboard][tileKey]
+                      ) {
+                        dashboardData.dashboards[selectedDashboard][tileKey].graph_type = newType;
+                      }
+                    }}
+                  >
+                    <MenuItem value="bar">Bar</MenuItem>
+                    <MenuItem value="line">Line</MenuItem>
+                    <MenuItem value="pie">Pie</MenuItem>
+                    <MenuItem value="scatter">Scatter</MenuItem>
+                    <MenuItem value="text">Text</MenuItem>
+                  </Select>
+                </FormControl>
+              }
+            />
+          ))}
+          {/* Pin warning message */}
+          {pinWarning && (
+            <div
+              style={{
+                position: "fixed",
+                top: 80,
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: "#fffbe6",
+                color: "#b26a00",
+                border: "1px solid #ffe082",
+                borderRadius: 8,
+                padding: "12px 32px",
+                zIndex: 3000,
+                fontWeight: 600,
+                fontSize: "1.1rem",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+              }}
+            >
+              {pinWarning}
+            </div>
+          )}
+        </Box>
+        {/* Delete confirmation dialog */}
+        <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+          <DialogTitle>Delete Card</DialogTitle>
+          <DialogContent>
+            Are you sure you want to delete this card?
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button color="error" variant="contained" onClick={confirmDeleteCard}>
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Add Dashboard Dialog */}
+        <Dialog open={addDashboardDialogOpen} onClose={() => setAddDashboardDialogOpen(false)}>
+          <DialogTitle>Add Dashboard</DialogTitle>
+          <DialogContent>
+            <TextField
+              fullWidth
+              label="Dashboard Title"
+              value={newDashboardTitle}
+              onChange={(e) => setNewDashboardTitle(e.target.value)}
+              sx={{ mb: 2, mt: 1 }}
+            />
+            <TextField
+              fullWidth
+              label="Dashboard Description"
+              value={newDashboardDescription}
+              onChange={(e) => setNewDashboardDescription(e.target.value)}
+              multiline
+              minRows={2}
+              sx={{ mb: 2 }}
+            />
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="ai-tables-label">AI Tables</InputLabel>
+              <Select
+                labelId="ai-tables-label"
+                multiple
+                value={selectedAiTables}
+                onChange={(e) => setSelectedAiTables(e.target.value as string[])}
+                label="AI Tables"
+                renderValue={(selected) =>
+                  selected
+                    .map(
+                      (id) =>
+                        aiTablesOptions.find((t) => t.table_id === id)?.table_name || id
+                    )
+                    .join(", ")
+                }
+              >
+                {aiTablesOptions.map((table) => (
+                  <MenuItem key={table.table_id} value={table.table_id}>
+                    {table.table_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAddDashboardDialogOpen(false)}>Cancel</Button>
+            <Button variant="contained" onClick={handleAddDashboard}>
+              Add
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </Box>
   );
 };
 

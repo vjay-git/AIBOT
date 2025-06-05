@@ -596,4 +596,27 @@ export const fetchUserSettings = async (): Promise<UserSettingsType> => {
       lastLogin: '2023-06-18T09:45:22Z'
     }
   };
-}; 
+};
+
+// Mock API method to return dashboard and AI tables info
+export const fetchUserDashboardData = async () => {
+  await delay(400);
+  return {
+    data: {
+      username: "jdoe",
+      default_dashboard: "sales_dashboard",
+      dashboards: {
+        sales_dashboard: {
+          layout: "grid",
+          widgets: ["chart1", "chart2"]
+        }
+      },
+      ai_tables: {
+        sales_data: {
+          description: "Contains monthly sales records",
+          last_updated: "2025-05-01"
+        }
+      }
+    }
+  };
+};

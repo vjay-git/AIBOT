@@ -700,7 +700,7 @@ const convertApiToChatbotData = useCallback((api: any) => {
       <div className={`layout-container ${!shouldShowSubcontentBar ? 'without-subcontent' : ''}`}>
         <Sidebar items={navItems} />
 
-        {shouldShowSubcontentBar && (
+        {(shouldShowSubcontentBar && activeNav !== "dashboard")&&(
           <SubcontentBar {...subContentBarProps} />
         )}
 

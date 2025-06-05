@@ -391,3 +391,120 @@ export async function getQueryById(queryId) {
     throw error;
   }
 }
+
+export async function askDBDashboard({ user_id, question, dashboard = '', tile = '', thread_id = '' }) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/ask_db`;
+  
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id, question, dashboard, tile, thread_id })
+    });
+   if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch chats: ${res.status} ${errorText}`);
+    }
+    
+    const data = await res.json();
+    console.log('getAllChats response:', data);
+    return data;
+  } catch (error) {
+    console.error('Error in getAllChats:', error);
+    throw error;
+  }
+}
+
+export async function dashboardCreate( user_id, dashboardBody ) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/user_dashboard/${user_id}`;
+  
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: dashboardBody
+    });
+   if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch chats: ${res.status} ${errorText}`);
+    }
+    
+    const data = await res.json();
+    console.log('getAllChats response:', data);
+    return data;
+  } catch (error) {
+    console.error('Error in getAllChats:', error);
+    throw error;
+  }
+}
+
+export async function dashboardUpdate(user_id, dashboardBody ) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/user_dashboard/${user_id}`;
+  
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dashboardBody)
+    });
+   if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch chats: ${res.status} ${errorText}`);
+    }
+    
+    const data = await res.json();
+    console.log('getAllChats response:', data);
+    return data;
+  } catch (error) {
+    console.error('Error in getAllChats:', error);
+    throw error;
+  }
+}
+
+
+export async function getUserDashboard(user_name) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/user_dashboard/${user_name}`;
+  
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch user history: ${res.status} ${errorText}`);
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error('Error in fetchAllUserHistoryAPI:', error);
+    throw error;
+  }
+}
+
+export async function getAiTables() {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/userhistory/aitables`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch AI tables: ${res.status} ${errorText}`);
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error('Error in getAiTables:', error);
+    throw error;
+  }
+}
