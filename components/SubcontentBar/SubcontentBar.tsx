@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback } from 'react';
+import React, { ReactNode, useCallback, useRef, useState, useEffect } from 'react';
 import { SubNavItem } from '../../types';
 import ChatbotTabs from '../navbars/ChatbotTabs';
 import OnboardingTabs from '../navbars/OnboardingTabs';
@@ -32,6 +32,9 @@ interface SubcontentBarProps {
   setIsFromBookmarks?: (isFromBookmarks: boolean) => void;
   setIsFromFolder?: (isFromFolder: boolean) => void; // NEW: Add folder context prop
 }
+
+const MIN_WIDTH = 200;
+const MAX_WIDTH = 420;
 
 const SubcontentBar: React.FC<SubcontentBarProps> = ({ 
   items, 
@@ -154,12 +157,46 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
     }
   }, [handleItemSelect]);
 
+  // --- Resizable Sidebar Logic ---
+  const [sidebarWidth, setSidebarWidth] = useState(270); // default width
+  const isResizing = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      // Calculate new width relative to the left edge of the sidebar
+      const sidebarLeft = document.querySelector('.subcontent-container')?.getBoundingClientRect().left || 0;
+      let newWidth = e.clientX - sidebarLeft;
+      newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
+      setSidebarWidth(newWidth);
+    };
+    const handleMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = '';
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const handleResizerMouseDown = (e: React.MouseEvent) => {
+    isResizing.current = true;
+    document.body.style.cursor = 'col-resize';
+    e.preventDefault();
+  };
+
   return (
-    <div className="subcontent-container">
+    <div
+      className="subcontent-container resizable-subcontentbar"
+      style={{ width: sidebarWidth, minWidth: MIN_WIDTH, maxWidth: MAX_WIDTH }}
+    >
       <div className="inner-container">
         {/* Enhanced header with better typography */}
         <div className="subnav-header" role="heading" aria-level={2}>
-          {title}
+            {title}
         </div>
         
         {/* Controls section with improved layout */}
@@ -220,6 +257,14 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
           </div>
         )}
       </div>
+      <div
+        className="subcontentbar-resizer"
+        onMouseDown={handleResizerMouseDown}
+        role="separator"
+        aria-orientation="vertical"
+        tabIndex={0}
+        aria-label="Resize sidebar"
+      />
     </div>
   );
 };

@@ -629,7 +629,7 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
     threadId: string | null;
     isNewChatContext: boolean;
     setNewChatStarted: (started: boolean) => void;
-    queryType?: 'CHAT' | 'DB_QUERY' | 'SEARCH';
+    queryType?: 'CHAT' | 'DB_QUERY' | 'SCRAP';
     mode?: 'db' | 'web' | null;
   }) {
     let userMessage: ChatMessage;
@@ -677,7 +677,12 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
     if (isAudio && msg instanceof Blob) {
       const formData = new FormData();
       formData.append('audio', msg, 'audio.webm');
-      // Optionally add query_type and other fields to formData if backend supports
+      formData.append('user_id', DEFAULT_USER_ID);
+      formData.append('question', concatenatedQuestion);
+      formData.append('dashboard', '');
+      formData.append('tile', '');
+      formData.append('thread_id', threadId || '');
+      formData.append('query_type', queryType); // Ensure query_type is sent for audio
       response = await fetch('/ask_db', { method: 'POST', body: formData });
       contentType = response.headers.get('Content-Type');
     } else {
@@ -824,7 +829,7 @@ const handleSend = useCallback(
         threadId,
         isNewChatContext,
         setNewChatStarted,
-        queryType: queryType as 'CHAT' | 'DB_QUERY' | 'SEARCH' // Type assertion to fix error
+        queryType: queryType as 'CHAT' | 'DB_QUERY' | 'SCRAP' // Always forward queryType
       });
 
       // Step 2: Handle new thread creation

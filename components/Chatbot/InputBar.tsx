@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } f
 import { motion } from 'framer-motion';
 import { Database, Globe } from 'lucide-react';
 
-type QueryType = 'CHAT' | 'DB_QUERY' | 'SEARCH';
+type QueryType = 'CHAT' | 'DB_QUERY' | 'SCRAP';
 
 type InputBarProps = {
   onSend: (msg: string, queryType: QueryType) => void;
@@ -59,7 +59,7 @@ const InputBar = forwardRef(function InputBar(
   // Function to determine query type based on mode selection
   const getQueryType = (): QueryType => {
     if (mode === 'db') return 'DB_QUERY';
-    if (mode === 'web') return 'SEARCH';
+    if (mode === 'web') return 'SCRAP'; // Changed from 'SEARCH' to 'SCRAP'
     return 'CHAT'; // Default for no selection or initial state
   };
 
@@ -72,20 +72,18 @@ const InputBar = forwardRef(function InputBar(
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    // Debug: Log mode and queryType
+    const queryType = getQueryType();
+    console.log('[InputBar] handleSubmit:', { mode, queryType, message });
     // If no message and no mode selected, send initial "Hi" message
     if (!message.trim() && mode === null) {
       onSend('Hi', 'CHAT');
       return;
     }
-    
     if (!message.trim()) return;
-    
-    const queryType = getQueryType();
     onSend(message, queryType);
     setMessage('');
     setShowSuggestions(false);
-    
     // Reset textarea height
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
@@ -121,6 +119,7 @@ const InputBar = forwardRef(function InputBar(
     if (onSend) {
       // For voice messages, determine query type and pass audio blob
       const queryType = getQueryType();
+      console.log('[InputBar] handleVoiceSend:', { mode, queryType });
       (onSend as any)(audioBlob, queryType, true); // Add isAudio flag
     }
   };

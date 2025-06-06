@@ -1,9 +1,12 @@
 /* Main layout container */
 .layout-container {
   display: flex;
+  flex-direction: row;
   min-height: 100vh;
   background-color: #F8F9FB;
   position: relative;
+  padding-left: 84px; /* 64px sidebar + 20px gap */
+  align-items: stretch;
 }
 
 /* Layout without subcontent bar */
@@ -14,6 +17,15 @@
 /* Removes unnecessary margin-left from content-container when in without-subcontent layout */
 .layout-container.without-subcontent .content-container {
   margin-left: 0;
+}
+
+/* Remove any margin or position that pushes nav tabs or subcontent below the sidebar */
+.layout-container .subcontent-container,
+.layout-container .main-content,
+.layout-container .content-container {
+  margin-top: 0 !important;
+  margin-left: 0 !important;
+  position: relative;
 }
 
 /* Global resets */
@@ -168,4 +180,44 @@ body {
   background-color: #EEF4FF;
   color: #0052FF;
   font-weight: 500;
-} 
+}
+
+/* Sidebar overlays content, fixed position */
+.sidebar-container {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 64px;
+  z-index: 999;
+  height: calc(100vh - 40px);
+}
+
+/* SubcontentBar and main content are offset by sidebar width + gap */
+.subcontent-container.resizable-subcontentbar {
+  margin-left: 0;
+  position: relative;
+  z-index: 20;
+}
+
+.main-content {
+  margin-left: 0;
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: #F8F9FB;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-container {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background-color: #F8F9FB;
+  margin-left: 0;
+  max-width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
