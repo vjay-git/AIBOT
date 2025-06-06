@@ -17,7 +17,7 @@ import {
 import Card, { ChartType } from "@/components/Common/cards";
 import dynamic from "next/dynamic";
 import DashboardSidebar from "./DashboardSidebar";
-import { getAiTables, askDBDashboard, dashboardUpdate, getUserDashboard, dashboardCreate } from "../../utils/api";
+import { getAiTables, askDBDashboard, dashboardUpdate, getUserDashboard, dashboardCreate, askDB } from "../../utils/api";
 import AddIcon from "@mui/icons-material/Add"; // Add this import at the top
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
@@ -89,6 +89,8 @@ const Dashboard = () => {
   const [pinnedCards, setPinnedCards] = useState<string[]>([]);
   const [pinWarning, setPinWarning] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  // Add this state to keep a backup of cards before entering edit mode
+  const [cardsBackup, setCardsBackup] = useState<ChartConfig[]>([]);
 
   // Fetch dashboard data on load
   useEffect(() => {
@@ -166,14 +168,13 @@ const Dashboard = () => {
           let chartData: any = {};
           let chartLayout: any = {};
           let chartType: ChartType = (tile.graph_type as ChartType) || "bar";
-
           if (
             res?.response?.data?.data?.data &&
             Array.isArray(res.response.data.data.data)
           ) {
             // Table/tabular data: show as bar chart instead of table
-            const tableData = res.response.data.data.data;
-            const headers = tableData[0];
+             const tableData = res.response.data.data.data;
+             const headers = tableData[0];
             const rows = tableData.slice(1);
 
             if (headers.length >= 2) {
@@ -252,10 +253,23 @@ const Dashboard = () => {
         }
       }
       setCards(newCards);
+      setCardsBackup(newCards);
     } finally {
       setLoading(false);
     }
   };
+
+  // When entering edit mode, save a backup of the current cards
+const handleEditMode = () => {
+  if (!editMode) {
+    setCardsBackup(cards);
+    setEditMode(true);
+  } else {
+    // On cancel, revert cards to backup and exit edit mode
+    setCards(cardsBackup);
+    setEditMode(false);
+  }
+};
 
   const deleteCard = async (id: string) => {
     // Remove from cards state
@@ -339,7 +353,7 @@ const Dashboard = () => {
     // Check for overlap with pinned cards
     for (const card of updatedCards) {
       if (card.id !== id && pinnedCards.includes(card.id) && isOverlapping(draggedCard, card)) {
-        setPinWarning("You cannot drag a card over a pinned card.");
+        setPinWarning("You cannot drag a card over a pinned card. Please unpin it first and try again.");
         // Revert the dragged card's position
         setCards(cards);
         setTimeout(() => setPinWarning(null), 2000);
@@ -741,7 +755,7 @@ const Dashboard = () => {
 
   // --- Sidebar rendering ---
   return (
-    <Box display="flex" minHeight="100vh" bgcolor="#f9f9f9">
+    <Box display="flex" minHeight="100vh" bgcolor="#f9f9f9" sx={{ml: "-5rem"}}>
       {loading && (
         <div className="oscar-loading-overlay">
           <div className="oscar-spinner"></div>
@@ -789,7 +803,7 @@ const Dashboard = () => {
           <Button
             variant="outlined"
             color="primary"
-            onClick={() => setEditMode((prev) => !prev)}
+            onClick={handleEditMode}
             sx={{
               borderColor: "#0a2fff",
               color: "#0a2fff",
@@ -883,40 +897,26 @@ const Dashboard = () => {
               onPin={() => handlePinCard(card.id)}
               onUnpin={() => handleUnpinCard(card.id)}
               // Add this prop for chart type dropdown
-              chartTypeDropdown={
-                <FormControl size="small" sx={{ minWidth: 120, mb: 1 }}>
-                  <Select
-                    value={card.type}
-                    onChange={(e) => {
-                      const newType = e.target.value as ChartType;
-                      const updatedData = generateDummyData(newType);
-                      setCards((prev) =>
-                        prev.map((c) =>
-                          c.id === card.id
-                            ? { ...c, type: newType, ...updatedData }
-                            : c
-                        )
-                      );
-                      // Optionally update dashboardData as well if you want to persist type change
-                      const tileKey = card.id.split("-").slice(1).join("-");
-                      if (
-                        dashboardData &&
-                        dashboardData.dashboards &&
-                        dashboardData.dashboards[selectedDashboard] &&
-                        dashboardData.dashboards[selectedDashboard][tileKey]
-                      ) {
-                        dashboardData.dashboards[selectedDashboard][tileKey].graph_type = newType;
-                      }
-                    }}
-                  >
-                    <MenuItem value="bar">Bar</MenuItem>
-                    <MenuItem value="line">Line</MenuItem>
-                    <MenuItem value="pie">Pie</MenuItem>
-                    <MenuItem value="scatter">Scatter</MenuItem>
-                    <MenuItem value="text">Text</MenuItem>
-                  </Select>
-                </FormControl>
-              }
+              onChartTypeChange={(newType) => {
+                const updatedData = generateDummyData(newType);
+                setCards((prev) =>
+                  prev.map((c) =>
+                    c.id === card.id
+                      ? { ...c, type: newType, ...updatedData }
+                      : c
+                  )
+                );
+                // Optionally update dashboardData as well if you want to persist type change
+                const tileKey = card.id.split("-").slice(1).join("-");
+                if (
+                  dashboardData &&
+                  dashboardData.dashboards &&
+                  dashboardData.dashboards[selectedDashboard] &&
+                  dashboardData.dashboards[selectedDashboard][tileKey]
+                ) {
+                  dashboardData.dashboards[selectedDashboard][tileKey].graph_type = newType;
+                }
+              }}
             />
           ))}
           {/* Pin warning message */}

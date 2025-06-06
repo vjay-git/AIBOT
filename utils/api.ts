@@ -1,5 +1,5 @@
 // Reusable API utility for /ask_db
-export async function askDB({ user_id, question, dashboard = '', tile = '', thread_id = '' }) {
+export async function askDB({ user_id, question, dashboard = '', tile = '', thread_id = '' }: any) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/ask_db`;
   
@@ -82,7 +82,7 @@ export async function askDB({ user_id, question, dashboard = '', tile = '', thre
 }
 
 // Enhanced bookmark API with better error handling
-export async function bookmarkMessageAPI(messageIds, bookmarkName) {
+export async function bookmarkMessageAPI(messageIds: string[], bookmarkName: string) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/userhistory/bookmark`;
   
@@ -109,7 +109,7 @@ export async function bookmarkMessageAPI(messageIds, bookmarkName) {
 }
 
 // Enhanced bookmark update API
-export async function bookmarkMessageAPIUpdate(messageId, bookmarkId) {
+export async function bookmarkMessageAPIUpdate(messageId: string, bookmarkId: any) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/userhistory/bookmark/${bookmarkId}`;
   
@@ -156,7 +156,7 @@ export async function fetchAllUserHistoryAPI() {
 }
 
 // Enhanced fetch thread by ID
-export async function fetchThreadById(threadId) {
+export async function fetchThreadById(threadId: string) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/userhistory/thread/${threadId}`;
   
@@ -179,7 +179,7 @@ export async function fetchThreadById(threadId) {
 }
 
 // 🔧 ENHANCED: Fetch AI Table (folder) data by table_id with better error handling
-export async function fetchAiTableById(tableId) {
+export async function fetchAiTableById(tableId: string) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/userhistory/aitable/${tableId}`;
   
@@ -246,7 +246,7 @@ export async function getAllChats() {
 }
 
 // Enhanced delete thread by ID API
-export async function deletedThreadById(threadId) {
+export async function deletedThreadById(threadId: any) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/userhistory/thread/${threadId}`;
   
@@ -300,7 +300,7 @@ export async function createNewThread(title = 'New Chat') {
 }
 
 // Update thread title
-export async function updateThreadTitle(threadId, newTitle) {
+export async function updateThreadTitle(threadId: any, newTitle: any) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/userhistory/thread/${threadId}`;
   
@@ -324,7 +324,7 @@ export async function updateThreadTitle(threadId, newTitle) {
 }
 
 // Delete a bookmark
-export async function deleteBookmark(bookmarkId) {
+export async function deleteBookmark(bookmarkId: any) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/userhistory/bookmark/${bookmarkId}`;
   
@@ -347,7 +347,7 @@ export async function deleteBookmark(bookmarkId) {
 }
 
 // Get bookmark by ID
-export async function getBookmarkById(bookmarkId) {
+export async function getBookmarkById(bookmarkId: any) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/userhistory/bookmark/${bookmarkId}`;
   
@@ -369,7 +369,7 @@ export async function getBookmarkById(bookmarkId) {
   }
 }
 
-export async function getQueryById(queryId) {
+export async function getQueryById(queryId: any) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/userhistory/query/${queryId}`;
   
@@ -392,7 +392,7 @@ export async function getQueryById(queryId) {
 }
 
 // Generic error handler for API responses
-export function handleApiError(error, context = 'API call') {
+export function handleApiError(error: { name: string; message: string | string[]; }, context = 'API call') {
   console.error(`${context} failed:`, error);
   
   if (error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -421,7 +421,7 @@ export function handleApiError(error, context = 'API call') {
 // Rate limiting utility
 const apiCallQueue = new Map();
 
-export async function throttledApiCall(key, apiFunction, delay = 1000) {
+export async function throttledApiCall(key: any, apiFunction: () => any, delay = 1000) {
   const now = Date.now();
   const lastCall = apiCallQueue.get(key) || 0;
   
@@ -434,29 +434,8 @@ export async function throttledApiCall(key, apiFunction, delay = 1000) {
   return apiFunction();
 }
 
-export async function getQueryById(queryId) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const url = `${baseUrl}/userhistory/query/${queryId}`;
-  
-  try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Failed to fetch bookmark: ${res.status} ${errorText}`);
-    }
-    
-    return await res.json();
-  } catch (error) {
-    console.error('Error in getBookmarkById:', error);
-    throw error;
-  }
-}
 
-export async function askDBDashboard({ user_id, question, dashboard = '', tile = '', thread_id = '' }) {
+export async function askDBDashboard({ user_id, question, dashboard = '', tile = '', thread_id = '' }:any) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/ask_db`;
   
@@ -480,7 +459,7 @@ export async function askDBDashboard({ user_id, question, dashboard = '', tile =
   }
 }
 
-export async function dashboardCreate( user_id, dashboardBody ) {
+export async function dashboardCreate( user_id: string, dashboardBody: string ) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/user_dashboard/${user_id}`;
   
@@ -504,7 +483,7 @@ export async function dashboardCreate( user_id, dashboardBody ) {
   }
 }
 
-export async function dashboardUpdate(user_id, dashboardBody ) {
+export async function dashboardUpdate(user_id: string, dashboardBody: { default_dashboard: any; dashboards: any; ai_tables: any; username?: string; } ) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/user_dashboard/${user_id}`;
   
@@ -529,7 +508,7 @@ export async function dashboardUpdate(user_id, dashboardBody ) {
 }
 
 
-export async function getUserDashboard(user_name) {
+export async function getUserDashboard(user_name: string) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/user_dashboard/${user_name}`;
   
