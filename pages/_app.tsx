@@ -56,19 +56,23 @@ import './reports/Reports.css';
 import './schema/Schema.css';
 import './user-settings/UserSettings.css';
 
+//Login
+import '../components/Login/Login.css';
+
 // Loading spinner styles
 import '../styles/LoadingSpinner.css';
 
 function MyApp({ Component, pageProps }: AppProps) {
   const loading = useOscarLoading();
 
+  // Use getLayout if defined, otherwise wrap in Layout
+  const getLayout = (Component as any).getLayout || ((page: React.ReactNode) => <Layout>{page}</Layout>);
+
   return (
     <>
-    <title>SAP Echo</title>
+      <title>SAP Echo</title>
       {loading && <div className="oscar-loading-overlay"><div className="oscar-spinner"></div><div className="oscar-loading-text">Loading...</div></div>}
-      <Layout>
-        <Component {...pageProps} />
-      </Layout>
+      {getLayout(<Component {...pageProps} />)}
     </>
   );
 }

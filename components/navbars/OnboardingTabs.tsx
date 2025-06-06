@@ -10,7 +10,7 @@ const onboardingTabs = [
   { id: 'user-management', title: 'User Management' },
   { id: 'tools-integration', title: 'Tools Integration' },
   { id: 'roles-permissions', title: 'Roles & Permissions' },
-  { id: 'subscription-plan', title: 'Subscription Plan' },
+  // { id: 'subscription-plan', title: 'Subscription Plan' },
   { id: 'license-management', title: 'License Management' },
 ];
 

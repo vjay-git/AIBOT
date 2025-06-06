@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback } from 'react';
+import React, { ReactNode, useCallback, useRef, useState, useEffect } from 'react';
 import { SubNavItem } from '../../types';
 import ChatbotTabs from '../navbars/ChatbotTabs';
 import OnboardingTabs from '../navbars/OnboardingTabs';
@@ -28,9 +28,13 @@ interface SubcontentBarProps {
   onDeleteFolder?: (folderId: string) => void;
   onDeleteChat?: (chatId: string) => void;
   onToggleBookmark?: (chatId: string) => void;
-  refreshChats?: () => void; // Add refresh function for chat data
-  setIsFromBookmarks?: (isFromBookmarks: boolean) => void; // New prop to set bookmark state
+  refreshChats?: () => void;
+  setIsFromBookmarks?: (isFromBookmarks: boolean) => void;
+  setIsFromFolder?: (isFromFolder: boolean) => void; // NEW: Add folder context prop
 }
+
+const MIN_WIDTH = 200;
+const MAX_WIDTH = 420;
 
 const SubcontentBar: React.FC<SubcontentBarProps> = ({ 
   items, 
@@ -53,7 +57,8 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
   onDeleteChat,
   onToggleBookmark,
   refreshChats,
-  setIsFromBookmarks
+  setIsFromBookmarks,
+  setIsFromFolder // NEW: Add folder context prop
 }) => {
   // Enhanced section tabs renderer with better error handling
   const renderSectionTabs = useCallback(() => {
@@ -74,6 +79,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
               onSelect={onSelect}
               isBookmarked={isBookmarked}
               setIsFromBookmarks={setIsFromBookmarks}
+              setIsFromFolder={setIsFromFolder} // NEW: Pass folder context
               onNewChat={onNewChat}
               onCreateFolder={onCreateFolder}
               onMoveToFolder={onMoveToFolder}
@@ -81,7 +87,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
               onDeleteFolder={onDeleteFolder}
               onDeleteChat={onDeleteChat}
               onToggleBookmark={onToggleBookmark}
-              refreshChats={refreshChats} // Pass refresh function
+              refreshChats={refreshChats}
             />
           );
         
@@ -121,7 +127,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
   }, [
     sectionType, selectedId, onSelect, chats, folders, bookmarks, isBookmarked,
     onNewChat, onCreateFolder, onMoveToFolder, onRenameFolder, onDeleteFolder,
-    onDeleteChat, onToggleBookmark, refreshChats
+    onDeleteChat, onToggleBookmark, refreshChats, setIsFromBookmarks, setIsFromFolder
   ]);
 
   // Check if we should show the default items list
@@ -151,12 +157,46 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
     }
   }, [handleItemSelect]);
 
+  // --- Resizable Sidebar Logic ---
+  const [sidebarWidth, setSidebarWidth] = useState(270); // default width
+  const isResizing = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      // Calculate new width relative to the left edge of the sidebar
+      const sidebarLeft = document.querySelector('.subcontent-container')?.getBoundingClientRect().left || 0;
+      let newWidth = e.clientX - sidebarLeft;
+      newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
+      setSidebarWidth(newWidth);
+    };
+    const handleMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = '';
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const handleResizerMouseDown = (e: React.MouseEvent) => {
+    isResizing.current = true;
+    document.body.style.cursor = 'col-resize';
+    e.preventDefault();
+  };
+
   return (
-    <div className="subcontent-container">
+    <div
+      className="subcontent-container resizable-subcontentbar"
+      style={{ width: sidebarWidth, minWidth: MIN_WIDTH, maxWidth: MAX_WIDTH }}
+    >
       <div className="inner-container">
         {/* Enhanced header with better typography */}
         <div className="subnav-header" role="heading" aria-level={2}>
-          {title}
+            {title}
         </div>
         
         {/* Controls section with improved layout */}
@@ -217,6 +257,14 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
           </div>
         )}
       </div>
+      <div
+        className="subcontentbar-resizer"
+        onMouseDown={handleResizerMouseDown}
+        role="separator"
+        aria-orientation="vertical"
+        tabIndex={0}
+        aria-label="Resize sidebar"
+      />
     </div>
   );
 };

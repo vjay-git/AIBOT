@@ -1,19 +1,21 @@
 .main-content {
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
   height: 100vh;
   overflow: hidden;
-  padding-left: 6px; /* Reduced from 16px to 6px for more space */
+  padding-left: 0; /* Remove left padding for more width */
   transition: padding-left var(--dur-short) var(--ease-spring);
+  max-width: 100vw;
 }
 
 .content-container {
-  flex: 1;
-  padding: 20px 16px 24px 16px; /* Reduce horizontal padding */
+  flex: 1 1 0;
+  padding: 24px 24px 32px 24px; /* Increase horizontal padding for more spacious look */
   height: 100vh;
   overflow-y: auto;
   background-color: #F8F9FB;
-  margin-left: 0; /* Remove margin, let the layout flex container handle spacing */
+  margin-left: 0;
+  max-width: 100vw;
 }
 
 /* When SubcontentBar is not present (adjusted in Layout.css) */

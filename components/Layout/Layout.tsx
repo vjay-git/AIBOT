@@ -140,151 +140,164 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
 
-// Updated Layout.tsx convertApiToChatbotData function
+  // NEW: Add folder and bookmark context states
+  const [isFromBookmarks, setIsFromBookmarks] = useState(false);
+  const [isFromFolder, setIsFromFolder] = useState(false);
 
-// Enhanced function to convert API data with better error handling
-const convertApiToChatbotData = useCallback((api: any) => {
-  try {
-    // 1. Build unique folders from aitables
-    const folders = (api.aitables || []).reduce((acc: any[], t: any) => {
-      if (t.table_id && !acc.find((f: any) => f.id === t.table_id)) {
-        acc.push({ id: t.table_id, name: t.table_name || 'Unnamed Table' });
-      }
-      return acc;
-    }, []);
+  // 🔧 ENHANCED: Updated Layout.tsx convertApiToChatbotData function with better debugging
+  const convertApiToChatbotData = useCallback((api: any) => {
+    try {
+      console.log('🔄 Converting API data to chatbot format...');
+      console.log('📊 Raw API data:', api);
 
-    // 2. Convert api.bookmarks to ChatFolder[] with proper handling of query_id formats
-    const bookmarks: ChatFolder[] = (api.bookmarks || []).map((bookmark: any) => ({
-      id: bookmark.bookmark_id || bookmark.id || '',
-      name: bookmark.bookmark_name || bookmark.name || 'Unnamed Bookmark',
-      bookmark_id: bookmark.bookmark_id,
-      bookmark_name: bookmark.bookmark_name,
-      queries: (bookmark.queries || []).map((q: any) => {
-        // Handle both string and array formats for query_id
-        let queryId: string = '';
-        if (typeof q.query_id === 'string') {
-          queryId = q.query_id;
-        } else if (Array.isArray(q.query_id)) {
-          // Take first non-null element from array
-          queryId = q.query_id.find((id: any) => id !== null) || '';
+      // 1. Build unique folders from aitables
+      const folders = (api.aitables || []).reduce((acc: any[], t: any) => {
+        if (t.table_id && !acc.find((f: any) => f.id === t.table_id)) {
+          acc.push({ id: t.table_id, name: t.table_name || 'Unnamed Table' });
         }
-        
-        return {
-          query_id: queryId,
-          messages: q.messages || []
-        };
-      }).filter((q: any) => q.query_id) // Remove entries with empty query_id
-    }));
+        return acc;
+      }, []);
 
-    // 3. Build a map of query_id -> table_id (folder id) from aitables.queries
-    const queryToTableId: Record<string, string> = {};
-    (api.aitables || []).forEach((table: any) => {
-      (table.queries || []).forEach((query: any) => {
-        if (query.query_id) {
-          queryToTableId[query.query_id] = table.table_id;
-        }
-      });
-    });
+      console.log('🗂️ Processed folders:', folders);
 
-    // 4. Build a map of query_id -> messages (from api.query)
-    const queryMap: Record<string, any[]> = {};
-    (api.query || []).forEach((q: any) => {
-      if (q.query_id && q.message) {
-        if (Array.isArray(q.message[0])) {
-          queryMap[q.query_id] = q.message[0];
-        } else {
-          queryMap[q.query_id] = q.message;
-        }
-      }
-    });
+      // 2. Convert api.bookmarks to ChatFolder[] with proper handling of query_id formats
+      const bookmarks: ChatFolder[] = (api.bookmarks || []).map((bookmark: any) => ({
+        id: bookmark.bookmark_id || bookmark.id || '',
+        name: bookmark.bookmark_name || bookmark.name || 'Unnamed Bookmark',
+        bookmark_id: bookmark.bookmark_id,
+        bookmark_name: bookmark.bookmark_name,
+        queries: (bookmark.queries || []).map((q: any) => {
+          // Handle both string and array formats for query_id
+          let queryId: string = '';
+          if (typeof q.query_id === 'string') {
+            queryId = q.query_id;
+          } else if (Array.isArray(q.query_id)) {
+            // Take first non-null element from array
+            queryId = q.query_id.find((id: any) => id !== null) || '';
+          }
+          
+          return {
+            query_id: queryId,
+            messages: q.messages || []
+          };
+        }).filter((q: any) => q.query_id) // Remove entries with empty query_id
+      }));
 
-    // 5. Build a map of query_id -> bookmark_id with proper handling
-    const queryToBookmarkId: Record<string, string> = {};
-    if (api.bookmarks && Array.isArray(api.bookmarks)) {
-      api.bookmarks.forEach((bookmark: any) => {
-        if (bookmark.queries && Array.isArray(bookmark.queries)) {
-          bookmark.queries.forEach((q: any) => {
-            let queryId: string = '';
-            
-            // Handle different query_id formats
-            if (typeof q.query_id === 'string') {
-              queryId = q.query_id;
-            } else if (Array.isArray(q.query_id)) {
-              queryId = q.query_id.find((id: any) => id !== null) || '';
-            }
-            
-            if (queryId) {
-              queryToBookmarkId[queryId] = bookmark.bookmark_id || bookmark.id || '';
-            }
-          });
-        }
-      });
-    }
+      console.log('🔖 Processed bookmarks:', bookmarks);
 
-    // 6. Build chatSessions from threads, grouping messages by query_id
-    const chatSessions = (api.thread || [])
-      .filter((thread: any) => {
-        // Skip threads whose title starts with "SQL Generated by LLM:"
-        return !(typeof thread.thread_name === "string" && thread.thread_name.startsWith("SQL Generated by LLM:"));
-      })
-      .map((thread: any, idx: number) => {
-        let messages: any[] = [];
-        let folderId: string | undefined = undefined;
-        let bookmarkId: string | undefined = undefined;
-
-        (thread.querydetails || []).forEach((qd: any) => {
-          if (qd.query_id && queryMap[qd.query_id]) {
-            if (!folderId && queryToTableId[qd.query_id]) {
-              folderId = queryToTableId[qd.query_id];
-            }
-            // If any query_id in this thread is bookmarked, assign its bookmark id
-            if (!bookmarkId && queryToBookmarkId[qd.query_id]) {
-              bookmarkId = queryToBookmarkId[qd.query_id];
-            }
-            const groupedMessages = queryMap[qd.query_id]
-              .filter((msg: any) => !(typeof msg.content === "string" && msg.content.startsWith("SQL Generated by LLM:")))
-              .map((msg: any, i: number) => ({
-                id: `msg-${qd.query_id}-${i}`,
-                sender: msg.role === "user" ? "user" : "bot",
-                text: msg.content || (msg.results?.data || msg.results || ""),
-                timestamp: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000 + i * 10000).toISOString(),
-                queryId: qd.query_id,
-                bookmarked: !!queryToBookmarkId[qd.query_id] // Set bookmark status
-              }));
-            if (groupedMessages.length > 0) {
-              messages.push({
-                queryId: qd.query_id,
-                messages: groupedMessages
-              });
-            }
-          } else {
-            console.warn(`No messages found for query_id: ${qd.query_id} in thread: ${thread.thread_id}`);
+      // 3. Build a map of query_id -> table_id (folder id) from aitables.queries
+      const queryToTableId: Record<string, string> = {};
+      (api.aitables || []).forEach((table: any) => {
+        (table.queries || []).forEach((query: any) => {
+          if (query.query_id) {
+            queryToTableId[query.query_id] = table.table_id;
           }
         });
+      });
 
-        return {
-          id: thread.thread_id,
-          title: thread.thread_name,
-          folderId,
-          bookmarkId,
-          bookmarked: !!bookmarkId, // Add bookmarked flag
-          createdAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
-          messages,
-          queryIds: (thread.querydetails || []).map((qd: any) => qd.query_id).filter(Boolean)
-        };
-      })
-      .filter(Boolean); // Remove null/undefined entries
+      // 4. Build a map of query_id -> messages (from api.query)
+      const queryMap: Record<string, any[]> = {};
+      (api.query || []).forEach((q: any) => {
+        if (q.query_id && q.message) {
+          if (Array.isArray(q.message[0])) {
+            queryMap[q.query_id] = q.message[0];
+          } else {
+            queryMap[q.query_id] = q.message;
+          }
+        }
+      });
 
-    console.log('Processed bookmarks:', bookmarks);
-    console.log('Processed chat sessions:', chatSessions.length);
-    
-    return { chatSessions, folders, bookmarks };
-  } catch (error) {
-    console.error('Error converting API data:', error);
-    return { chatSessions: [], folders: [], bookmarks: [] };
-  }
-}, []);
+      // 5. Build a map of query_id -> bookmark_id with proper handling
+      const queryToBookmarkId: Record<string, string> = {};
+      if (api.bookmarks && Array.isArray(api.bookmarks)) {
+        api.bookmarks.forEach((bookmark: any) => {
+          if (bookmark.queries && Array.isArray(bookmark.queries)) {
+            bookmark.queries.forEach((q: any) => {
+              let queryId: string = '';
+              
+              // Handle different query_id formats
+              if (typeof q.query_id === 'string') {
+                queryId = q.query_id;
+              } else if (Array.isArray(q.query_id)) {
+                queryId = q.query_id.find((id: any) => id !== null) || '';
+              }
+              
+              if (queryId) {
+                queryToBookmarkId[queryId] = bookmark.bookmark_id || bookmark.id || '';
+              }
+            });
+          }
+        });
+      }
+
+      // 6. Build chatSessions from threads, grouping messages by query_id
+      const chatSessions = (api.thread || [])
+        .filter((thread: any) => {
+          // Skip threads whose title starts with "SQL Generated by LLM:"
+          return !(typeof thread.thread_name === "string" && thread.thread_name.startsWith("SQL Generated by LLM:"));
+        })
+        .map((thread: any, idx: number) => {
+          let messages: any[] = [];
+          let folderId: string | undefined = undefined;
+          let bookmarkId: string | undefined = undefined;
+
+          (thread.querydetails || []).forEach((qd: any) => {
+            if (qd.query_id && queryMap[qd.query_id]) {
+              if (!folderId && queryToTableId[qd.query_id]) {
+                folderId = queryToTableId[qd.query_id];
+              }
+              // If any query_id in this thread is bookmarked, assign its bookmark id
+              if (!bookmarkId && queryToBookmarkId[qd.query_id]) {
+                bookmarkId = queryToBookmarkId[qd.query_id];
+              }
+              const groupedMessages = queryMap[qd.query_id]
+                .filter((msg: any) => !(typeof msg.content === "string" && msg.content.startsWith("SQL Generated by LLM:")))
+                .map((msg: any, i: number) => ({
+                  id: `msg-${qd.query_id}-${i}`,
+                  sender: msg.role === "user" ? "user" : "bot",
+                  text: msg.content || (msg.results?.data || msg.results || ""),
+                  timestamp: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000 + i * 10000).toISOString(),
+                  queryId: qd.query_id,
+                  bookmarked: !!queryToBookmarkId[qd.query_id] // Set bookmark status
+                }));
+              if (groupedMessages.length > 0) {
+                messages.push({
+                  queryId: qd.query_id,
+                  messages: groupedMessages
+                });
+              }
+            } else {
+              console.warn(`⚠️ No messages found for query_id: ${qd.query_id} in thread: ${thread.thread_id}`);
+            }
+          });
+
+          return {
+            id: thread.thread_id,
+            title: thread.thread_name,
+            folderId,
+            bookmarkId,
+            bookmarked: !!bookmarkId, // Add bookmarked flag
+            createdAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - (idx + 1) * 24 * 60 * 60 * 1000).toISOString(),
+            messages,
+            queryIds: (thread.querydetails || []).map((qd: any) => qd.query_id).filter(Boolean)
+          };
+        })
+        .filter(Boolean); // Remove null/undefined entries
+
+      console.log('💬 Processed chat sessions:', chatSessions.length);
+      console.log('📈 Summary:', {
+        folders: folders.length,
+        bookmarks: bookmarks.length,
+        chatSessions: chatSessions.length
+      });
+      
+      return { chatSessions, folders, bookmarks };
+    } catch (error) {
+      console.error('❌ Error converting API data:', error);
+      return { chatSessions: [], folders: [], bookmarks: [] };
+    }
+  }, []);
 
   const [chatData, setChatData] = useState<any | null>(null);
 
@@ -292,15 +305,20 @@ const convertApiToChatbotData = useCallback((api: any) => {
   const loadChatbotData = useCallback(async () => {
     if (activeNav !== 'chatbot') return;
 
+    console.log('🔄 Loading chatbot data...');
     setIsLoading(true);
     setError(null);
 
     try {
       const data = await getAllChats();
-      console.log('Chatbot data loaded:', data);
+      console.log('📡 Raw chatbot data received:', data);
       setChatData(data);
       const chatbotData = convertApiToChatbotData(data);
-      console.log("Processed data - bookmarks:", chatbotData.bookmarks, "chats:", chatbotData.chatSessions.length);
+      console.log("✅ Processed chatbot data:", {
+        folders: chatbotData.folders.length,
+        bookmarks: chatbotData.bookmarks.length,
+        chats: chatbotData.chatSessions.length
+      });
       
       setChatbotChats(chatbotData.chatSessions || []);
       setChatbotFolders(chatbotData.folders || []);
@@ -311,7 +329,7 @@ const convertApiToChatbotData = useCallback((api: any) => {
         setSelectedChatId('');
       }
     } catch (err) {
-      console.error('Error loading chatbot data:', err);
+      console.error('❌ Error loading chatbot data:', err);
       setError(err instanceof Error ? err : new Error('Failed to load chatbot data'));
     } finally {
       setIsLoading(false);
@@ -342,7 +360,7 @@ const convertApiToChatbotData = useCallback((api: any) => {
 
   // Enhanced chat selection handler
   const handleSelectChat = useCallback((id: string) => {
-    console.log(`Selected chat ID layout: ${id}`);
+    console.log(`💬 Chat selected in Layout: ${id}`);
     setSelectedChatId(id);
     setSelectedNewChatId(''); // Clear new chat when selecting existing chat
     
@@ -366,6 +384,7 @@ const convertApiToChatbotData = useCallback((api: any) => {
   // Enhanced new chat handler
   const handleNewChat = useCallback(async () => {
     try {
+      console.log('🆕 Creating new chat...');
       // Create a new chat session
       const newChat: ChatSession = {
         id: `chat-${Date.now()}`,
@@ -387,7 +406,7 @@ const convertApiToChatbotData = useCallback((api: any) => {
         isNewChat: true
       });
     } catch (error) {
-      console.error('Error creating new chat:', error);
+      console.error('❌ Error creating new chat:', error);
       setError(error instanceof Error ? error : new Error('Failed to create new chat'));
     }
   }, []);
@@ -487,7 +506,7 @@ const convertApiToChatbotData = useCallback((api: any) => {
   // Enhanced refresh function for chats
   const refreshChats = useCallback(async () => {
     try {
-      console.log('Refreshing chat data...');
+      console.log('🔄 Refreshing chat data...');
       await loadChatbotData();
     } catch (error) {
       console.error('Error refreshing chats:', error);
@@ -669,13 +688,12 @@ const convertApiToChatbotData = useCallback((api: any) => {
       </div>
     );
   }
- const [isFromBookmarks, setIsFromBookmarks] = useState(false);
 
-  // UPDATED: Define props for SubcontentBar with refreshChats
+  // UPDATED: Define props for SubcontentBar with folder support
   const subContentBarProps = {
     items: subNavItems || [],
-    selectedId: selectedChatId,
-    onSelect: handleSelectChat,
+    selectedId: ['onboarding', 'llm', 'settings'].includes(activeNav) ? activeSubNav : selectedChatId,
+    onSelect: ['onboarding', 'llm', 'settings'].includes(activeNav) ? handleSubNavSelect : handleSelectChat,
     title: navItems.find(item => item.id === activeNav)?.title || '',
     searchBox: renderSearchBox(),
     filters: renderFilters(),
@@ -684,7 +702,8 @@ const convertApiToChatbotData = useCallback((api: any) => {
     chats: chatbotChats,
     folders: chatbotFolders,
     bookmarks: chatbotBookmarks,
-    setIsFromBookmarks: setIsFromBookmarks, 
+    setIsFromBookmarks: setIsFromBookmarks,
+    setIsFromFolder: setIsFromFolder,
     onNewChat: handleNewChat,
     isBookmarked: handleIsBookmarked,
     onCreateFolder: handleCreateFolder,
@@ -693,11 +712,22 @@ const convertApiToChatbotData = useCallback((api: any) => {
     onDeleteFolder: handleDeleteFolder,
     onDeleteChat: handleDeleteChat,
     onToggleBookmark: handleToggleBookmark,
-    refreshChats: refreshChats // ADD: Pass refresh function
+    refreshChats: refreshChats
   };
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    const handleSidebarToggle = (e: any) => {
+      setSidebarCollapsed(!!(e.detail && e.detail.collapsed));
+    };
+    window.addEventListener('sidebarToggle', handleSidebarToggle);
+    return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
+  }, []);
+
   return (
     <AppStateContext.Provider value={appStateValue}>
-      <div className={`layout-container ${!shouldShowSubcontentBar ? 'without-subcontent' : ''}`}>
+      <div className={`layout-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${!shouldShowSubcontentBar ? 'without-subcontent' : ''}`}>
         <Sidebar items={navItems} />
 
         {(shouldShowSubcontentBar && activeNav !== "dashboard")&&(
@@ -715,6 +745,7 @@ const convertApiToChatbotData = useCallback((api: any) => {
           refreshBookmarks={refreshBookmarks}
           chatData={chatData}
           isFromBookmarks={isFromBookmarks}
+          isFromFolder={isFromFolder}
         >
           {children}
         </MainContent>

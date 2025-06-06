@@ -1,111 +1,101 @@
-/* === Theme Variables === */
-:root {
-  --primary-color: #0052FF;
-  --primary-hover: #0048E5;
-  --background-light: #FFFFFF;
-  --background-muted: #EEF4FF;
-  --border-color: #E4E4E7;
-  --text-primary: #1A1A1A;
-  --text-secondary: #71717A;
-  --hint-color: #71717A;
-  --logo-bg: #D4E0FF;
+/* CompanyProfile.css */
+
+/* Reset and Base Styles */
+* {
+  box-sizing: border-box;
 }
 
-/* === Container === */
+.company-profile-page {
+  min-height: 100vh;
+  background-color: #f9fafb;
+  padding: 2rem 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.6;
+}
+
 .company-profile-container {
-  padding: 32px;
-  max-width: 1200px;
+  max-width: 64rem;
   margin: 0 auto;
-}
-
-/* === Typography === */
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--primary-color);
-  margin-bottom: 8px;
-}
-
-.page-description {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 32px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text-primary);
-  margin-bottom: 4px;
-}
-
-.section-description {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-top: 0;
-  margin-bottom: 16px;
-}
-
-/* === Form Layout === */
-.company-profile-form {
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 32px;
-  align-items: flex-start;
-}
-
-.domain-section {
-  grid-template-columns: 1fr;
-}
-
-.form-column {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.logo-column {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-/* === Logo Upload === */
-.logo-upload-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-  cursor: pointer;
-}
-
-.logo-placeholder,
-.logo-preview {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  border: 1px solid #f3f4f6;
   overflow: hidden;
 }
 
-.logo-placeholder {
-  background-color: var(--logo-bg);
+/* Header Styles */
+.page-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #f3f4f6;
 }
 
-.logo-letter {
-  font-size: 48px;
+.page-title {
+  font-size: 1.5rem;
   font-weight: 600;
-  color: var(--primary-color);
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.page-description {
+  color: #6b7280;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+/* Form Content */
+.form-content {
+  padding: 2rem;
+}
+
+/* Main Section Layout */
+.main-section {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+/* Logo Section */
+.logo-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.section-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0 0 1.5rem 0;
+}
+
+.logo-upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo-container {
+  position: relative;
+}
+
+.logo-preview,
+.logo-placeholder {
+  width: 6rem;
+  height: 6rem;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .logo-preview img {
@@ -114,129 +104,220 @@
   object-fit: cover;
 }
 
-/* === Form Fields === */
+.logo-placeholder {
+  background-color: #dbeafe;
+}
+
+.logo-letter {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.file-input {
+  display: none;
+}
+
+.upload-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-btn:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+/* Details Section */
+.details-section {
+  display: flex;
+  flex-direction: column;
+}
+
 .form-fields {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  margin-top: 8px;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
 }
 
-.form-field {
+.field-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
-.form-field label {
-  font-size: 14px;
-  color: var(--text-secondary);
+.field-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
 }
 
-/* === Inputs === */
-.text-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  background-color: var(--background-light);
-  color: var(--text-primary);
-  transition: border-color 0.2s;
-}
-
-.text-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.3);
-}
-
-/* Inputs with icons */
-.input-container {
+.input-wrapper {
   position: relative;
-  width: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .input-icon {
   position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 16px;
-  color: var(--text-secondary);
-  pointer-events: none;
+  left: 0.75rem;
+  z-index: 1;
+  color: #9ca3af;
 }
 
-.text-input.with-icon {
-  padding-left: 40px;
+.form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #111827;
+  background-color: white;
+  transition: all 0.2s ease;
 }
 
-/* === Field Hint === */
+.form-input.with-icon {
+  padding-left: 2.5rem;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Domain Section */
+.domain-section {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.domain-header {
+  margin-bottom: 1.5rem;
+}
+
+.domain-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
 .field-hint {
-  font-size: 12px;
-  color: var(--hint-color);
-  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+  line-height: 1.4;
 }
 
-/* === Buttons === */
+/* Form Actions */
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 2rem;
 }
 
-.save-button {
-  padding: 12px 32px;
-  background-color: var(--primary-color);
+.save-btn {
+  padding: 0.75rem 2rem;
+  background-color: #2563eb;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.save-button:hover,
-.save-button:focus-visible {
-  background-color: var(--primary-hover);
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 72, 229, 0.5);
-}
-
-.upload-button {
-  margin-top: 16px;
-  padding: 8px 16px;
-  background-color: var(--background-muted);
-  color: var(--primary-color);
-  border: 1px solid var(--logo-bg);
-  border-radius: 6px;
-  font-size: 14px;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  text-align: center;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
 }
 
-.upload-button:hover,
-.upload-button:focus-visible {
-  background-color: var(--logo-bg);
+.save-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.save-btn:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(212, 224, 255, 0.8);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-/* === Responsive === */
-@media (max-width: 768px) {
-  .company-profile-container {
-    padding: 16px;
-  }
-
-  .form-row {
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .main-section {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
-
-  .logo-column {
+  
+  .logo-section {
     align-items: center;
     text-align: center;
   }
+}
+
+@media (max-width: 768px) {
+  .company-profile-page {
+    padding: 1rem;
+  }
+  
+  .page-header {
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .form-content {
+    padding: 1.5rem;
+  }
+  
+  .domain-fields {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .form-actions {
+    justify-content: stretch;
+  }
+  
+  .save-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 1.25rem;
+  }
+  
+  .logo-preview,
+  .logo-placeholder {
+    width: 5rem;
+    height: 5rem;
+  }
+  
+  .logo-letter {
+    font-size: 1.25rem;
+  }
+  
+  .form-content {
+    padding: 1rem;
+  }
+}
+
+/* Focus and Accessibility */
+.upload-btn:focus,
+.save-btn:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.form-input:hover {
+  border-color: #9ca3af;
 }

@@ -125,20 +125,34 @@ const Sidebar: React.FC<SidebarProps> = ({ items }) => {
               <div className="tooltip">{item.title}</div>
             </div>
           ))}
-          <div className="add-button">
-            <div className="plus-icon"></div>
-          </div>
+          
         </div>
       </div>
       
       <div className="user-profile">
-        <div className="avatarr">
-          <span>VK</span>
+        <div
+          className="avatarr"
+          style={{
+            background: 'linear-gradient(36.6deg, #BECAFF 10.4%, #E8ECFF 86.59%)',
+            borderRadius: '50%',
+            width: 48,
+            height: 48,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px #becaff33',
+            border: '2px solid #fff',
+            marginBottom: 8,
+          }}
+        >
+          <span style={{ fontWeight: 600, fontSize: 20, color: '#2563eb', userSelect: 'none' }}>VK</span>
         </div>
-        <div className="tooltip">Vijay Kumar<br></br>vijaykumar.g@sap.in</div>
+        <div className="tooltip" style={{ fontSize: 12, color: '#444', textAlign: 'center', lineHeight: 1.3 }}>
+          Vijay Kumar<br />vijaykumar.g@sap.in
+        </div>
       </div>
     </div>
   );
 };
 
-export default Sidebar; 
+export default Sidebar;

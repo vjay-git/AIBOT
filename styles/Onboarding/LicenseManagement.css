@@ -1,136 +1,168 @@
-.license-management-container {
-  padding: 32px;
-  max-width: 1200px;
+/* Scoped styles for License Management page */
+.license-management-page {
+  background-color: #F8F9FA;
+  min-height: 100vh;
+  padding: 24px;
 }
 
-.page-title {
-  font-size: 24px;
+.license-management-page .license-management-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.license-management-page .page-title {
+  font-size: 20px;
   font-weight: 600;
-  color: #0052FF;
-  margin-bottom: 8px;
+  color: #1F2937;
+  margin-bottom: 4px;
 }
 
-.page-description {
+.license-management-page .page-description {
   font-size: 14px;
-  color: #71717A;
-  margin-bottom: 32px;
+  color: #6B7280;
+  margin-bottom: 40px;
+  line-height: 1.5;
 }
 
-.license-form {
+.license-management-page .license-form {
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 48px;
 }
 
-.form-section {
-  background-color: white;
-  border-radius: 8px;
-  padding: 0;
+.license-management-page .form-section {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #E5E7EB;
 }
 
-.section-title {
+.license-management-page .section-title {
   font-size: 16px;
-  font-weight: 500;
-  color: #1A1A1A;
+  font-weight: 600;
+  color: #111827;
   margin-bottom: 8px;
 }
 
-.section-description {
+.license-management-page .section-description {
   font-size: 14px;
-  color: #71717A;
-  margin-bottom: 24px;
+  color: #6B7280;
+  margin-bottom: 32px;
+  line-height: 1.5;
 }
 
-.form-fields-grid {
+.license-management-page .form-fields-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 24px;
-  margin-top: 24px;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 32px;
+  align-items: start;
 }
 
-.form-field {
+.license-management-page .form-field {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.form-field label {
-  font-size: 14px;
-  color: #71717A;
+.license-management-page .form-field.full-width {
+  grid-column: 1 / -1;
 }
 
-.select-input, .text-input {
+.license-management-page .form-field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.license-management-page .select-input, 
+.license-management-page .text-input {
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E4E4E7;
+  border: 1px solid #D1D5DB;
   border-radius: 8px;
   font-size: 14px;
   background-color: #FFFFFF;
-  color: #1A1A1A;
+  color: #111827;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.select-input {
+.license-management-page .select-input {
   appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 16px;
   padding-right: 40px;
+  cursor: pointer;
 }
 
-.email-input-container {
+.license-management-page .select-input option {
+  color: #111827;
+}
+
+.license-management-page .select-input::placeholder,
+.license-management-page .text-input::placeholder {
+  color: #9CA3AF;
+}
+
+.license-management-page .email-input-container {
   position: relative;
 }
 
-.email-icon {
+.license-management-page .email-icon {
   position: absolute;
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 16px;
+  color: #9CA3AF;
   pointer-events: none;
 }
 
-.text-input.with-icon {
-  padding-left: 40px;
+.license-management-page .text-input.with-icon {
+  padding-left: 44px;
 }
 
-.password-input-container {
+.license-management-page .password-input-container {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  align-items: stretch;
 }
 
-.text-input.with-button {
+.license-management-page .text-input.with-button {
   flex: 1;
 }
 
-.generate-password-button {
-  padding: 0 16px;
-  background-color: #EEF2FF;
-  border: 1px solid #E4E4E7;
+.license-management-page .generate-password-button {
+  padding: 12px 20px;
+  background-color: #F3F4F6;
+  border: 1px solid #D1D5DB;
   border-radius: 8px;
-  color: #0052FF;
+  color: #374151;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.generate-password-button:hover {
-  background-color: #E5EDFF;
+.license-management-page .generate-password-button:hover {
+  background-color: #E5E7EB;
+  border-color: #9CA3AF;
 }
 
-.checkbox-field {
+.license-management-page .checkbox-field {
   margin-top: 8px;
 }
 
-.checkbox-container {
+.license-management-page .checkbox-container {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.checkbox-input {
+.license-management-page .checkbox-input {
   width: 18px;
   height: 18px;
   border-radius: 4px;
@@ -138,26 +170,52 @@
   cursor: pointer;
 }
 
-.checkbox-label {
+.license-management-page .checkbox-label {
   font-size: 14px;
   color: #1A1A1A;
   cursor: pointer;
 }
 
+/* Focus states - Scoped */
+.license-management-page .select-input:focus,
+.license-management-page .text-input:focus {
+  outline: none;
+  border-color: #0052FF;
+  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.1);
+}
+
+.license-management-page .checkbox-input:focus {
+  outline: none;
+  border-color: #0052FF;
+  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.1);
+}
+
+.license-management-page .generate-password-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.1);
+}
+
+/* Responsive Adjustments - Scoped */
 @media (max-width: 768px) {
-  .license-management-container {
+  .license-management-page {
     padding: 16px;
   }
   
-  .form-fields-grid {
+  .license-management-page .form-section {
+    padding: 24px;
+  }
+  
+  .license-management-page .form-fields-grid {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
   
-  .password-input-container {
+  .license-management-page .password-input-container {
     flex-direction: column;
+    gap: 12px;
   }
   
-  .generate-password-button {
+  .license-management-page .generate-password-button {
     align-self: flex-start;
   }
-} 
+}
