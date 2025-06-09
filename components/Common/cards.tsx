@@ -23,6 +23,7 @@ interface CardProps {
   id: string;
   type: ChartType;
   title?: string;
+  cardSize?: { width: number; height: number };
   data: any;
   layout: any;
   position?: { x: number; y: number };
@@ -36,19 +37,28 @@ interface CardProps {
   disableResizing?: boolean;
   chartTypeDropdown?: React.ReactNode;
   onChartTypeChange?: (type: ChartType) => void;
+  onResizeStop?: (id: string, x: number, y: number, width: number, height: number) => void;
 }
 
+const CARD_BG = "#fff";
+const CARD_BORDER = "#e9efff";
+const CARD_SHADOW = "0 1.5px 8px 0 rgba(10,47,255,0.06)";
+const CARD_SHADOW_HOVER = "0 8px 32px 0 rgba(10,47,255,0.18)";
+const TITLE_COLOR = "#0a2fff";
+const SERIES_DOT = "#2563eb";
+
 const Card: React.FC<CardProps> = ({
-  id, type, title, data, layout, onDelete, onEdit, position, onDragStop, isPinned, onPin, onUnpin, disableDragging, disableResizing, chartTypeDropdown, onChartTypeChange
+  id, type, cardSize, title, data, layout, onDelete, onEdit, position, onDragStop, isPinned, onPin, onUnpin, disableDragging, disableResizing, chartTypeDropdown, onChartTypeChange, onResizeStop
 }) => {
-  const [size, setSize] = useState({ width: 400, height: 300 });
+  const [size, setSize] = useState(cardSize || { width: 400, height: 300 });
   const [resizeWarning, setResizeWarning] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const onResize: RndResizeCallback = (_e, _dir, ref) => {
-    const minWidth = 270;
-    const minHeight = 200;
+    const minWidth = type=="text"? 158:270;
+    const minHeight =  type=="text"? 134:200;
     const width = ref.offsetWidth;
     const height = ref.offsetHeight;
 
@@ -83,7 +93,7 @@ const Card: React.FC<CardProps> = ({
   const plotMargin =
     type === "pie"
       ? { l: 10, r: 10, t: 10, b: 10 }
-      : { l: 24, r: 5, t: 5, b: 36 };
+      : { l: 35, r: 5, t: 5, b: 36 };
 
   // Convert data to correct graph type if needed
   let plotData = data;
@@ -113,16 +123,18 @@ const Card: React.FC<CardProps> = ({
     }
   }
 
-  // --- Title ellipsis and tooltip ---
-  // Show ellipsis if title is too long for the card width, show full title on hover as tooltip
   const titleStyle = {
-    maxWidth: size.width - 80, // leave space for buttons
+    maxWidth: size.width - 80,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     display: "inline-block",
     verticalAlign: "middle",
-    cursor: "pointer"
+    cursor: "pointer",
+    color: TITLE_COLOR,
+    fontWeight: 700,
+    fontSize: "1.1rem",
+    letterSpacing: 0.1,
   };
 
   const chartTypes = [
@@ -139,16 +151,16 @@ const Card: React.FC<CardProps> = ({
           x: position?.x || 20,
           y: position?.y || 20,
           width: size.width,
-          height: size.height + 200
+          height: size.height
         }}
         position={position}
         size={size}
-        minWidth={270}
-        minHeight={200}
+        minWidth={type=="text"? 158:270}
+        minHeight={ type=="text"? 134:200}
         onResize={onResize}
         onResizeStop={(_e, _dir, ref, _delta, positionObj) => {
-          if (onDragStop) {
-            onDragStop(
+          if (onResizeStop) {
+            onResizeStop(
               id,
               positionObj.x,
               positionObj.y,
@@ -167,31 +179,54 @@ const Card: React.FC<CardProps> = ({
         enableResizing={!disableResizing}
       >
         <Paper
-          elevation={3}
-          sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
+          elevation={0}
           ref={containerRef}
+          sx={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: '18px',
+            background: CARD_BG,
+            boxShadow: hovered ? CARD_SHADOW_HOVER : CARD_SHADOW,
+            border: `1.5px solid ${CARD_BORDER}`,
+            transition: "box-shadow 0.2s, border 0.2s",
+            cursor: hovered ? "pointer" : "default",
+            position: "relative",
+            p: 0,
+            "&:hover": {
+              boxShadow: CARD_SHADOW_HOVER,
+              border: `1.5px solid ${SERIES_DOT}`,
+            }
+          }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
         >
-          <Grid container
+          <Box
             display="flex"
-            justifyContent="space-between"
             alignItems="center"
-            p={1}
-            borderBottom="1px solid #ddd"
+            justifyContent="space-between"
+            px={2}
+            pt={2}
+            pb={0}
           >
-            <Grid size={8} display="flex" alignItems="center" gap={1}>
-              <Typography
-                variant="subtitle1"
-                fontWeight={600}
-                textTransform="capitalize"
-                sx={titleStyle}
-                title={title}
-              >
-                {title}
-              </Typography>
-            </Grid>
-            <Grid size={4} display="flex"
-              justifyContent="flex-end"
-              alignItems="flex-end">
+            {type !== "text" &&
+            <Typography
+              variant="subtitle1"
+              sx={titleStyle}
+              title={title}
+            >
+              {title}
+            </Typography>
+}
+            {/* Show actions only on hover */}
+            <Box
+              sx={{
+                display: hovered ? "flex" : "none",
+                alignItems: "center",
+                gap: 0.5,
+              }}
+            >
               <IconButton onClick={() => onEdit(id)} size="small">
                 <EditIcon fontSize="small" />
               </IconButton>
@@ -206,9 +241,9 @@ const Card: React.FC<CardProps> = ({
               >
                 {isPinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
               </IconButton>
-            </Grid>
-          </Grid>
-          <Box flexGrow={1} display="flex" flexDirection="column">
+            </Box>
+          </Box>
+          <Box flexGrow={1} display="flex" flexDirection="column"  >
             {/* Chart type icons in content area (not header) */}
             {type !== "text" && onChartTypeChange && (
               <Box display="flex" alignItems="center" justifyContent="flex-end" mt={1} mb={1}>
@@ -219,7 +254,7 @@ const Card: React.FC<CardProps> = ({
                     color={type === ct.value ? "primary" : "default"}
                     onClick={() => onChartTypeChange(ct.value as ChartType)}
                     sx={{
-                      bgcolor: type === ct.value ? "#e3edff" : "transparent",
+                      bgcolor: type === ct.value ? "#e9efff" : "transparent",
                       borderRadius: 1,
                       mx: 0.25,
                       p: 0.5,
@@ -231,10 +266,58 @@ const Card: React.FC<CardProps> = ({
               </Box>
             )}
             {type === "text" ? (
-              <Box p={2} flexGrow={1} display="flex" alignItems="center" justifyContent="center">
-                <Typography variant="body1" textAlign="center">
-                  {data}
+              <Box
+                sx={{
+                  p: "16px",
+                  gap: "10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#fff",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: "Inter, sans-serif",
+                    fontWeight: 700,
+                    fontSize: "1.6rem",
+                    color: "#0a2fff",
+                    textAlign: "center",
+                    lineHeight: "1.2",
+                    mb: "2px"
+                  }}
+                >
+                  {typeof data === "string" && /^\d/.test(data.trim()) ? data.split(" ")[0] : data}
                 </Typography>
+                <Typography
+                  sx={{
+                    fontFamily: "Inter, sans-serif",
+                    fontWeight: 400,
+                    fontSize: "1rem",
+                    color: "#6b7280",
+                    textAlign: "center",
+                    lineHeight: "1.2"
+                  }}
+                >
+                  {typeof data === "string" && /^\d/.test(data.trim()) ? data.split(" ").slice(1).join(" ") : ""}
+                </Typography>
+                {title && (
+                  <Typography
+                    sx={{
+                      fontFamily: "Inter, sans-serif", // Body/Font family
+                      fontWeight: 400,
+                      fontSize: "1rem", // Scale 02 (usually 16px, adjust if needed)
+                      lineHeight: "20px",
+                      letterSpacing: 0,
+                      textAlign: "center",
+                      color: "#222", // or your preferred body color
+                      mt: "4px"
+                    }}
+                  >
+                    {title}
+                  </Typography>
+                )}
               </Box>
             ) : (
               <Box flexGrow={1} width="100%" height="100%">
@@ -244,12 +327,20 @@ const Card: React.FC<CardProps> = ({
                     ...layout,
                     autosize: true,
                     margin: plotMargin,
-                    width: size.width,
-                    height: size.height - 100
+                    width: size.width - 30,
+                    height: size.height - 110,
+                    font: { color: TITLE_COLOR, family: "Inter, sans-serif" },
+                    legend: {
+                      orientation: "h",
+                      x: 0.5,
+                      y: -0.2,
+                      xanchor: "center",
+                      font: { color: TITLE_COLOR, size: 13 }
+                    }
                   }}
                   useResizeHandler
                   style={{ width: "100%", height: "100%" }}
-                  config={{ responsive: true }}
+                  config={{ responsive: true, displayModeBar: false }}
                 />
               </Box>
             )}

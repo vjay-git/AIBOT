@@ -461,7 +461,7 @@ export async function askDBDashboard({ user_id, question, dashboard = '', tile =
 
 export async function dashboardCreate( user_id: string, dashboardBody: string ) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const url = `${baseUrl}/user_dashboard/${user_id}`;
+  const url = `${baseUrl}/user_dashboard`;
   
   try {
     const res = await fetch(url, {

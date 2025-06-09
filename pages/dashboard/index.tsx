@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -11,14 +11,13 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  SelectChangeEvent,
   TextField,
 } from "@mui/material";
 import Card, { ChartType } from "@/components/Common/cards";
 import dynamic from "next/dynamic";
 import DashboardSidebar from "./DashboardSidebar";
 import { getAiTables, askDBDashboard, dashboardUpdate, getUserDashboard, dashboardCreate, askDB } from "../../utils/api";
-import AddIcon from "@mui/icons-material/Add"; // Add this import at the top
+import AddIcon from "@mui/icons-material/Add";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
@@ -64,7 +63,7 @@ const generateDummyData = (type: ChartType) => {
 };
 
 const DEFAULT_USER_ID = '56376e63-0377-413d-8c9e-359028e2380d';
-const DEFAULT_USER_NAME = 'johndoes';
+const DEFAULT_USER_NAME = 'chandra@ctrls.com';
 
 const Dashboard = () => {
   // --- State ---
@@ -89,8 +88,14 @@ const Dashboard = () => {
   const [pinnedCards, setPinnedCards] = useState<string[]>([]);
   const [pinWarning, setPinWarning] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
-  // Add this state to keep a backup of cards before entering edit mode
   const [cardsBackup, setCardsBackup] = useState<ChartConfig[]>([]);
+  const [axisDialogOpen, setAxisDialogOpen] = useState(false);
+  // State for axis selection
+  const [axisOptions, setAxisOptions] = useState<string[]>([]);
+  const [selectedXAxis, setSelectedXAxis] = useState<string>("");
+  const [selectedSeries, setSelectedSeries] = useState<string>("");
+  const [pendingChartData, setPendingChartData] = useState<any>(null);
+  const [selectedYAxes, setSelectedYAxes] = useState<string[]>([]);
 
   // Fetch dashboard data on load
   useEffect(() => {
@@ -98,7 +103,7 @@ const Dashboard = () => {
       setLoading(true);
       try {
         const apiRes = await getUserDashboard(DEFAULT_USER_NAME);
-        const data = apiRes.data; // <-- updated to use .data
+        const data = apiRes.data;
         setDashboardData(data);
         const keys = Object.keys(data.dashboards);
         setDashboardKeys(keys);
@@ -127,6 +132,8 @@ const Dashboard = () => {
     }
   }, [addDashboardDialogOpen]);
 
+  //patietn class
+  //average waiting time by type 
   // Handle dashboard selection and load tiles as cards
   const handleDashboardSelect = async (dashboardId: string, dataOverride?: any) => {
     setLoading(true);
@@ -152,7 +159,7 @@ const Dashboard = () => {
         const tile = dashboard[tileKey];
         if (!tile?.question) continue;
 
-        // Use position and size from tile if available
+        // Use position and size from tile if available, else fallback
         const position = tile.position || { x: xOffset, y: yOffset };
         const size = tile.size || { width: cardWidth, height: cardHeight };
 
@@ -160,29 +167,50 @@ const Dashboard = () => {
           const res = await askDBDashboard({
             user_id: DEFAULT_USER_ID,
             question: tile.question,
-            dashboard: '',
+            dashboard: dashboardId, // or selectedDashboard if that's your key
             tile: tileKey,
           });
 
-          // Extract chart data and type from new response structure
           let chartData: any = {};
           let chartLayout: any = {};
           let chartType: ChartType = (tile.graph_type as ChartType) || "bar";
+
           if (
             res?.response?.data?.data?.data &&
             Array.isArray(res.response.data.data.data)
           ) {
-            // Table/tabular data: show as bar chart instead of table
-             const tableData = res.response.data.data.data;
-             const headers = tableData[0];
+            const tableData = res.response.data.data.data;
+            const headers = tableData[0];
             const rows = tableData.slice(1);
 
-            if (headers.length >= 2) {
+            // --- Use x_axis, y_axis, series from tile if present ---
+            if (headers.length >= 3 && tile.x_axis && tile.y_axis && tile.series) {
+              const xIdx = headers.indexOf(tile.x_axis);
+              const yIdx = headers.indexOf(tile.y_axis);
+              const seriesIdx = headers.indexOf(tile.series);
+
+              const seriesGroups: { [key: string]: { x: any[]; y: any[] } } = {};
+              rows.forEach((row: any) => {
+                const group = row[seriesIdx];
+                if (!seriesGroups[group]) seriesGroups[group] = { x: [], y: [] };
+                seriesGroups[group].x.push(row[xIdx]);
+                seriesGroups[group].y.push(row[yIdx]);
+              });
+
+              chartData = Object.entries(seriesGroups).map(([group, vals]) => ({
+                x: vals.x,
+                y: vals.y,
+                type: chartType,
+                name: group,
+              }));
+              chartLayout = { title: tile.graph_title || tileKey };
+            } else if (headers.length >= 2) {
+              // Fallback to default: first column X, second column Y
               chartData = [
                 {
                   x: rows.map((row: any[]) => row[0]),
                   y: rows.map((row: any[]) => row[1]),
-                  type: "bar",
+                  type: chartType,
                   marker: { color: "#2563eb" },
                 },
               ];
@@ -213,16 +241,11 @@ const Dashboard = () => {
           } else {
             chartType = (tile.graph_type as ChartType) || "bar";
           }
-          const dummy = generateDummyData(chartType) || { data: [], layout: {} };
-
-          if (!chartData || (Array.isArray(chartData) && chartData.length === 0)) {
-            chartData = dummy.data;
-            chartLayout = dummy.layout;
-          }
 
           newCards.push({
             id: `${dashboardId}-${tileKey}`,
             type: chartType,
+            title: tile.graph_title || tileKey,
             data: chartData,
             layout: chartLayout,
             position,
@@ -271,44 +294,6 @@ const handleEditMode = () => {
   }
 };
 
-  const deleteCard = async (id: string) => {
-    // Remove from cards state
-    setCards(cards.filter((c) => c.id !== id));
-
-    // Remove from dashboardData and update backend
-    const tileKey = id.split("-").slice(1).join("-");
-    if (
-      dashboardData &&
-      dashboardData.dashboards &&
-      dashboardData.dashboards[selectedDashboard] &&
-      dashboardData.dashboards[selectedDashboard][tileKey]
-    ) {
-      delete dashboardData.dashboards[selectedDashboard][tileKey];
-
-      const updatePayload = {
-        default_dashboard: selectedDashboard,
-        dashboards: dashboardData.dashboards, // send all dashboards, not just the edited one
-        ai_tables: dashboardData.ai_tables,   // include ai_tables if your backend expects it
-      };
-      await dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
-    }
-  };
-
-  const editCard = (id: string) => {
-    const newType = prompt(
-      "Enter new chart type (bar, line, pie, scatter, text):",
-      "bar"
-    ) as ChartType;
-    if (newType) {
-      const updatedData = generateDummyData(newType);
-      setCards(cards.map((c) => (c.id === id ? { ...c, type: newType, ...updatedData } : c)));
-    }
-  };
-
-  const handleSelectChange = (event: SelectChangeEvent) => {
-    setNewChartType(event.target.value as ChartType);
-  };
-
   // --- Pin/Unpin Handlers ---
   const handlePinCard = (id: string) => {
     setPinnedCards((prev) => prev.includes(id) ? prev : [...prev, id]);
@@ -317,7 +302,7 @@ const handleEditMode = () => {
     setPinnedCards((prev) => prev.filter((pid) => pid !== id));
   };
 
-  // --- Modified handleDragStop ---
+  // --- Modified handleDragStop: remove dashboardUpdate call ---
   const handleDragStop = (
     id: string,
     x: number,
@@ -392,36 +377,44 @@ const handleEditMode = () => {
 
     setCards(updatedCards);
 
-    // Update the tile's position and size in dashboardData and call dashboardUpdate
-    const tileKey = id.split("-").slice(1).join("-");
-    if (
-      dashboardData &&
-      dashboardData.dashboards &&
-      dashboardData.dashboards[selectedDashboard] &&
-      dashboardData.dashboards[selectedDashboard][tileKey]
-    ) {
-      dashboardData.dashboards[selectedDashboard][tileKey].position = { x, y };
-      dashboardData.dashboards[selectedDashboard][tileKey].size = { width, height };
-
-      const updatePayload = {
-        default_dashboard: selectedDashboard,
-        dashboards: dashboardData.dashboards,
-        ai_tables: dashboardData.ai_tables,
-      };
-      dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
-    }
+    // --- Removed dashboardUpdate call here ---
+    // The API will only be called when handleSaveLayout is triggered
   };
 
   // Open dialog for editing a tile
   const handleEditTile = (id: string) => {
     const tile = cards.find((c) => c.id === id);
-    if (tile) {
-      setNewChartType(tile.type);
-      setNewChartTitle(tile.title || "");
-      setNewChartQuestion(tile.question || "");
-      setEditTileId(id);
-      setDialogOpen(true);
+    if (!tile) return;
+
+    setNewChartType(tile.type);
+    setNewChartTitle(tile.title || "");
+    setNewChartQuestion(tile.question || "");
+    setEditTileId(id);
+
+    // Try to get axis info from dashboardData
+    const tileKey = id.split("-").slice(1).join("-");
+    const tileMeta = dashboardData?.dashboards?.[selectedDashboard]?.[tileKey];
+
+    if (Array.isArray(tile.data) && tile.data.length > 1 && tileMeta?.headers?.length >= 3) {
+      const headers = tileMeta.headers;
+      setAxisOptions(headers);
+      setSelectedXAxis(tileMeta.x_axis || headers[1] || "");
+      setSelectedSeries(tileMeta.series || headers[0] || "");
+      setSelectedYAxes(
+        tileMeta.y_axis
+          ? Array.isArray(tileMeta.y_axis)
+            ? tileMeta.y_axis
+            : [tileMeta.y_axis]
+          : [headers[2]]
+      );
+    } else {
+      setAxisOptions([]);
+      setSelectedXAxis("");
+      setSelectedSeries("");
+      setSelectedYAxes([]);
     }
+
+    setDialogOpen(true);
   };
 
   // Add or Edit Chart Handler
@@ -465,10 +458,25 @@ const handleEditMode = () => {
         res?.response?.data?.data?.data &&
         Array.isArray(res.response.data.data.data)
       ) {
-        // Table/tabular data: show as bar chart
         const tableData = res.response.data.data.data;
         const headers = tableData[0];
         const rows = tableData.slice(1);
+
+        if (headers.length >= 3) {
+          // Prompt user to select axes
+          setAxisOptions(headers);
+          setSelectedXAxis(headers[1]); // e.g., "month"
+          setSelectedSeries(headers[0]); // e.g., "appointment_type"
+          // Default: select all numeric columns as Y axes
+          const numericCols = headers.filter((h:any, i:any) =>
+            rows.some((row:any) => typeof row[i] === "number")
+          );
+          setSelectedYAxes(numericCols.length ? numericCols : [headers[2]]);
+          setPendingChartData({ headers, rows, raw: tableData });
+          setAxisDialogOpen(true);
+          setLoading(false);
+          return; // Wait for user selection before proceeding
+        }
 
         if (headers.length >= 2) {
           chartData = [
@@ -629,7 +637,7 @@ const handleEditMode = () => {
         const updatePayload = {
           default_dashboard: selectedDashboard,
           dashboards: dashboardData.dashboards, // send all dashboards, not just the edited one
-          ai_tables: dashboardData.ai_tables,   // include ai_tables if your backend expects it
+          ai_tables: dashboardData.ai_tables,
         };
         await dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
       }
@@ -753,9 +761,157 @@ const handleEditMode = () => {
     }
   };
 
+  const handleAxisSelection = async () => {
+    if (!pendingChartData) return;
+    const { headers, rows } = pendingChartData;
+
+    const xIdx = headers.indexOf(selectedXAxis);
+    const seriesIdx = headers.indexOf(selectedSeries);
+
+    // For each selected Y axis, create a trace for each series group
+    let traces: any[] = [];
+    selectedYAxes.forEach((yAxis) => {
+      const yIdx = headers.indexOf(yAxis);
+      // Group by series
+      const groups: { [key: string]: { x: any[]; y: any[] } } = {};
+      rows.forEach((row: any) => {
+        const group = row[seriesIdx];
+        if (!groups[group]) groups[group] = { x: [], y: [] };
+        groups[group].x.push(row[xIdx]);
+        groups[group].y.push(row[yIdx]);
+      });
+      Object.entries(groups).forEach(([group, vals]) => {
+        traces.push({
+          x: vals.x,
+          y: vals.y,
+          type: newChartType,
+          name: `${group} - ${yAxis}`,
+        });
+      });
+    });
+
+    // Find the tile key for the card being edited/added
+    let tileKey = "";
+    if (editTileId) {
+      tileKey = editTileId.split("-").slice(1).join("-");
+    } else {
+      // Adding: generate a new tile key in the form tile1, tile2, ...
+      const existingTiles = Object.keys(dashboardData.dashboards[selectedDashboard])
+        .filter((k) => k.startsWith("tile"));
+      let maxNum = 0;
+      existingTiles.forEach((k) => {
+        const num = parseInt(k.replace("tile", ""), 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      });
+      tileKey = `tile${maxNum + 1}`;
+    }
+
+    // Add or update the card in state
+    if (editTileId) {
+      setCards((prev) =>
+        prev.map((c) =>
+          c.id === editTileId
+            ? {
+                ...c,
+                type: newChartType,
+                data: traces,
+                layout: { ...c.layout, title: newChartTitle },
+                question: newChartQuestion,
+              }
+            : c
+        )
+      );
+    } else {
+      const cardWidth = 400;
+      const cardHeight = 300;
+      const margin = 20;
+      const sidebarWidth = 240;
+      const maxWidth = (window.innerWidth || 1200) - sidebarWidth;
+
+      let xOffset = 20;
+      let yOffset = 20;
+
+      // Find a position to the right of existing cards, else below
+      outer: for (let y = 20; ; y += cardHeight + margin) {
+        for (let x = 20; x + cardWidth <= maxWidth; x += cardWidth + margin) {
+          const overlap = cards.some(
+            (c) =>
+              Math.abs((c.position?.x || 0) - x) < cardWidth &&
+              Math.abs((c.position?.y || 0) - y) < cardHeight
+          );
+          if (!overlap) {
+            xOffset = x;
+            yOffset = y;
+            break outer;
+          }
+        }
+      }
+
+      const cardId = `${selectedDashboard}-${tileKey}`;
+      const newCard = {
+        id: cardId,
+        type: newChartType,
+        title: newChartTitle,
+        data: traces,
+        layout: { title: newChartTitle },
+        position: { x: xOffset, y: yOffset },
+        size: { width: cardWidth, height: cardHeight },
+        question: newChartQuestion,
+      };
+      setCards([...cards, newCard]);
+
+      // Add to dashboardData in memory with position and size and axes
+      dashboardData.dashboards[selectedDashboard][tileKey] = {
+        graph_title: newChartTitle,
+        graph_type: newChartType,
+        question: newChartQuestion,
+        position: { x: xOffset, y: yOffset },
+        size: { width: cardWidth, height: cardHeight },
+        x_axis: selectedXAxis,
+        y_axis: selectedXAxis,
+        series: selectedSeries,
+      };
+    }
+
+    // Store axis selections in dashboardData for both add and edit
+    if (
+      dashboardData &&
+      dashboardData.dashboards &&
+      dashboardData.dashboards[selectedDashboard] &&
+      dashboardData.dashboards[selectedDashboard][tileKey]
+    ) {
+      dashboardData.dashboards[selectedDashboard][tileKey].x_axis = selectedXAxis;
+      dashboardData.dashboards[selectedDashboard][tileKey].y_axis = selectedYAxes;
+      dashboardData.dashboards[selectedDashboard][tileKey].series = selectedSeries;
+    }
+
+    // Update backend with new axis selections and/or new tile
+    const updatePayload = {
+      username: DEFAULT_USER_NAME,
+      dashboards: dashboardData.dashboards,
+      ai_tables: dashboardData.ai_tables,
+      default_dashboard: dashboardData.default_dashboard,
+    };
+    setLoading(true);
+    try {
+      await dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
+    } finally {
+      setLoading(false);
+    }
+
+    setPendingChartData(null);
+  };
+
   // --- Sidebar rendering ---
   return (
-    <Box display="flex" minHeight="100vh" bgcolor="#f9f9f9" sx={{ml: "-5rem"}}>
+    <Box
+      display="flex"
+      minHeight="100vh"
+      sx={{
+        ml: "-5rem",
+        background: "linear-gradient(120deg, #e9efff 0%, #f5f8ff 100%)"
+      }}
+    >
       {loading && (
         <div className="oscar-loading-overlay">
           <div className="oscar-spinner"></div>
@@ -874,6 +1030,50 @@ const handleEditMode = () => {
               multiline
               minRows={2}
             />
+
+            {/* Axis selection fields, only show if axisOptions.length >= 3 */}
+            {axisOptions.length >= 3 && (
+              <>
+                <FormControl fullWidth sx={{ mt: 2 }}>
+                  <InputLabel>X Axis</InputLabel>
+                  <Select
+                    value={selectedXAxis}
+                    label="X Axis"
+                    onChange={e => setSelectedXAxis(e.target.value)}
+                  >
+                    {axisOptions.map(opt => (
+                      <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth sx={{ mt: 2 }}>
+                  <InputLabel>Y Axis</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedYAxes}
+                    label="Y Axis"
+                    onChange={e => setSelectedYAxes(typeof e.target.value === "string" ? e.target.value.split(",") : e.target.value)}
+                    renderValue={(selected) => selected.join(", ")}
+                  >
+                    {axisOptions.map(opt => (
+                      <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth sx={{ mt: 2 }}>
+                  <InputLabel>Series (Color/Group)</InputLabel>
+                  <Select
+                    value={selectedSeries}
+                    label="Series"
+                    onChange={e => setSelectedSeries(e.target.value)}
+                  >
+                    {axisOptions.map(opt => (
+                      <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => { setDialogOpen(false); setEditTileId(null); }}>Cancel</Button>
@@ -883,11 +1083,14 @@ const handleEditMode = () => {
           </DialogActions>
         </Dialog>
 
-        <Box position="relative" minHeight="100vh" display="flex" bgcolor="#f9f9f9">
+        <Box position="relative" minHeight="100vh" display="flex" bgcolor="#f9f9f9" sx={{
+      background: "linear-gradient(120deg, #e9efff 0%, #f5f8ff 100%)"
+    }}>
           {cards.map((card) => (
             <Card
               key={card.id}
               {...card}
+              cardSize={card.size}
               onDelete={handleDeleteRequest}
               onEdit={handleEditTile}
               onDragStop={editMode ? handleDragStop : undefined}
@@ -896,13 +1099,18 @@ const handleEditMode = () => {
               isPinned={pinnedCards.includes(card.id)}
               onPin={() => handlePinCard(card.id)}
               onUnpin={() => handleUnpinCard(card.id)}
-              // Add this prop for chart type dropdown
               onChartTypeChange={(newType) => {
-                const updatedData = generateDummyData(newType);
                 setCards((prev) =>
                   prev.map((c) =>
                     c.id === card.id
-                      ? { ...c, type: newType, ...updatedData }
+                      ? {
+                          ...c,
+                          type: newType,
+                          data: Array.isArray(c.data)
+                            ? c.data.map(trace => ({ ...trace, type: newType }))
+                            : c.data,
+                          layout: { ...c.layout, title: c.title }
+                        }
                       : c
                   )
                 );
@@ -916,6 +1124,15 @@ const handleEditMode = () => {
                 ) {
                   dashboardData.dashboards[selectedDashboard][tileKey].graph_type = newType;
                 }
+              }}
+              onResizeStop={(id, x, y, width, height) => {
+                setCards((prev) =>
+                  prev.map((c) =>
+                    c.id === id
+                      ? { ...c, position: { x, y }, size: { width, height } }
+                      : c
+                  )
+                );
               }}
             />
           ))}
@@ -1005,6 +1222,69 @@ const handleEditMode = () => {
             <Button onClick={() => setAddDashboardDialogOpen(false)}>Cancel</Button>
             <Button variant="contained" onClick={handleAddDashboard}>
               Add
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Axis Selection Dialog */}
+        <Dialog open={axisDialogOpen} onClose={() => setAxisDialogOpen(false)}>
+          <DialogTitle>Select Chart Axes</DialogTitle>
+          <DialogContent>
+            {axisOptions.length >= 3 && (
+  <>
+    <FormControl fullWidth sx={{ mt: 2 }}>
+      <InputLabel>X Axis</InputLabel>
+      <Select
+        value={selectedXAxis}
+        label="X Axis"
+        onChange={e => setSelectedXAxis(e.target.value)}
+      >
+        {axisOptions.map(opt => (
+          <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+    <FormControl fullWidth sx={{ mt: 2 }}>
+      <InputLabel>Y Axis</InputLabel>
+      <Select
+        multiple
+        value={selectedYAxes}
+        label="Y Axis"
+        onChange={e => setSelectedYAxes(typeof e.target.value === "string" ? e.target.value.split(",") : e.target.value)}
+        renderValue={(selected) => selected.join(", ")}
+      >
+        {axisOptions.map(opt => (
+          <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+    <FormControl fullWidth sx={{ mt: 2 }}>
+      <InputLabel>Series (Color/Group)</InputLabel>
+      <Select
+        value={selectedSeries}
+        label="Series"
+        onChange={e => setSelectedSeries(e.target.value)}
+      >
+        {axisOptions.map(opt => (
+          <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </>
+)}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAxisDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                handleAxisSelection();
+                setAxisDialogOpen(false);
+                 setDialogOpen(false); 
+                 setEditTileId(null);
+              }}
+            >
+              OK
             </Button>
           </DialogActions>
         </Dialog>

@@ -208,6 +208,7 @@ body {
   background: #F8F9FB;
   display: flex;
   flex-direction: column;
+   background: linear-gradient(120deg, #e9efff 0%, #f5f8ff 100%) !important;
 }
 
 .content-container {
