@@ -30,7 +30,11 @@ interface SubcontentBarProps {
   onToggleBookmark?: (chatId: string) => void;
   refreshChats?: () => void;
   setIsFromBookmarks?: (isFromBookmarks: boolean) => void;
-  setIsFromFolder?: (isFromFolder: boolean) => void; // NEW: Add folder context prop
+  setIsFromFolder?: (isFromFolder: boolean) => void;
+  // New props for database section
+  selectedDatabaseType?: string;
+  onAddDatabase?: () => void;
+  connectedDatabases?: string[];
 }
 
 const MIN_WIDTH = 200;
@@ -58,7 +62,10 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
   onToggleBookmark,
   refreshChats,
   setIsFromBookmarks,
-  setIsFromFolder // NEW: Add folder context prop
+  setIsFromFolder,
+  selectedDatabaseType,
+  onAddDatabase,
+  connectedDatabases
 }) => {
   // Enhanced section tabs renderer with better error handling
   const renderSectionTabs = useCallback(() => {
@@ -79,7 +86,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
               onSelect={onSelect}
               isBookmarked={isBookmarked}
               setIsFromBookmarks={setIsFromBookmarks}
-              setIsFromFolder={setIsFromFolder} // NEW: Pass folder context
+              setIsFromFolder={setIsFromFolder}
               onNewChat={onNewChat}
               onCreateFolder={onCreateFolder}
               onMoveToFolder={onMoveToFolder}
@@ -104,7 +111,14 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
           return <SchemaTabs {...commonProps} />;
         
         case 'database':
-          return <DbTabs {...commonProps} />;
+          return (
+            <DbTabs 
+              {...commonProps}
+              selectedDatabaseType={selectedDatabaseType}
+              onAddDatabase={onAddDatabase}
+              connectedDatabases={connectedDatabases}
+            />
+          );
         
         default:
           return null;
@@ -127,7 +141,8 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
   }, [
     sectionType, selectedId, onSelect, chats, folders, bookmarks, isBookmarked,
     onNewChat, onCreateFolder, onMoveToFolder, onRenameFolder, onDeleteFolder,
-    onDeleteChat, onToggleBookmark, refreshChats, setIsFromBookmarks, setIsFromFolder
+    onDeleteChat, onToggleBookmark, refreshChats, setIsFromBookmarks, setIsFromFolder,
+    selectedDatabaseType, onAddDatabase, connectedDatabases
   ]);
 
   // Check if we should show the default items list
@@ -170,16 +185,21 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
       newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
       setSidebarWidth(newWidth);
     };
+    
     const handleMouseUp = () => {
       isResizing.current = false;
       document.body.style.cursor = '';
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
   }, []);
 
   const handleResizerMouseDown = (e: React.MouseEvent) => {
@@ -196,7 +216,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
       <div className="inner-container">
         {/* Enhanced header with better typography */}
         <div className="subnav-header" role="heading" aria-level={2}>
-            {title}
+          {title}
         </div>
         
         {/* Controls section with improved layout */}
@@ -257,6 +277,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
           </div>
         )}
       </div>
+      
       <div
         className="subcontentbar-resizer"
         onMouseDown={handleResizerMouseDown}

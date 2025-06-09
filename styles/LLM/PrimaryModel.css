@@ -1,89 +1,162 @@
-.llm-settings-container {
-  padding: 32px;
-  max-width: 1200px;
-}
+/* ============================================
+   COMPLETE LLM-SCOPED STYLES
+   Add this to your PrimaryModel.css
+   ============================================ */
 
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #0052FF;
+/* Model Header with Connection Status */
+.llm-settings-container .model-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 32px;
 }
 
-.llm-settings-form {
+.llm-settings-container .model-header .page-title {
   display: flex;
-  flex-direction: column;
-  gap: 32px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0;
 }
 
-.form-group {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 32px;
-  align-items: flex-start;
-}
-
-.form-label h2 {
-  font-size: 16px;
-  font-weight: 500;
-  color: #1A1A1A;
-  margin-bottom: 8px;
-}
-
-.form-label p {
+.llm-settings-container .connection-status {
   font-size: 14px;
-  color: #71717A;
-  margin: 0;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.form-field {
-  max-width: 500px;
+.llm-settings-container .connection-status.connected {
+  color: #027A48;
+  background-color: #ECFDF3;
+}
+
+.llm-settings-container .connection-status.disconnected {
+  color: #B42318;
+  background-color: #FEF3F2;
+}
+
+/* Provider Selector */
+.llm-settings-container .provider-selector {
   width: 100%;
 }
 
-.select-input, .text-input {
-  width: 100%;
+.llm-settings-container .selected-provider {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 12px 16px;
   border: 1px solid #E4E4E7;
   border-radius: 8px;
-  font-size: 14px;
   background-color: #FFFFFF;
+}
+
+.llm-settings-container .provider-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.llm-settings-container .provider-icon {
+  font-size: 20px;
+}
+
+.llm-settings-container .provider-name {
+  font-size: 14px;
+  font-weight: 500;
   color: #1A1A1A;
-  appearance: none;
 }
 
-.select-input {
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px;
-  padding-right: 40px;
+.llm-settings-container .change-provider-btn {
+  padding: 6px 12px;
+  background-color: transparent;
+  border: 1px solid #E4E4E7;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #666666;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.response-settings {
+.llm-settings-container .change-provider-btn:hover {
+  background-color: #F8F9FB;
+  border-color: #0052FF;
+  color: #0052FF;
+}
+
+/* Provider Fields */
+.llm-settings-container .provider-fields {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.response-setting-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.llm-settings-container .no-provider-message {
+  padding: 24px;
+  text-align: center;
+  color: #666666;
+  background-color: #F8F9FB;
+  border-radius: 8px;
+  border: 1px dashed #E4E4E7;
 }
 
-.response-setting-item label {
-  font-size: 14px;
-  color: #71717A;
-}
-
-.form-actions {
+/* Form Actions */
+.llm-settings-container .form-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #E4E4E7;
 }
 
-.save-button {
+.llm-settings-container .test-connection-button {
+  padding: 12px 24px;
+  background-color: transparent;
+  color: #0052FF;
+  border: 1px solid #0052FF;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.llm-settings-container .test-connection-button:hover {
+  background-color: #0052FF;
+  color: white;
+}
+
+.llm-settings-container .test-connection-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.llm-settings-container .test-connection-btn {
+  padding: 8px 16px;
+  background-color: transparent;
+  color: #0052FF;
+  border: 1px solid #0052FF;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.llm-settings-container .test-connection-btn:hover {
+  background-color: #0052FF;
+  color: white;
+}
+
+.llm-settings-container .test-connection-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Save Button Enhanced */
+.llm-settings-container .save-button {
   padding: 12px 32px;
   background-color: #0052FF;
   color: white;
@@ -92,15 +165,366 @@
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
 }
 
-.save-button:hover {
+.llm-settings-container .save-button:hover {
   background-color: #0048E5;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 82, 255, 0.3);
 }
 
+.llm-settings-container .save-button:active {
+  transform: translateY(0);
+}
+
+.llm-settings-container .save-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Loading States */
+.llm-settings-container .loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #666666;
+}
+
+.llm-settings-container .loading-state::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #E4E4E7;
+  border-top: 2px solid #0052FF;
+  border-radius: 50%;
+  animation: llmSpin 1s linear infinite;
+  margin-right: 12px;
+}
+
+@keyframes llmSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error Message */
+.llm-settings-container .error-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #FEF3F2;
+  border: 1px solid #FECDCA;
+  border-radius: 8px;
+  color: #B42318;
+  margin-bottom: 24px;
+}
+
+.llm-settings-container .error-message button {
+  background: none;
+  border: none;
+  color: #B42318;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Form Group Enhanced */
+.llm-settings-container .form-group {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 32px;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.llm-settings-container .form-group h3 {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1A1A1A;
+  margin-bottom: 4px;
+}
+
+.llm-settings-container .form-group p {
+  font-size: 13px;
+  color: #71717A;
+  line-height: 1.4;
+}
+
+/* Input Fields Enhanced */
+.llm-settings-container .text-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E4E4E7;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #FFFFFF;
+  color: #1A1A1A;
+  transition: all 0.2s;
+}
+
+.llm-settings-container .text-input:focus {
+  outline: none;
+  border-color: #0052FF;
+  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.1);
+}
+
+.llm-settings-container .text-input:disabled {
+  background-color: #F8F9FB;
+  color: #666666;
+  cursor: not-allowed;
+}
+
+.llm-settings-container .text-input::placeholder {
+  color: #A1A1AA;
+}
+
+/* Select Input Enhanced */
+.llm-settings-container .select-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E4E4E7;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #FFFFFF;
+  color: #1A1A1A;
+  appearance: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+.llm-settings-container .select-input:focus {
+  outline: none;
+  border-color: #0052FF;
+  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.1);
+}
+
+.llm-settings-container .select-input:hover {
+  border-color: #B3B3B3;
+}
+
+/* LLM-Scoped Whitelisted Websites Styles - Beautiful Design */
+.llm-settings-container .whitelisted-websites {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #f1f5ff 100%);
+  border-radius: 12px;
+  border: 1px solid #e0e7ff;
+}
+
+.llm-settings-container .website-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 2px solid #e0e7ff;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffffff 0%, #fefeff 100%);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.llm-settings-container .website-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+.llm-settings-container .website-option:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+}
+
+.llm-settings-container .website-option:hover::before {
+  opacity: 0.03;
+}
+
+.llm-settings-container .website-option.selected {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+}
+
+.llm-settings-container .website-option.selected::before {
+  opacity: 0.05;
+}
+
+.llm-settings-container .website-checkbox {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.llm-settings-container .website-checkbox input[type="checkbox"] {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.llm-settings-container .website-checkbox label {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.llm-settings-container .website-checkbox label::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 3px;
+  transition: transform 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.llm-settings-container .website-checkbox input[type="checkbox"]:checked + label {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.llm-settings-container .website-checkbox input[type="checkbox"]:checked + label::after {
+  transform: translate(-50%, -50%) scale(1);
+  background: #ffffff;
+  border-radius: 2px;
+}
+
+.llm-settings-container .website-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 1;
+  position: relative;
+}
+
+.llm-settings-container .website-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.llm-settings-container .website-url {
+  font-size: 13px;
+  color: #6b7280;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  max-width: fit-content;
+}
+
+.llm-settings-container .website-option.selected .website-name {
+  color: #1e40af;
+}
+
+.llm-settings-container .website-option.selected .website-url {
+  color: #3730a3;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.llm-settings-container .selected-websites-summary {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 12px;
+  margin-top: 8px;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+}
+
+.llm-settings-container .selected-websites-summary p {
+  margin: 0;
+  font-size: 15px;
+  color: #ffffff;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.llm-settings-container .clear-selection-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.llm-settings-container .clear-selection-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+/* LLM-Scoped Scrollbar Styling */
+.llm-settings-container .whitelisted-websites::-webkit-scrollbar {
+  width: 8px;
+}
+
+.llm-settings-container .whitelisted-websites::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+}
+
+.llm-settings-container .whitelisted-websites::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.llm-settings-container .whitelisted-websites::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-  .form-group {
+  .llm-settings-container .form-group {
     grid-template-columns: 1fr;
     gap: 16px;
   }
@@ -108,4 +532,217 @@
   .llm-settings-container {
     padding: 16px;
   }
-} 
+
+  .llm-settings-container .model-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .llm-settings-container .form-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .llm-settings-container .test-connection-button,
+  .llm-settings-container .save-button {
+    width: 100%;
+  }
+
+  .llm-settings-container .whitelisted-websites {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 16px;
+  }
+  
+  .llm-settings-container .website-option {
+    padding: 14px 16px;
+  }
+  
+  .llm-settings-container .website-name {
+    font-size: 14px;
+  }
+  
+  .llm-settings-container .website-url {
+    font-size: 12px;
+  }
+}
+
+/* Success Animation */
+@keyframes llmSuccessPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.llm-settings-container .save-button.success {
+  background-color: #027A48;
+  animation: llmSuccessPulse 0.3s ease-in-out;
+}
+
+/* Connection Status Indicator */
+.llm-settings-container .connection-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.llm-settings-container .connection-indicator.testing {
+  color: #F59E0B;
+  background-color: #FEF3C7;
+}
+
+.llm-settings-container .connection-indicator.connected {
+  color: #027A48;
+  background-color: #ECFDF3;
+}
+
+.llm-settings-container .connection-indicator.failed {
+  color: #B42318;
+  background-color: #FEF3F2;
+}
+
+.llm-settings-container .connection-indicator::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.llm-settings-container .connection-indicator.testing::before {
+  animation: llmPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes llmPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Tooltip for form fields */
+.llm-settings-container .field-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  cursor: help;
+}
+
+.llm-settings-container .field-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1A1A1A;
+  color: white;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 100;
+}
+
+.llm-settings-container .field-tooltip:hover::after {
+  opacity: 1;
+}
+
+/* Advanced Configuration Toggle */
+.llm-settings-container .advanced-config-toggle {
+  margin-top: 16px;
+  padding: 12px 0;
+  border-top: 1px solid #E4E4E7;
+}
+
+.llm-settings-container .advanced-config-toggle button {
+  background: none;
+  border: none;
+  color: #0052FF;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.llm-settings-container .advanced-config-toggle button:hover {
+  text-decoration: underline;
+}
+
+/* Model Card Style for Provider Selection */
+.llm-settings-container .provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.llm-settings-container .provider-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px;
+  border: 2px solid #E4E4E7;
+  border-radius: 12px;
+  background-color: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.llm-settings-container .provider-card:hover {
+  border-color: #0052FF;
+  background-color: #F8F9FB;
+}
+
+.llm-settings-container .provider-card.selected {
+  border-color: #0052FF;
+  background-color: #EEF4FF;
+}
+
+.llm-settings-container .provider-card-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.llm-settings-container .provider-card-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1A1A1A;
+}
+
+/* LLM-Scoped Loading Animation for Websites */
+@keyframes llmWebsiteLoadIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.llm-settings-container .website-option {
+  animation: llmWebsiteLoadIn 0.4s ease-out forwards;
+}
+
+.llm-settings-container .website-option:nth-child(1) { animation-delay: 0.05s; }
+.llm-settings-container .website-option:nth-child(2) { animation-delay: 0.1s; }
+.llm-settings-container .website-option:nth-child(3) { animation-delay: 0.15s; }
+.llm-settings-container .website-option:nth-child(4) { animation-delay: 0.2s; }
+.llm-settings-container .website-option:nth-child(5) { animation-delay: 0.25s; }
+.llm-settings-container .website-option:nth-child(6) { animation-delay: 0.3s; }
+.llm-settings-container .website-option:nth-child(7) { animation-delay: 0.35s; }
+.llm-settings-container .website-option:nth-child(8) { animation-delay: 0.4s; }
+.llm-settings-container .website-option:nth-child(9) { animation-delay: 0.45s; }
+.llm-settings-container .website-option:nth-child(10) { animation-delay: 0.5s; }

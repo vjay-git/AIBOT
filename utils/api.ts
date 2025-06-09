@@ -308,7 +308,7 @@ export async function updateThreadTitle(threadId: any, newTitle: any) {
     const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: newTitle })
+      body: JSON.stringify({ thread_name: newTitle }) // ← Fixed this
     });
     
     if (!res.ok) {

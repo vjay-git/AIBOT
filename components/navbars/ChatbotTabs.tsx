@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Trash2, MoreVertical } from "lucide-react";
+import { updateThreadTitle } from '../../utils/api';
  // ← Make sure this path matches where you place the CSS file
 
 // —–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -83,6 +84,7 @@ interface ChatbotTabsProps {
   setIsFromFolder?: (isFromFolder: boolean) => void;
   autoRefreshInterval?: number;
   enableAutoRefresh?: boolean;
+  forceCollapsed?: boolean; // NEW: allow external control
 }
 
 // Strips leading question words, punctuation, etc., to show a 1–2 word “context”
@@ -131,6 +133,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   refreshChats,
   setIsFromBookmarks,
   setIsFromFolder,
+  forceCollapsed, // NEW
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [deletingChats, setDeletingChats] = useState<Set<string>>(new Set());
@@ -145,8 +148,13 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   const sortedChats = useMemo(() => [...chats].reverse(), [chats]);
   const sortedBookmarks = useMemo(() => [...bookmarks].reverse(), [bookmarks]);
 
+  // Use forceCollapsed if provided
+  const collapsed = typeof forceCollapsed === 'boolean' ? forceCollapsed : isCollapsed;
+
   // Toggle sidebar width
   const handleToggleCollapse = () => {
+    // Only allow manual toggle if not externally controlled
+    if (typeof forceCollapsed === 'boolean') return;
     setIsCollapsed((prev) => !prev);
     const event = new CustomEvent("sidebarToggle", {
       detail: { collapsed: !isCollapsed },
@@ -262,6 +270,28 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
     [deletingBookmarks, refreshChats, selectedId, onSelect]
   );
 
+  // Rename handler
+  const handleRename = useCallback(async (type: 'chat' | 'bookmark', id: string, oldName: string) => {
+    const newName = window.prompt(`Rename ${type === 'chat' ? 'chat' : 'bookmark'}`, oldName);
+    if (!newName || newName.trim() === oldName) return;
+    try {
+      if (type === 'chat') {
+        await updateThreadTitle(id, newName.trim());
+      } else {
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+        const url = `${baseUrl}/userhistory/bookmark/${id}`;
+        await fetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookmark_name: newName.trim() })
+        });
+      }
+      if (refreshChats) await refreshChats();
+    } catch (err) {
+      alert('Failed to rename.');
+    }
+  }, [refreshChats]);
+
   // Menu handlers
   const handleMenuOpen = (type: 'chat' | 'bookmark', id: string) => {
     setOpenMenu({ type, id });
@@ -271,20 +301,20 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   return (
     <div
       className={`chatbot-tabs-container ${
-        isCollapsed ? "collapsed" : ""
+        collapsed ? "collapsed" : ""
       }`}
     >
       {/* ── Header ────────────────────────────────────────────────────── */}
       {/* <div className="chatbot-header">
-        {!isCollapsed && (
+        {!collapsed && (
           <h2 className="header-title">Chat History</h2>
         )}
         <button
           className="toggle-button"
           onClick={handleToggleCollapse}
-          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {isCollapsed ? (
+          {collapsed ? (
             <ChevronRight size={14} />
           ) : (
             <ChevronLeft size={14} />
@@ -293,7 +323,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
       </div>
  */}
       {/* ── Main Content ────────────────────────────────────────────────── */}
-      {!isCollapsed ? (
+      {!collapsed ? (
         <div className="sidebar-scroll-area">
           {/* Folders Section */}
           <div className="folders-section">
@@ -416,7 +446,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                         </button>
                         {isMenuOpen && (
                           <div className="popup-menu" onClick={e => e.stopPropagation()}>
-                            <button className="popup-menu-item" onClick={() => { handleMenuClose(); /* TODO: trigger rename */ }}>Rename</button>
+                            <button className="popup-menu-item" onClick={() => { handleMenuClose(); handleRename('chat', chat.id, chat.title); }}>Rename</button>
                             <button className="popup-menu-item delete" onClick={() => { handleMenuClose(); handleDeleteChat(chat.id, chat.title); }}>Delete</button>
                           </div>
                         )}
@@ -491,7 +521,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                       </button>
                       {isMenuOpen && (
                         <div className="popup-menu" onClick={e => e.stopPropagation()}>
-                          <button className="popup-menu-item" onClick={() => { handleMenuClose(); /* TODO: trigger rename */ }}>Rename</button>
+                          <button className="popup-menu-item" onClick={() => { handleMenuClose(); handleRename('bookmark', bookmarkId, bookmarkName); }}>Rename</button>
                           <button className="popup-menu-item delete" onClick={() => { handleMenuClose(); handleDeleteBookmark(bookmarkId, bookmarkName); }}>Delete</button>
                         </div>
                       )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { askDB, fetchThreadById, getQueryById, fetchAiTableById } from '../../utils/api';
+import { askDB, fetchThreadById, getQueryById, fetchAiTableById, getAllChats } from '../../utils/api';
 import InputBar from '../../components/Chatbot/InputBar';
 import { ChatMessage } from '../../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -100,6 +100,7 @@ const Chatbot: React.FC<ChatbotProps> = ({
   const [threadId, setThreadId] = useState<string | null>(null);
   const [queryIds, setQueryIds] = useState<string[]>([]);
   const [isNewChatContext, setIsNewChatContext] = useState(false);
+  const [globalUserPrompts, setGlobalUserPrompts] = useState<string[]>([]);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -919,6 +920,35 @@ const handleSend = useCallback(
     ));
   }, []);
 
+  // Fetch all user messages from all chats for suggestions
+  useEffect(() => {
+    async function fetchAllUserPrompts() {
+      try {
+        const allChats = await getAllChats();
+        // allChats may be { chatSessions: [...] } or an array; handle both
+        const sessions = Array.isArray(allChats) ? allChats : allChats.chatSessions || [];
+        const allUserMessages: string[] = [];
+        sessions.forEach((session: any) => {
+          if (Array.isArray(session.messages)) {
+            session.messages.forEach((msg: any) => {
+              if (msg.role === 'user' && typeof msg.content === 'string' && msg.content.trim()) {
+                allUserMessages.push(msg.content.trim());
+              }
+            });
+          }
+        });
+        // Deduplicate and filter out very short/generic messages
+        const uniquePrompts = Array.from(new Set(allUserMessages)).filter(
+          p => p.length > 2 && !['ok', 'okay', 'thanks', 'hi', 'hello'].includes(p.toLowerCase())
+        );
+        setGlobalUserPrompts(uniquePrompts);
+      } catch (err) {
+        setGlobalUserPrompts([]);
+      }
+    }
+    fetchAllUserPrompts();
+  }, []);
+
   return (
     <div ref={chatbotContainerRef} className={`chatbot-container ${theme}`}>
       <div className="chatbot-header">
@@ -968,7 +998,7 @@ const handleSend = useCallback(
 
       <div className="chatbot-messages">
         {messages.length === 0 ? (
-          <WelcomeMessage onSuggestionClick={handleSend} suggestions={userPrompts} />
+          <WelcomeMessage onSuggestionClick={handleSend} suggestions={globalUserPrompts} />
         ) : (
           <AnimatePresence>
             {messages.map((msg) => (
@@ -1024,7 +1054,7 @@ const handleSend = useCallback(
         ref={inputBarRef}
         onSend={handleSend}
         theme={theme}
-        suggestions={userPrompts}
+        suggestions={globalUserPrompts}
       />
 
       {error && (
