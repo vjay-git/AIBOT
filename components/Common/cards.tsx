@@ -288,7 +288,11 @@ const Card: React.FC<CardProps> = ({
                     mb: "2px"
                   }}
                 >
-                  {typeof data === "string" && /^\d/.test(data.trim()) ? data.split(" ")[0] : data}
+                  {typeof data === "string"
+                    ? (/^\d/.test(data.trim()) ? data.split(" ")[0] : data)
+                    : typeof data === "object" && data !== null
+                      ? JSON.stringify(data)
+                      : "No data"}
                 </Typography>
                 <Typography
                   sx={{

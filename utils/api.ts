@@ -438,7 +438,57 @@ export async function throttledApiCall(key: any, apiFunction: () => any, delay =
 export async function askDBDashboard({ user_id, question, dashboard = '', tile = '', thread_id = '' }:any) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/ask_db`;
-  
+  const res ={
+    "bookmark_id": false,
+    "query": "SELECT date_trunc('month', a.appointment_created_date) AS MONTH, COUNT(*) AS total_appointments FROM appointments a GROUP BY MONTH ORDER BY MONTH NULLS LAST;",
+    "query_id": "0c251a14-47f0-44c1-b601-3370ae7a7acf",
+    "response": {
+        "data": {
+            "data": {
+                "data": [
+                    [
+                        "month",
+                        "total_appointments"
+                    ],
+                    [
+                        "Jan",
+                        2482
+                    ],
+                    [
+                        "Feb",
+                        1985
+                    ],
+                    [
+                        "Mar",
+                        2392
+                    ],
+                    [
+                        "Apr",
+                        2488
+                    ],
+                    [
+                        "May",
+                        2621
+                    ],
+                    [
+                        "Jun",
+                        2307
+                    ]
+                ],
+                "type": "table"
+            },
+            "type": "table"
+        },
+        "type": "text"
+    },
+    "status": "success",
+    "table": [
+        "APPOINTMENTS"
+    ],
+    "thread_id": "31714902-afee-4fa3-9569-37dea4a7152e"
+}
+    console.log('getAllChats response:', res);
+    return res;
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -512,22 +562,73 @@ export async function getUserDashboard(user_name: string) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const url = `${baseUrl}/user_dashboard/${user_name}`;
   
-  try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Failed to fetch user history: ${res.status} ${errorText}`);
+  const res=   {
+    "data": {
+        "ai_tables": {
+            "dashboard_1": [
+                "accounting"
+            ]
+        },
+        "created_at": "Tue, 10 Jun 2025 04:37:40 GMT",
+        "dashboards": {
+            "dashboard_1": {
+                "description": {
+                    "dashboard_description": "",
+                    "dashboard_last_update": "Tue, 10 Jun 2025 04:37:39 GMT",
+                    "dashboard_title": "purchasing"
+                },
+                "tile1": {
+                    "graph_title": "purchasing",
+                    "graph_type": "text",
+                    "position": {
+                        "x": 20,
+                        "y": 20
+                    },
+                    "question": "how much total stock is available in company code?",
+                    "size": {
+                        "height": 192,
+                        "width": 261
+                    }
+                },
+                "tile2": {
+                    "graph_title": "purchasing",
+                    "graph_type": "text",
+                    "position": {
+                        "x": 440,
+                        "y": 20
+                    },
+                    "question": "how many stocks available group by type\n",
+                    "size": {
+                        "height": 300,
+                        "width": 400
+                    }
+                }
+            }
+        },
+        "default_dashboard": "dashboard_1",
+        "updated_at": "Tue, 10 Jun 2025 04:49:13 GMT",
+        "username": "chandra@ctrls.com"
     }
+}
+
+    return res;
+  // try {
+
+  //   const res = await fetch(url, {
+  //     method: 'GET',
+  //     headers: { 'Content-Type': 'application/json' }
+  //   });
     
-    return await res.json();
-  } catch (error) {
-    console.error('Error in fetchAllUserHistoryAPI:', error);
-    throw error;
-  }
+  //   if (!res.ok) {
+  //     const errorText = await res.text();
+  //     throw new Error(`Failed to fetch user history: ${res.status} ${errorText}`);
+  //   }
+    
+  //   return await res.json();
+  // } catch (error) {
+  //   console.error('Error in fetchAllUserHistoryAPI:', error);
+  //   throw error;
+  // }
 }
 
 export async function getAiTables() {
