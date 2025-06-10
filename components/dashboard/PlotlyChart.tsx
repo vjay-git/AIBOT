@@ -5,21 +5,42 @@ interface PlotlyChartProps {
   data: Record<string, any>[];
   chartType?: 'bar' | 'line' | 'pie' | 'scatter';
   title?: string;
+  colorPalette?: ColorPalette;
 }
 
-// A vibrant, highly‐distinct palette for pie slices
-const PIE_COLORS = [
-  '#4472C4', // Blue
-  '#ED7D31', // Orange
-  '#A5A5A5', // Gray
-  '#FFC000', // Gold
-  '#5B9BD5', // Light Blue
-  '#70AD47', // Green
-  '#264478', // Dark Blue
-  '#9E480E', // Brown
-  '#636363', // Dark Gray
-  '#997300', // Olive
-];
+// Color palettes for charts
+const COLOR_PALETTES = {
+  classic: [
+    '#4472C4', '#ED7D31', '#A5A5A5', '#FFC000', '#5B9BD5', 
+    '#70AD47', '#264478', '#9E480E', '#636363', '#997300'
+  ],
+  vibrant: [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+  ],
+  pastel: [
+    '#FFB3BA', '#FFDFBA', '#FFFFBA', '#BAFFC9', '#BAE1FF',
+    '#E6E6FA', '#FFE4E1', '#F0E68C', '#E0FFFF', '#FAFAD2'
+  ],
+  ocean: [
+    '#006994', '#13A5B7', '#2BC4C1', '#7DE2D1', '#B8F2E6',
+    '#004E7C', '#0F7B8A', '#1E6091', '#2D4059', '#1A2332'
+  ],
+  sunset: [
+    '#FF6B35', '#F7931E', '#FFD23F', '#06FFA5', '#118AB2',
+    '#E63946', '#F77F00', '#FCBF49', '#06D6A0', '#073B4C'
+  ],
+  forest: [
+    '#2D5016', '#3E6B1F', '#4F8428', '#609C31', '#70B53A',
+    '#1B3409', '#2A4D12', '#39661B', '#487F24', '#57982D'
+  ],
+  monochrome: [
+    '#000000', '#2C2C2C', '#585858', '#848484', '#B0B0B0',
+    '#1A1A1A', '#404040', '#666666', '#8C8C8C', '#B8B8B8'
+  ]
+};
+
+type ColorPalette = keyof typeof COLOR_PALETTES;
 
 // Softly mix a base color toward white to get lighter shades
 function generateShades(base: string, count: number): string[] {
@@ -106,12 +127,14 @@ function detectAxes(data: Record<string, any>[]) {
 const PlotlyChart: FC<PlotlyChartProps> = ({
   data,
   chartType = 'bar',
-  title = 'AskDB Chart',
+  title = 'Chart',
+  colorPalette = 'classic',
 }) => {
   if (!data?.length) return null;
   
   const { xCandidates, yCandidates, needsXSelection } = useMemo(() => detectAxes(data), [data]);
   const [xCol, setXCol] = useState<string>(xCandidates[0] || '');
+  const [selectedPalette, setSelectedPalette] = useState<ColorPalette>(colorPalette);
 
   // When data changes, reset xCol to the best candidate
   useEffect(() => {
@@ -131,7 +154,8 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
 
   const mode = useThemeMode();
   const isDark = mode === 'dark';
-  const shades = useMemo(() => generateShades('#4472C4', x.length), [x.length]);
+  const currentColors = COLOR_PALETTES[selectedPalette];
+  const shades = useMemo(() => generateShades(currentColors[0], x.length), [currentColors, x.length]);
 
   // Build traces for multi-Y
   const traces = useMemo(() => {
@@ -140,14 +164,16 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
         type: 'pie',
         labels: x,
         values: y,
-        textinfo: 'label+percent',
+        textinfo: 'value+percent',
+        textposition: 'outside',
         insidetextorientation: 'radial',
         marker: {
-          colors: PIE_COLORS.slice(0, x.length),
+          colors: currentColors.slice(0, x.length),
           line: { color: '#fff', width: 1 },
         },
         sort: false,
         domain: { x: [0, 1], y: [0, 1] },
+        showlegend: false,
       }];
     }
     // For bar/line/scatter, support multiple Y columns
@@ -157,15 +183,27 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
           type: chartType === 'line' ? 'scatter' : chartType,
           x,
           y: data.map((r) => r[col]),
-          name: col,
-          marker: { color: PIE_COLORS[idx % PIE_COLORS.length] },
+          name: '',
+          marker: { color: currentColors[idx % currentColors.length] },
+          showlegend: false,
+          text: data.map((r) => {
+            const value = r[col];
+            if (typeof value === 'number') {
+              return value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` :
+                     value >= 1000 ? `${(value / 1000).toFixed(1)}K` :
+                     value.toLocaleString();
+            }
+            return value;
+          }),
+          textposition: chartType === 'bar' ? 'outside' : 'top center',
+          textfont: { size: 11, color: isDark ? '#E5E7EB' : '#374151' },
         };
         if (chartType === 'line') {
-          base.mode = 'lines';
-          base.line = { color: PIE_COLORS[idx % PIE_COLORS.length], width: 2 };
+          base.mode = 'lines+markers+text';
+          base.line = { color: currentColors[idx % currentColors.length], width: 2 };
         } else if (chartType === 'scatter') {
-          base.mode = 'markers+lines';
-          base.line = { color: PIE_COLORS[idx % PIE_COLORS.length], width: 2 };
+          base.mode = 'markers+lines+text';
+          base.line = { color: currentColors[idx % currentColors.length], width: 2 };
         }
         return base;
       });
@@ -176,18 +214,29 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
       x,
       y,
       marker: { color: shades },
-      hovertemplate: `<b>%{x}</b><br>${yCandidates[0]}: %{y}<extra></extra>`,
-      name: yCandidates[0],
+      hovertemplate: `<b>%{x}</b><br>%{y}<extra></extra>`,
+      name: '',
+      showlegend: false,
+      text: y?.map((value) => {
+        if (typeof value === 'number') {
+          return value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` :
+                 value >= 1000 ? `${(value / 1000).toFixed(1)}K` :
+                 value.toLocaleString();
+        }
+        return value;
+      }),
+      textposition: chartType === 'bar' ? 'outside' : 'top center',
+      textfont: { size: 11, color: isDark ? '#E5E7EB' : '#374151' },
     };
     if (chartType === 'line') {
-      base.mode = 'lines';
+      base.mode = 'lines+markers+text';
       base.line = { color: shades[shades.length - 1], width: 2 };
     } else if (chartType === 'scatter') {
-      base.mode = 'markers+lines';
+      base.mode = 'markers+lines+text';
       base.line = { color: shades[shades.length - 1], width: 2 };
     }
     return [base];
-  }, [chartType, x, y, yCandidates, data, shades]);
+  }, [chartType, x, y, yCandidates, data, shades, currentColors, isDark]);
 
   // Layout
   const layout = useMemo(() => {
@@ -199,23 +248,19 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
         chartType === 'pie'
           ? { t: 20, b: 20, l: 20, r: 20 }
           : { t: 30, b: 50, l: 50, r: 30 },
-      showlegend: chartType === 'pie' || yCandidates.length > 1,
-      legend:
-        chartType === 'pie'
-          ? { orientation: 'h', y: -0.2, x: 0.5, xanchor: 'center' }
-          : { font: { size: 11 } },
+      showlegend: false, // Hide all legends
     };
     if (chartType === 'pie') {
       common.width = 360;
       common.height = 360;
     } else {
-      common.xaxis = { title: xCol };
-      common.yaxis = { title: yCandidates.length > 1 ? '' : yCandidates[0] };
+      common.xaxis = { title: '' }; // Remove x-axis title
+      common.yaxis = { title: '' }; // Remove y-axis title
       common.width = 480;
       common.height = 360;
     }
     return common;
-  }, [chartType, xCol, yCandidates, isDark]);
+  }, [chartType, isDark]);
 
   const config = {
     responsive: true,
@@ -240,125 +285,165 @@ const PlotlyChart: FC<PlotlyChartProps> = ({
 
   return (
     <div style={{ ...containerStyle, minWidth: 320 }}>
-      <h3
-        style={{
-          textAlign: 'center',
-          fontSize: '1.75rem',
-          fontWeight: 600,
-          marginBottom: '1rem',
-          color: isDark ? '#FFF' : '#111',
-          position: 'relative',
-          paddingBottom: '0.5rem',
-          wordBreak: 'break-word',
-        }}
-      >
-        {title}
-        <span
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 40,
-            height: 3,
-            background: '#4472C4',
-            borderRadius: 2,
-          }}
-        />
-      </h3>
-      
-      {/* Only show X-axis selector when needed */}
-      {needsXSelection && chartType !== 'pie' && (
+      {/* Control panel for X-axis and color palette selection */}
+      {(needsXSelection && chartType !== 'pie') || true ? (
         <div style={{
           marginBottom: 24,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 12,
+          gap: 16,
+          flexWrap: 'wrap',
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: isDark ? 'rgba(35,39,50,0.8)' : 'rgba(247,249,251,0.9)',
-            padding: '8px 16px',
-            borderRadius: 12,
-            border: `1px solid ${isDark ? 'rgba(75,85,99,0.3)' : 'rgba(209,213,219,0.4)'}`,
-            backdropFilter: 'blur(8px)',
-            boxShadow: isDark 
-              ? '0 4px 6px rgba(0,0,0,0.1)' 
-              : '0 2px 4px rgba(68,114,196,0.08)',
-          }}>
+          {/* X-axis selector */}
+          {needsXSelection && chartType !== 'pie' && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              color: isDark ? '#9CA3AF' : '#6B7280',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              letterSpacing: '0.025em',
+              gap: 8,
+              background: isDark ? 'rgba(35,39,50,0.8)' : 'rgba(247,249,251,0.9)',
+              padding: '8px 16px',
+              borderRadius: 12,
+              border: `1px solid ${isDark ? 'rgba(75,85,99,0.3)' : 'rgba(209,213,219,0.4)'}`,
+              backdropFilter: 'blur(8px)',
+              boxShadow: isDark 
+                ? '0 4px 6px rgba(0,0,0,0.1)' 
+                : '0 2px 4px rgba(68,114,196,0.08)',
             }}>
-              <svg 
-                width="16" 
-                height="16" 
-                viewBox="0 0 20 20" 
-                fill="none" 
-                xmlns="http://www.w3.org/2000/svg"
-                style={{ marginRight: 2 }}
-              >
-                <rect x="3" y="9" width="14" height="2" rx="1" fill="#4472C4"/>
-                <rect x="9" y="3" width="2" height="14" rx="1" fill="#4472C4"/>
-              </svg>
-              X-Axis:
-            </div>
-            <select
-              value={xCol}
-              onChange={e => setXCol(e.target.value)}
-              style={{
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                color: isDark ? '#9CA3AF' : '#6B7280',
                 fontSize: '0.875rem',
                 fontWeight: 500,
-                padding: '6px 28px 6px 10px',
-                borderRadius: 8,
+                letterSpacing: '0.025em',
+              }}>
+                <svg 
+                  width="16" 
+                  height="16" 
+                  viewBox="0 0 20 20" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{ marginRight: 2 }}
+                >
+                  <rect x="3" y="9" width="14" height="2" rx="1" fill="#4472C4"/>
+                  <rect x="9" y="3" width="2" height="14" rx="1" fill="#4472C4"/>
+                </svg>
+                X-Axis:
+              </div>
+              <select
+                value={xCol}
+                onChange={e => setXCol(e.target.value)}
+                style={{
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  padding: '6px 28px 6px 10px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: isDark ? 'rgba(17,24,39,0.9)' : 'rgba(255,255,255,0.95)',
+                  color: isDark ? '#F9FAFB' : '#1F2937',
+                  boxShadow: isDark 
+                    ? 'inset 0 1px 2px rgba(0,0,0,0.2)' 
+                    : 'inset 0 1px 2px rgba(0,0,0,0.05)',
+                  outline: 'none',
+                  minWidth: 120,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='7' viewBox='0 0 12 7' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='${isDark ? '%23A0AEC0' : '%234472C4'}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 10px center',
+                }}
+                onFocus={(e) => {
+                  e.target.style.boxShadow = isDark 
+                    ? 'inset 0 1px 2px rgba(0,0,0,0.2), 0 0 0 3px rgba(68,114,196,0.2)' 
+                    : 'inset 0 1px 2px rgba(0,0,0,0.05), 0 0 0 3px rgba(68,114,196,0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.boxShadow = isDark 
+                    ? 'inset 0 1px 2px rgba(0,0,0,0.2)' 
+                    : 'inset 0 1px 2px rgba(0,0,0,0.05)';
+                }}
+              >
+                {xCandidates.map(col => (
+                  <option key={col} value={col} style={{
+                    background: isDark ? '#1F2937' : '#FFFFFF',
+                    color: isDark ? '#F9FAFB' : '#1F2937',
+                  }}>
+                    {col}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Color palette selector - minimal version */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: isDark ? 'rgba(35,39,50,0.8)' : 'rgba(247,249,251,0.9)',
+            padding: '6px 12px',
+            borderRadius: 8,
+            border: `1px solid ${isDark ? 'rgba(75,85,99,0.3)' : 'rgba(209,213,219,0.4)'}`,
+            backdropFilter: 'blur(8px)',
+          }}>
+            <select
+              value={selectedPalette}
+              onChange={e => setSelectedPalette(e.target.value as ColorPalette)}
+              style={{
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                padding: '4px 20px 4px 6px',
+                borderRadius: 6,
                 border: 'none',
-                background: isDark ? 'rgba(17,24,39,0.9)' : 'rgba(255,255,255,0.95)',
+                background: 'transparent',
                 color: isDark ? '#F9FAFB' : '#1F2937',
-                boxShadow: isDark 
-                  ? 'inset 0 1px 2px rgba(0,0,0,0.2)' 
-                  : 'inset 0 1px 2px rgba(0,0,0,0.05)',
                 outline: 'none',
-                minWidth: 120,
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
                 appearance: 'none',
                 WebkitAppearance: 'none',
                 MozAppearance: 'none',
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='7' viewBox='0 0 12 7' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='${isDark ? '%23A0AEC0' : '%234472C4'}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='${isDark ? '%23A0AEC0' : '%234472C4'}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
                 backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 10px center',
-              }}
-              onFocus={(e) => {
-                e.target.style.boxShadow = isDark 
-                  ? 'inset 0 1px 2px rgba(0,0,0,0.2), 0 0 0 3px rgba(68,114,196,0.2)' 
-                  : 'inset 0 1px 2px rgba(0,0,0,0.05), 0 0 0 3px rgba(68,114,196,0.1)';
-              }}
-              onBlur={(e) => {
-                e.target.style.boxShadow = isDark 
-                  ? 'inset 0 1px 2px rgba(0,0,0,0.2)' 
-                  : 'inset 0 1px 2px rgba(0,0,0,0.05)';
+                backgroundPosition: 'right 4px center',
+                minWidth: 80,
               }}
             >
-              {xCandidates.map(col => (
-                <option key={col} value={col} style={{
+              {Object.keys(COLOR_PALETTES).map(palette => (
+                <option key={palette} value={palette} style={{
                   background: isDark ? '#1F2937' : '#FFFFFF',
                   color: isDark ? '#F9FAFB' : '#1F2937',
                 }}>
-                  {col}
+                  {palette.charAt(0).toUpperCase() + palette.slice(1)}
                 </option>
               ))}
             </select>
+            
+            {/* Minimal color preview */}
+            <div style={{
+              display: 'flex',
+              gap: 1,
+            }}>
+              {currentColors.slice(0, 3).map((color, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: color,
+                    border: '1px solid rgba(255,255,255,0.4)',
+                  }}
+                />
+              ))}
+            </div>
           </div>
         </div>
-      )}
+      ) : null}
       
       <div style={{ width: '100%', minHeight: layout.height, overflow: 'auto' }}>
         <Plot

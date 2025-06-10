@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { motion } from 'framer-motion';
-import { Database, Globe } from 'lucide-react';
+import { Database, Globe, MessageSquare } from 'lucide-react';
 
 type QueryType = 'CHAT' | 'DB_QUERY' | 'SCRAP';
 
@@ -21,8 +21,8 @@ const InputBar = forwardRef(function InputBar(
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   
-  // Updated mode state - initially null (no selection)
-  const [mode, setMode] = useState<'db' | 'web' | null>(null);
+  // Default to 'db' (askdb icon selected by default)
+  const [mode, setMode] = useState<'db' | 'web' | null>('db');
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
@@ -58,9 +58,12 @@ const InputBar = forwardRef(function InputBar(
 
   // Function to determine query type based on mode selection
   const getQueryType = (): QueryType => {
+    console.log('🔍 Current mode state:', mode, '-> query_type:', 
+      mode === 'db' ? 'DB_QUERY' : mode === 'web' ? 'SCRAP' : 'CHAT');
+    
     if (mode === 'db') return 'DB_QUERY';
-    if (mode === 'web') return 'SCRAP'; // Changed from 'SEARCH' to 'SCRAP'
-    return 'CHAT'; // Default for no selection or initial state
+    if (mode === 'web') return 'SCRAP';
+    return 'CHAT'; // Default when no mode is selected
   };
 
   // Function to get placeholder text based on mode
@@ -72,18 +75,18 @@ const InputBar = forwardRef(function InputBar(
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Debug: Log mode and queryType
-    const queryType = getQueryType();
-    console.log('[InputBar] handleSubmit:', { mode, queryType, message });
-    // If no message and no mode selected, send initial "Hi" message
-    if (!message.trim() && mode === null) {
-      onSend('Hi', 'CHAT');
-      return;
-    }
+    
+    // If no message, don't send anything
     if (!message.trim()) return;
+    
+    const queryType = getQueryType();
+    console.log('📤 SUBMIT - Mode:', mode, 'QueryType:', queryType, 'Message:', message.slice(0, 50));
+    
     onSend(message, queryType);
     setMessage('');
     setShowSuggestions(false);
+    // Keep the current mode selection (don't reset)
+    
     // Reset textarea height
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
@@ -117,10 +120,10 @@ const InputBar = forwardRef(function InputBar(
 
   const handleVoiceSend = (audioBlob: Blob) => {
     if (onSend) {
-      // For voice messages, determine query type and pass audio blob
       const queryType = getQueryType();
-      console.log('[InputBar] handleVoiceSend:', { mode, queryType });
-      (onSend as any)(audioBlob, queryType, true); // Add isAudio flag
+      console.log('🎤 VOICE SUBMIT - Mode:', mode, 'QueryType:', queryType);
+      (onSend as any)(audioBlob, queryType, true);
+      // Keep the current mode selection (don't reset)
     }
   };
 
@@ -154,11 +157,16 @@ const InputBar = forwardRef(function InputBar(
   };
 
   const handleModeChange = (newMode: 'db' | 'web') => {
-    // Toggle mode - if same mode is clicked, deselect it
+    // Toggle mode - if same mode is clicked, deselect it (set to null)
+    // This allows users to have no mode selected (query_type = 'CHAT')
+    const previousMode = mode;
+    
     if (mode === newMode) {
-      setMode(null);
+      console.log('🔄 Deselecting mode:', newMode, '-> CHAT mode');
+      setMode(null); // Deselect the current mode
     } else {
-      setMode(newMode);
+      console.log('🔄 Selecting mode:', newMode, 'from:', previousMode);
+      setMode(newMode); // Select the new mode
     }
     inputRef.current?.focus();
   };
@@ -223,8 +231,13 @@ const InputBar = forwardRef(function InputBar(
               type="button"
               className={`mode-btn-icon${mode === 'db' ? ' active' : ''}`}
               onClick={() => handleModeChange('db')}
-              aria-label="Ask DB"
-              title="Ask Database"
+              aria-label={mode === 'db' ? 'Deselect Database mode' : 'Select Database mode'}
+              title={mode === 'db' ? 'Click to deselect Database mode' : 'Ask Database'}
+              style={{
+                opacity: mode === 'db' ? 1 : 0.6,
+                transform: mode === 'db' ? 'scale(1.1)' : 'scale(1)',
+                transition: 'all 0.2s ease'
+              }}
             >
               <Database size={20} />
             </button>
@@ -232,8 +245,13 @@ const InputBar = forwardRef(function InputBar(
               type="button"
               className={`mode-btn-icon${mode === 'web' ? ' active' : ''}`}
               onClick={() => handleModeChange('web')}
-              aria-label="Web Search"
-              title="Web Search"
+              aria-label={mode === 'web' ? 'Deselect Web Search mode' : 'Select Web Search mode'}
+              title={mode === 'web' ? 'Click to deselect Web Search mode' : 'Web Search'}
+              style={{
+                opacity: mode === 'web' ? 1 : 0.6,
+                transform: mode === 'web' ? 'scale(1.1)' : 'scale(1)',
+                transition: 'all 0.2s ease'
+              }}
             >
               <Globe size={20} />
             </button>
@@ -251,14 +269,20 @@ const InputBar = forwardRef(function InputBar(
           <div className="input-actions">
             <motion.button
               type="button"
-              className="action-btn generate-btn"
-              onClick={handleGenerateReport}
+              className={`action-btn chat-btn${mode === null ? ' active' : ''}`}
+              onClick={() => {
+                console.log('💬 Chat mode selected');
+                setMode(null);
+                inputRef.current?.focus();
+              }}
+              title="Chat Mode"
+              style={{
+                opacity: mode === null ? 1 : 0.6,
+                transform: mode === null ? 'scale(1.1)' : 'scale(1)',
+                transition: 'all 0.2s ease'
+              }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14 3v4a1 1 0 001 1h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M9 9h1M9 13h6M9 17h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
+              <MessageSquare size={20} />
             </motion.button>
             <motion.button
               type="button"
@@ -295,10 +319,11 @@ const InputBar = forwardRef(function InputBar(
             </motion.button>
             <motion.button
               type="submit"
-              className={`send-button ${!message.trim() && mode !== null ? 'disabled' : ''}`}
-              disabled={!message.trim() && mode !== null}
+              className={`send-button ${!message.trim() ? 'disabled' : ''}`}
+              disabled={!message.trim()}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              title={`Send message ${mode === 'db' ? '(Database Query)' : mode === 'web' ? '(Web Search)' : '(Chat)'}`}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>

@@ -110,10 +110,11 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   
-  // Field selection modal state (for field_mapping)
+  // Enhanced field selection modal state (for field_mapping)
   const [showFieldSelectionModal, setShowFieldSelectionModal] = useState<boolean>(false);
   const [availableFields, setAvailableFields] = useState<FieldOption[]>([]);
-  const [selectedField, setSelectedField] = useState<string>('');
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [customFieldName, setCustomFieldName] = useState<string>('');
   const [currentEditingRow, setCurrentEditingRow] = useState<MappingRecord | null>(null);
   const [loadingFields, setLoadingFields] = useState<boolean>(false);
 
@@ -418,6 +419,31 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
     }
   };
 
+  // Enhanced field selection handlers
+  const handleFieldToggle = (fieldId: string) => {
+    setSelectedFields(prev => {
+      if (prev.includes(fieldId)) {
+        // Remove field if already selected
+        return prev.filter(id => id !== fieldId);
+      } else {
+        // Add field if not selected
+        return [...prev, fieldId];
+      }
+    });
+  };
+
+  const handleCustomFieldChange = (value: string) => {
+    setCustomFieldName(value);
+    // Automatically select custom option when user types
+    if (value.trim() && !selectedFields.includes('custom')) {
+      setSelectedFields(prev => [...prev, 'custom']);
+    }
+    // Deselect custom option when field is cleared
+    if (!value.trim() && selectedFields.includes('custom')) {
+      setSelectedFields(prev => prev.filter(id => id !== 'custom'));
+    }
+  };
+
   const handleMappingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedMapping(e.target.value);
     setSearchTerm('');
@@ -469,18 +495,43 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
     }
   };
 
-  // Handle field selection for field_mapping
+  // Enhanced field selection for field_mapping
   const handleFieldSelection = async () => {
-    if (!currentEditingRow || !selectedField) return;
+    if (!currentEditingRow || (selectedFields.length === 0 && !customFieldName.trim())) return;
 
     try {
-      const selectedFieldData = availableFields.find(field => field.id === selectedField);
-      if (!selectedFieldData) return;
+      // Determine which fields to apply
+      const fieldsToApply = [];
+      
+      // Add selected AI-proposed fields
+      selectedFields.forEach(fieldId => {
+        if (fieldId !== 'custom') {
+          const selectedFieldData = availableFields.find(field => field.id === fieldId);
+          if (selectedFieldData) {
+            fieldsToApply.push(selectedFieldData.name);
+          }
+        }
+      });
+      
+      // Add custom field if specified
+      if (selectedFields.includes('custom') && customFieldName.trim()) {
+        fieldsToApply.push(customFieldName.trim());
+      } else if (!selectedFields.includes('custom') && customFieldName.trim()) {
+        // Custom field entered but not explicitly selected
+        fieldsToApply.push(customFieldName.trim());
+      }
 
-      await updateRecord(currentEditingRow, 'ai_field', selectedFieldData.name);
+      // For now, we'll update with the first field (you might want to handle multiple fields differently)
+      // Or concatenate them, depending on your backend requirements
+      const finalFieldValue = fieldsToApply.length === 1 ? 
+        fieldsToApply[0] : 
+        fieldsToApply.join(', '); // or however you want to handle multiple selections
+
+      await updateRecord(currentEditingRow, 'ai_field', finalFieldValue);
 
       setShowFieldSelectionModal(false);
-      setSelectedField('');
+      setSelectedFields([]);
+      setCustomFieldName('');
       setCurrentEditingRow(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update AI field');
@@ -545,45 +596,47 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
         }
 
         .elegant-controls {
-          margin-bottom: 32px;
+          margin-bottom: 20px;
           background: rgba(255, 255, 255, 0.9);
           backdrop-filter: blur(20px);
-          border-radius: 20px;
-          padding: 28px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+          border-radius: 16px;
+          padding: 20px 24px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
           border: 1px solid rgba(255, 255, 255, 0.2);
+          display: flex;
+          align-items: center;
+          gap: 16px;
         }
 
         .elegant-label {
-          display: block;
-          margin-bottom: 12px;
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 600;
           color: #334155;
           letter-spacing: -0.025em;
+          white-space: nowrap;
         }
 
         .elegant-select {
-          width: 100%;
-          max-width: 320px;
-          padding: 16px 20px;
+          flex: 1;
+          max-width: 280px;
+          padding: 12px 16px;
           background: rgba(255, 255, 255, 0.95);
           border: 2px solid rgba(0, 21, 118, 0.1);
-          border-radius: 16px;
-          font-size: 15px;
+          border-radius: 12px;
+          font-size: 14px;
           color: #1e293b;
           appearance: none;
-          background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%23001576' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+          background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%23001576' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
           background-repeat: no-repeat;
-          background-position: right 20px center;
+          background-position: right 16px center;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
         }
 
         .elegant-select:focus {
           outline: none;
           border-color: #001576;
-          box-shadow: 0 0 0 4px rgba(0, 21, 118, 0.1), 0 8px 24px rgba(0, 0, 0, 0.08);
+          box-shadow: 0 0 0 3px rgba(0, 21, 118, 0.1), 0 4px 12px rgba(0, 0, 0, 0.06);
         }
 
         .elegant-results {
@@ -1219,33 +1272,50 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
         }
 
         .elegant-field-selection {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          max-height: 320px;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 16px;
+          max-height: 400px;
           overflow-y: auto;
-          padding: 12px;
+          padding: 16px;
           border: 2px solid rgba(226, 232, 240, 0.8);
           border-radius: 16px;
           background: rgba(248, 250, 252, 0.5);
         }
 
+        .elegant-field-selection::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .elegant-field-selection::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 4px;
+        }
+
+        .elegant-field-selection::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+          border-radius: 4px;
+        }
+
         .elegant-field-option {
           display: flex;
-          align-items: center;
-          gap: 16px;
+          flex-direction: column;
+          gap: 12px;
           padding: 16px;
           border-radius: 12px;
           background: rgba(255, 255, 255, 0.9);
           border: 2px solid rgba(226, 232, 240, 0.6);
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          min-height: 100px;
         }
 
         .elegant-field-option:hover {
-          background: rgba(248, 250, 252, 0.95);
+          background: rgba(255, 255, 255, 0.95);
           border-color: #94a3b8;
-          transform: translateY(-1px);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
         }
 
         .elegant-field-option.selected {
@@ -1254,9 +1324,26 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
           box-shadow: 0 4px 16px rgba(0, 21, 118, 0.15);
         }
 
-        .elegant-radio {
+        .elegant-field-option.custom-field {
+          border: 2px dashed rgba(0, 21, 118, 0.3);
+          background: linear-gradient(135deg, rgba(0, 21, 118, 0.02) 0%, rgba(0, 43, 184, 0.02) 100%);
+        }
+
+        .elegant-field-option.custom-field.selected {
+          border: 2px dashed #001576;
+          background: linear-gradient(135deg, rgba(0, 21, 118, 0.08) 0%, rgba(0, 43, 184, 0.08) 100%);
+        }
+
+        .elegant-field-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .elegant-checkbox {
           accent-color: #001576;
           transform: scale(1.2);
+          cursor: pointer;
         }
 
         .elegant-field-info {
@@ -1264,16 +1351,61 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
         }
 
         .elegant-field-name {
-          font-size: 16px;
+          font-size: 15px;
           font-weight: 600;
           color: #1e293b;
           margin-bottom: 4px;
+          word-break: break-word;
         }
 
         .elegant-field-type {
           font-size: 12px;
           color: #64748b;
           font-style: italic;
+        }
+
+        .elegant-custom-input {
+          width: 100%;
+          padding: 8px 12px;
+          border: 2px solid rgba(0, 21, 118, 0.2);
+          border-radius: 8px;
+          font-size: 14px;
+          color: #1e293b;
+          background: rgba(255, 255, 255, 0.9);
+          transition: all 0.3s ease;
+          margin-top: 8px;
+        }
+
+        .elegant-custom-input:focus {
+          outline: none;
+          border-color: #001576;
+          box-shadow: 0 0 0 3px rgba(0, 21, 118, 0.1);
+        }
+
+        .elegant-custom-input::placeholder {
+          color: #94a3b8;
+          font-style: italic;
+        }
+
+        .elegant-selection-summary {
+          margin-top: 16px;
+          padding: 12px 16px;
+          background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(22, 163, 74, 0.08) 100%);
+          border-radius: 12px;
+          border: 2px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .elegant-summary-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: #15803d;
+          margin-bottom: 6px;
+        }
+
+        .elegant-summary-content {
+          font-size: 13px;
+          color: #166534;
+          line-height: 1.4;
         }
 
         .elegant-check-icon {
@@ -1325,9 +1457,9 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
 
       {/* Controls Section */}
       <div className="elegant-controls">
-        <label className="elegant-label">Select Mapping Configuration</label>
+        <label className="elegant-label">Mapping Type:</label>
         <select value={selectedMapping} onChange={handleMappingChange} className="elegant-select">
-          <option value="">Choose a mapping type...</option>
+          <option value="">Choose mapping...</option>
           {mappingOptions.map((option) => (
             <option key={option.id} value={option.id}>
               {option.label}
@@ -1636,16 +1768,16 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
         </div>
       )}
 
-      {/* Field Selection Modal for field_mapping */}
+      {/* Enhanced Field Selection Modal for field_mapping */}
       {showFieldSelectionModal && selectedMapping === 'field_mapping' && (
         <div className="elegant-modal-overlay" onClick={() => setShowFieldSelectionModal(false)}>
           <div className="elegant-modal" onClick={(e) => e.stopPropagation()}>
             <div className="elegant-modal-header">
               <h3 className="elegant-modal-title">
-                Select Proposed AI Field
+                Select Proposed AI Fields
               </h3>
               <p className="elegant-modal-description">
-                Choose one of the AI-proposed fields to replace the current field mapping. Our AI has analyzed the database structure to suggest the most suitable options.
+                Choose multiple AI-proposed fields or create a custom field. Our AI has analyzed the database structure to suggest the most suitable options.
               </p>
               {currentEditingRow && (
                 <div style={{ 
@@ -1673,7 +1805,7 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
               ) : (
                 <div className="elegant-field-selection">
                   {availableFields.length === 0 ? (
-                    <div className="elegant-empty-state" style={{ padding: '40px 20px' }}>
+                    <div className="elegant-empty-state" style={{ padding: '40px 20px', gridColumn: '1 / -1' }}>
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="elegant-empty-icon">
                         <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -1681,49 +1813,94 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
                       <div className="elegant-empty-description">Our AI couldn't generate field proposals for this configuration</div>
                     </div>
                   ) : (
-                    availableFields.map((field) => (
-                      <label 
-                        key={field.id} 
-                        className={`elegant-field-option ${selectedField === field.id ? 'selected' : ''}`}
+                    <>
+                      {/* Custom Field Option */}
+                      <div 
+                        className={`elegant-field-option custom-field ${selectedFields.includes('custom') ? 'selected' : ''}`}
+                        onClick={() => handleFieldToggle('custom')}
                       >
-                        <input
-                          type="radio"
-                          name="proposedField"
-                          checked={selectedField === field.id}
-                          onChange={() => setSelectedField(field.id)}
-                          className="elegant-radio"
-                        />
-                        <div className="elegant-field-info">
-                          <div className="elegant-field-name">{field.name}</div>
-                          <div className="elegant-field-type">AI-proposed field • Type: {field.type}</div>
+                        <div className="elegant-field-header">
+                          <input
+                            type="checkbox"
+                            checked={selectedFields.includes('custom')}
+                            onChange={() => handleFieldToggle('custom')}
+                            className="elegant-checkbox"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          {selectedFields.includes('custom') && (
+                            <div className="elegant-check-icon">
+                              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="currentColor"/>
+                              </svg>
+                            </div>
+                          )}
                         </div>
-                        {selectedField === field.id && (
-                          <div className="elegant-check-icon">
-                            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M16.667 5L7.5 14.167L3.333 10" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
+                        <div className="elegant-field-info">
+                          <div className="elegant-field-name">Custom AI Field</div>
+                          <div className="elegant-field-type">Define your own field name</div>
+                          <input
+                            type="text"
+                            value={customFieldName}
+                            onChange={(e) => handleCustomFieldChange(e.target.value)}
+                            placeholder="Enter custom field name..."
+                            className="elegant-custom-input"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
+
+                      {/* AI Proposed Fields */}
+                      {availableFields.map((field) => (
+                        <div 
+                          key={field.id} 
+                          className={`elegant-field-option ${selectedFields.includes(field.id) ? 'selected' : ''}`}
+                          onClick={() => handleFieldToggle(field.id)}
+                        >
+                          <div className="elegant-field-header">
+                            <input
+                              type="checkbox"
+                              checked={selectedFields.includes(field.id)}
+                              onChange={() => handleFieldToggle(field.id)}
+                              className="elegant-checkbox"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            {selectedFields.includes(field.id) && (
+                              <div className="elegant-check-icon">
+                                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="currentColor"/>
+                                </svg>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </label>
-                    ))
+                          <div className="elegant-field-info">
+                            <div className="elegant-field-name">{field.name}</div>
+                            <div className="elegant-field-type">AI-proposed • Type: {field.type}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
                   )}
                 </div>
               )}
               
-              {!loadingFields && availableFields.length > 0 && (
-                <div style={{ 
-                  marginTop: '16px', 
-                  padding: '12px 16px',
-                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(22, 163, 74, 0.08) 100%)',
-                  borderRadius: '12px',
-                  fontSize: '14px', 
-                  color: '#15803d',
-                  border: '2px solid rgba(34, 197, 94, 0.2)'
-                }}>
-                  {selectedField ? 
-                    `✓ Selected: ${availableFields.find(f => f.id === selectedField)?.name}` : 
-                    '→ Please select an AI-proposed field to continue'
-                  }
+              {/* Selection Summary */}
+              {!loadingFields && (selectedFields.length > 0 || customFieldName.trim()) && (
+                <div className="elegant-selection-summary">
+                  <div className="elegant-summary-title">
+                    Selected Fields ({selectedFields.length + (customFieldName.trim() && !selectedFields.includes('custom') ? 1 : 0)})
+                  </div>
+                  <div className="elegant-summary-content">
+                    {selectedFields.includes('custom') && customFieldName.trim() ? (
+                      <>Custom: "{customFieldName}"{selectedFields.length > 1 ? ', ' : ''}</>
+                    ) : null}
+                    {selectedFields.filter(id => id !== 'custom').map(fieldId => {
+                      const field = availableFields.find(f => f.id === fieldId);
+                      return field ? field.name : fieldId;
+                    }).join(', ')}
+                    {selectedFields.length === 0 && customFieldName.trim() ? (
+                      `Custom field: "${customFieldName}"`
+                    ) : null}
+                  </div>
                 </div>
               )}
             </div>
@@ -1732,7 +1909,8 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
               <button
                 onClick={() => {
                   setShowFieldSelectionModal(false);
-                  setSelectedField('');
+                  setSelectedFields([]);
+                  setCustomFieldName('');
                   setCurrentEditingRow(null);
                 }}
                 className="elegant-button elegant-button-secondary"
@@ -1741,10 +1919,10 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
               </button>
               <button
                 onClick={handleFieldSelection}
-                disabled={!selectedField || updating}
+                disabled={selectedFields.length === 0 && !customFieldName.trim() || updating}
                 className="elegant-button elegant-button-primary"
               >
-                {updating ? 'Updating...' : 'Update AI Field'}
+                {updating ? 'Updating...' : `Apply Selected Fields (${selectedFields.length + (customFieldName.trim() && !selectedFields.includes('custom') ? 1 : 0)})`}
               </button>
             </div>
           </div>

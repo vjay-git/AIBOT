@@ -15,14 +15,14 @@ const DatabaseTypeSelect: React.FC<DatabaseTypeSelectProps> = ({ onSelectType })
   const [selectedType, setSelectedType] = useState<DatabaseTypeOption | null>(null);
 
   const databaseTypes: DatabaseTypeOption[] = [
-    { id: 'excel', name: 'Microsoft Excel', icon: '🟩' },
-    { id: 'oracle', name: 'Oracle Database', icon: '🔴' },
-    { id: 'postgresql', name: 'PostgreSQL', icon: '🟦' },
-    { id: 'mysql', name: 'My SQL', icon: '🟦' },
-    { id: 'sap', name: 'SAP HANA', icon: '🟦' },
-    { id: 'google', name: 'Google Cloud SQL', icon: '🟨' },
-    { id: 'azure', name: 'Azure SQL Database', icon: '🟦' },
-    { id: 'mariadb', name: 'MariaDB', icon: '🟦' },
+    { id: 'excel', name: 'Microsoft Excel', icon: '📊' },
+    { id: 'oracle', name: 'Oracle Database', icon: '🏛️' },
+    { id: 'postgresql', name: 'PostgreSQL', icon: '🐘' },
+    { id: 'mysql', name: 'My SQL', icon: '🐬' },
+    { id: 'sap', name: 'SAP HANA', icon: '💎' },
+    { id: 'google', name: 'Google Cloud SQL', icon: '☁️' },
+    { id: 'azure', name: 'Azure SQL Database', icon: '☁️' },
+    { id: 'mariadb', name: 'MariaDB', icon: '🗄️' },
   ];
 
   const toggleDropdown = () => {

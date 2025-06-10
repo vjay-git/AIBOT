@@ -1,0 +1,83 @@
+/* Simple Schema Tabs Styles */
+
+.schema-tables {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Add Table Button */
+.add-table {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 8px;
+}
+
+.add-table:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.add-icon {
+  width: 16px;
+  height: 16px;
+  color: #64748b;
+}
+
+.add-text {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Table Items */
+.table-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.table-item:hover {
+  background: #f8fafc;
+}
+
+.table-item.active {
+  background: #eff6ff;
+  border-color: #dbeafe;
+  color: #1e40af;
+}
+
+.table-icon {
+  width: 16px;
+  height: 16px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.table-item.active .table-icon {
+  color: #3b82f6;
+}
+
+.table-title {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.table-item.active .table-title {
+  color: #1e40af;
+  font-weight: 600;
+}

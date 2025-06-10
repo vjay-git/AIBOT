@@ -3,7 +3,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Trash2, MoreVertical } from "lucide-react";
 import { updateThreadTitle } from '../../utils/api';
- // ← Make sure this path matches where you place the CSS file
 
 // —–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 // Keep your existing API functions unchanged
@@ -38,6 +37,23 @@ async function deletedThreadById(threadId: string) {
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Failed to delete thread: ${res.status} ${errorText}`);
+  }
+
+  return await res.json();
+}
+
+async function deleteFolder(folderId: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = `${baseUrl}/userhistory/aitable/${folderId}`;
+
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to delete folder: ${res.status} ${errorText}`);
   }
 
   return await res.json();
@@ -87,36 +103,6 @@ interface ChatbotTabsProps {
   forceCollapsed?: boolean; // NEW: allow external control
 }
 
-// Strips leading question words, punctuation, etc., to show a 1–2 word “context”
-const extractContext = (title: string): string => {
-  if (!title) return "Chat";
-
-  const cleaned = title
-    .replace(
-      /^(show me|tell me|what|how|why|when|where|can you|please|help)/i,
-      ""
-    )
-    .replace(/\?+$/, "")
-    .trim();
-
-  const words = cleaned
-    .split(" ")
-    .filter(
-      (w) =>
-        w.length > 2 &&
-        !["the", "and", "for", "are", "with", "from", "about"].includes(
-          w.toLowerCase()
-        )
-    );
-
-  const context = words.slice(0, 2).join(" ");
-  return (
-    context ||
-    title.split(" ").slice(0, 2).join(" ") ||
-    "Chat"
-  );
-};
-
 // —–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 // Component
 // —–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -140,8 +126,9 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   const [deletingBookmarks, setDeletingBookmarks] = useState<Set<string>>(
     new Set()
   );
+  const [deletingFolders, setDeletingFolders] = useState<Set<string>>(new Set());
   const [showAllChats, setShowAllChats] = useState(false);
-  const [openMenu, setOpenMenu] = useState<{ type: 'chat' | 'bookmark'; id: string } | null>(null);
+  const [openMenu, setOpenMenu] = useState<{ type: 'chat' | 'bookmark' | 'folder'; id: string } | null>(null);
   const MAX_CHATS_DISPLAY = 4;
 
   // Reverse so that newest appears at top
@@ -205,7 +192,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   const handleDeleteChat = useCallback(
     async (chatId: string, chatTitle: string) => {
       if (deletingChats.has(chatId)) return;
-      if (!window.confirm(`Delete “${extractContext(chatTitle)}”?`)) return;
+      if (!window.confirm(`Delete "${chatTitle}"?`)) return;
 
       setDeletingChats((prev) => {
         const next = new Set(prev);
@@ -235,11 +222,44 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
     [deletingChats, onDeleteChat, refreshChats, selectedId, onSelect]
   );
 
-  // Deletes a bookmark
+  // Deletes a folder
+  const handleDeleteFolder = useCallback(
+    async (folderId: string, folderName: string) => {
+      if (deletingFolders.has(folderId)) return;
+      if (!window.confirm(`Delete folder "${folderName}"? This will permanently delete all data in this folder.`)) return;
+
+      setDeletingFolders((prev) => {
+        const next = new Set(prev);
+        next.add(folderId);
+        return next;
+      });
+
+      try {
+        await deleteFolder(folderId);
+        if (refreshChats) await refreshChats();
+        if (selectedId === folderId) onSelect("");
+      } catch (err) {
+        alert(
+          `Error: ${
+            err instanceof Error
+              ? err.message
+              : "Failed to delete folder."
+          }`
+        );
+      } finally {
+        setDeletingFolders((prev) => {
+          const next = new Set(prev);
+          next.delete(folderId);
+          return next;
+        });
+      }
+    },
+    [deletingFolders, refreshChats, selectedId, onSelect]
+  );
   const handleDeleteBookmark = useCallback(
     async (bookmarkId: string, bookmarkName: string) => {
       if (deletingBookmarks.has(bookmarkId)) return;
-      if (!window.confirm(`Delete bookmark “${bookmarkName}”?`)) return;
+      if (!window.confirm(`Delete bookmark "${bookmarkName}"?`)) return;
 
       setDeletingBookmarks((prev) => {
         const next = new Set(prev);
@@ -271,19 +291,27 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   );
 
   // Rename handler
-  const handleRename = useCallback(async (type: 'chat' | 'bookmark', id: string, oldName: string) => {
-    const newName = window.prompt(`Rename ${type === 'chat' ? 'chat' : 'bookmark'}`, oldName);
+  const handleRename = useCallback(async (type: 'chat' | 'bookmark' | 'folder', id: string, oldName: string) => {
+    const newName = window.prompt(`Rename ${type === 'chat' ? 'chat' : type === 'bookmark' ? 'bookmark' : 'folder'}`, oldName);
     if (!newName || newName.trim() === oldName) return;
     try {
       if (type === 'chat') {
         await updateThreadTitle(id, newName.trim());
-      } else {
+      } else if (type === 'bookmark') {
         const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
         const url = `${baseUrl}/userhistory/bookmark/${id}`;
         await fetch(url, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bookmark_name: newName.trim() })
+        });
+      } else if (type === 'folder') {
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+        const url = `${baseUrl}/userhistory/aitable/${id}`;
+        await fetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ table_name: newName.trim() })
         });
       }
       if (refreshChats) await refreshChats();
@@ -293,7 +321,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
   }, [refreshChats]);
 
   // Menu handlers
-  const handleMenuOpen = (type: 'chat' | 'bookmark', id: string) => {
+  const handleMenuOpen = (type: 'chat' | 'bookmark' | 'folder', id: string) => {
     setOpenMenu({ type, id });
   };
   const handleMenuClose = () => setOpenMenu(null);
@@ -351,6 +379,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
               ) : (
                 folders.map((folder) => {
                   const isSelected = selectedId === folder.id;
+                  const isMenuOpen = openMenu && openMenu.type === 'folder' && openMenu.id === folder.id;
                   return (
                     <div
                       key={folder.id}
@@ -360,6 +389,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                       onClick={() =>
                         handleFolderSelect(folder.id, false, false, true)
                       }
+                      style={{ position: 'relative' }}
                     >
                       <svg
                         className="folder-icon"
@@ -378,6 +408,19 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                       <span className="folder-name">
                         {folder.name}
                       </span>
+                      <button
+                        className="kebab-menu-btn"
+                        onClick={e => { e.stopPropagation(); handleMenuOpen('folder', folder.id); }}
+                        title="More options"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                      {isMenuOpen && (
+                        <div className="popup-menu" onClick={e => e.stopPropagation()}>
+                          <button className="popup-menu-item" onClick={() => { handleMenuClose(); handleRename('folder', folder.id, folder.name); }}>Rename</button>
+                          <button className="popup-menu-item delete" onClick={() => { handleMenuClose(); handleDeleteFolder(folder.id, folder.name); }}>Delete</button>
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -435,7 +478,7 @@ const ChatbotTabs: React.FC<ChatbotTabsProps> = ({
                         style={{ position: 'relative' }}
                       >
                         <span className="chat-name">
-                          {extractContext(chat.title)}
+                          {chat.title || "Untitled Chat"}
                         </span>
                         <button
                           className="kebab-menu-btn"

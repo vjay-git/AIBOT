@@ -41,16 +41,7 @@ export const PROVIDER_OPTIONS = [
 
 // Mock whitelisted websites for web scraping (only for UI)
 export const WHITELISTED_WEBSITES = [
-  { id: 'cloud4c', name: 'www.cloud4c.com', url: 'https://www.cloud4c.com' },
-  { id: 'github', name: 'github.com', url: 'https://github.com' },
-  { id: 'stackoverflow', name: 'stackoverflow.com', url: 'https://stackoverflow.com' },
-  { id: 'medium', name: 'medium.com', url: 'https://medium.com' },
-  { id: 'techcrunch', name: 'techcrunch.com', url: 'https://techcrunch.com' },
-  { id: 'hackernews', name: 'news.ycombinator.com', url: 'https://news.ycombinator.com' },
-  { id: 'reddit', name: 'reddit.com', url: 'https://reddit.com' },
-  { id: 'aws', name: 'aws.amazon.com', url: 'https://aws.amazon.com' },
-  { id: 'azure', name: 'azure.microsoft.com', url: 'https://azure.microsoft.com' },
-  { id: 'gcp', name: 'cloud.google.com', url: 'https://cloud.google.com' },
+  { id: 'cloud4c', name: 'www.cloud4c.com', url: 'https://www.cloud4c.com' }
 ];
 
 export class LLMApiService {
