@@ -36,12 +36,118 @@ interface AppStateContextType {
 // Create context for app state
 const AppStateContext = createContext<AppStateContextType | undefined>(undefined);
 
-// Custom hook to use navigation
-function useNavigation(router: any) {
+// Helper function to safely extract tab from query
+function getTabFromQuery(query: any): string | undefined {
+  const tab = query?.tab;
+  return Array.isArray(tab) ? tab[0] : tab;
+}
+
+interface LayoutProps {
+  children: React.ReactNode;
+}
+
+const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  
+  // Navigation state
   const [activeNav, setActiveNav] = useState<string>('');
   const [activeSubNav, setActiveSubNav] = useState<string>('');
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  
+  // Database-specific state
+  const [selectedDatabaseType, setSelectedDatabaseType] = useState<string>('');
+  const [connectedDatabases, setConnectedDatabases] = useState<string[]>([]);
+  
+  // Chatbot sidebar state
+  const [chatbotChats, setChatbotChats] = useState<ChatSession[]>([]);
+  const [chatbotFolders, setChatbotFolders] = useState<ChatFolder[]>([]);
+  const [chatbotBookmarks, setChatbotBookmarks] = useState<ChatFolder[]>([]);
+  const [selectedChatId, setSelectedChatId] = useState<string>('');
+  const [selectedNewChatId, setSelectedNewChatId] = useState<string>('');
+  const [newChatStarted, setNewChatStarted] = useState<boolean>(false);
+  
+  // Enhanced bookmark state management
+  const [currentChatContext, setCurrentChatContext] = useState<{
+    isBookmarked: boolean;
+    chatId: string | null;
+    isNewChat: boolean;
+  }>({
+    isBookmarked: false,
+    chatId: null,
+    isNewChat: false
+  });
 
+  const [chatbotData, setChatbotData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  // NEW: Add folder and bookmark context states
+  const [isFromBookmarks, setIsFromBookmarks] = useState(false);
+  const [isFromFolder, setIsFromFolder] = useState(false);
+  const [chatData, setChatData] = useState<any | null>(null);
+
+  // Listen for database type changes and tab updates
+  useEffect(() => {
+    const handleDatabaseTypeChange = (e: any) => {
+      if (e.detail && typeof e.detail.databaseType === 'string') {
+        setSelectedDatabaseType(e.detail.databaseType);
+        console.log('🔄 Database type changed in Layout:', e.detail.databaseType);
+      }
+    };
+
+    const handleDatabaseTabsUpdate = (e: any) => {
+      console.log('🔄 Database tabs update event received:', e.detail);
+      
+      if (e.detail && e.detail.connectedDatabases) {
+        // Use the connectedDatabases array directly from the event
+        setConnectedDatabases(e.detail.connectedDatabases);
+        console.log('✅ Connected databases updated:', e.detail.connectedDatabases);
+      } else if (e.detail && e.detail.tabs) {
+        // Fallback: Extract connected database types from tabs
+        const connected = e.detail.tabs
+          .filter((tab: any) => tab.title !== 'Database')
+          .map((tab: any) => {
+            // Extract database type from title
+            const titleToType: Record<string, string> = {
+              'PostgreSQL': 'postgresql',
+              'MySQL': 'mysql', 
+              'Oracle': 'oracle',
+              'Excel': 'excel',
+              'SAP HANA': 'sap',
+              'Google Cloud SQL': 'google',
+              'Azure SQL': 'azure',
+              'MariaDB': 'mariadb'
+            };
+            return titleToType[tab.title] || tab.title.toLowerCase();
+          });
+        
+        setConnectedDatabases(connected);
+        console.log('✅ Connected databases extracted from tabs:', connected);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('databaseTypeChanged', handleDatabaseTypeChange);
+      window.addEventListener('databaseTabsUpdated', handleDatabaseTabsUpdate);
+      
+      return () => {
+        window.removeEventListener('databaseTypeChanged', handleDatabaseTypeChange);
+        window.removeEventListener('databaseTabsUpdated', handleDatabaseTabsUpdate);
+      };
+    }
+  }, []);
+
+  // Handle adding new database
+  const handleAddDatabase = useCallback(() => {
+    console.log('Adding new database connection');
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('addNewDatabase');
+      window.dispatchEvent(event);
+    }
+  }, []);
+
+  // Navigation logic
   useEffect(() => {
     const currentPath = router.pathname;
     const pathSegments = currentPath.split('/');
@@ -91,58 +197,6 @@ function useNavigation(router: any) {
       }, undefined, { shallow: true });
     }
   }, [activeNav, router]);
-
-  return {
-    activeNav,
-    activeSubNav,
-    handleNavSelect,
-    handleSubNavSelect,
-    isInitialized
-  };
-}
-
-// Helper function to safely extract tab from query
-function getTabFromQuery(query: any): string | undefined {
-  const tab = query?.tab;
-  return Array.isArray(tab) ? tab[0] : tab;
-}
-
-interface LayoutProps {
-  children: React.ReactNode;
-}
-
-const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  
-  // Chatbot sidebar state
-  const [chatbotChats, setChatbotChats] = useState<ChatSession[]>([]);
-  const [chatbotFolders, setChatbotFolders] = useState<ChatFolder[]>([]);
-  const [chatbotBookmarks, setChatbotBookmarks] = useState<ChatFolder[]>([]);
-  const [selectedChatId, setSelectedChatId] = useState<string>('');
-  const [selectedNewChatId, setSelectedNewChatId] = useState<string>('');
-  const [newChatStarted, setNewChatStarted] = useState<boolean>(false);
-  
-  // Enhanced bookmark state management
-  const [currentChatContext, setCurrentChatContext] = useState<{
-    isBookmarked: boolean;
-    chatId: string | null;
-    isNewChat: boolean;
-  }>({
-    isBookmarked: false,
-    chatId: null,
-    isNewChat: false
-  });
-
-  // Use custom hooks
-  const { activeNav, activeSubNav, handleNavSelect, handleSubNavSelect } = useNavigation(router);
-  const [chatbotData, setChatbotData] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  // NEW: Add folder and bookmark context states
-  const [isFromBookmarks, setIsFromBookmarks] = useState(false);
-  const [isFromFolder, setIsFromFolder] = useState(false);
 
   // 🔧 ENHANCED: Updated Layout.tsx convertApiToChatbotData function with better debugging
   const convertApiToChatbotData = useCallback((api: any) => {
@@ -298,8 +352,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       return { chatSessions: [], folders: [], bookmarks: [] };
     }
   }, []);
-
-  const [chatData, setChatData] = useState<any | null>(null);
 
   // Enhanced chat data loading with better error handling
   const loadChatbotData = useCallback(async () => {
@@ -568,7 +620,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       try { subNavItems = require('../../pages/chatbot/index').chatbotTabs; } catch { }
       break;
     case 'database':
-      try { subNavItems = require('../../pages/database/index').databaseTabs; } catch { }
+      // Dynamic database tabs based on connected databases
+      try { 
+        const getDatabaseTabs = require('../../pages/database/index').getDatabaseTabs;
+        subNavItems = getDatabaseTabs ? getDatabaseTabs(connectedDatabases) : [];
+      } catch { 
+        subNavItems = [{ id: 'database-1', title: 'Database', parentId: 'database' }];
+      }
       break;
     case 'schema':
       try { subNavItems = require('../../pages/schema/index').schemaTabs; } catch { }
@@ -712,7 +770,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     onDeleteFolder: handleDeleteFolder,
     onDeleteChat: handleDeleteChat,
     onToggleBookmark: handleToggleBookmark,
-    refreshChats: refreshChats
+    refreshChats: refreshChats,
+    // Add database-specific props
+    selectedDatabaseType: selectedDatabaseType,
+    onAddDatabase: handleAddDatabase,
+    connectedDatabases: connectedDatabases // NEW: Pass connected databases array
   };
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -721,8 +783,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const handleSidebarToggle = (e: any) => {
       setSidebarCollapsed(!!(e.detail && e.detail.collapsed));
     };
-    window.addEventListener('sidebarToggle', handleSidebarToggle);
-    return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sidebarToggle', handleSidebarToggle);
+      return () => window.removeEventListener('sidebarToggle', handleSidebarToggle);
+    }
   }, []);
 
   return (
@@ -730,7 +794,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className={`layout-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${!shouldShowSubcontentBar ? 'without-subcontent' : ''}`}>
         <Sidebar items={navItems} />
 
-        {(shouldShowSubcontentBar && activeNav !== "dashboard")&&(
+        {(shouldShowSubcontentBar && activeNav !== "dashboard") && (
           <SubcontentBar {...subContentBarProps} />
         )}
 

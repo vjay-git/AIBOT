@@ -1,13 +1,18 @@
+// pages/llm/index.tsx - Updated with all model components
+
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import PrimaryModel from '../../components/LLM/PrimaryModel';
+import DynamicModelComponent from '../../components/LLM/DynamicModelComponent';
 
-// Placeholder components for other LLM sections
-const SecondaryModel = () => <div className="llm-section">Secondary Model content placeholder</div>;
-const EmbeddedModel = () => <div className="llm-section">Embedded Model content placeholder</div>;
-const ResponsiveModel = () => <div className="llm-section">Responsive Model content placeholder</div>;
-const ActionModel = () => <div className="llm-section">Action Model content placeholder</div>;
-
+// Export tabs for the Layout component
+export const llmTabs = [
+  { id: 'primary-model', title: 'Primary Model', parentId: 'llm' },
+  { id: 'secondary-model', title: 'Secondary Model', parentId: 'llm' },
+  { id: 'embedded-model', title: 'Embeddings', parentId: 'llm' },
+  { id: 'responsive-model', title: 'Responsive Model', parentId: 'llm' },
+  { id: 'action-model', title: 'Action Model', parentId: 'llm' },
+  { id: 'web-scraping-model', title: 'Web Scraping Model', parentId: 'llm' },
+];
 
 const LLM = () => {
   const router = useRouter();
@@ -27,21 +32,62 @@ const LLM = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'primary-model':
-        return <PrimaryModel />;
+        return (
+          <DynamicModelComponent 
+            modelType="primary" 
+            title="Primary Model" 
+          />
+        );
       case 'secondary-model':
-        return <SecondaryModel />;
+        return (
+          <DynamicModelComponent 
+            modelType="secondary" 
+            title="Secondary Model" 
+          />
+        );
       case 'embedded-model':
-        return <EmbeddedModel />;
+        return (
+          <DynamicModelComponent 
+            modelType="embedding" 
+            title="Embeddings Model" 
+          />
+        );
       case 'responsive-model':
-        return <ResponsiveModel />;
+        return (
+          <DynamicModelComponent 
+            modelType="response" 
+            title="Responsive Model" 
+          />
+        );
       case 'action-model':
-        return <ActionModel />;
+        return (
+          <DynamicModelComponent 
+            modelType="action" 
+            title="Action Model" 
+          />
+        );
+      case 'web-scraping-model':
+        return (
+          <DynamicModelComponent 
+            modelType="scrapper" 
+            title="Web Scraping Model" 
+          />
+        );
       default:
-        return <PrimaryModel />;
+        return (
+          <DynamicModelComponent 
+            modelType="primary" 
+            title="Primary Model" 
+          />
+        );
     }
   };
 
-  return renderContent();
+  return (
+    <div className="llm-page">
+      {renderContent()}
+    </div>
+  );
 };
 
 export default LLM;
