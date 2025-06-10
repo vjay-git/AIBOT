@@ -59,6 +59,10 @@ import './user-settings/UserSettings.css';
 //Login
 import '../components/Login/Login.css';
 
+
+//schematabs
+import '../components/navbars/SchemaTabs.css';
+
 // Loading spinner styles
 import '../styles/LoadingSpinner.css';
 

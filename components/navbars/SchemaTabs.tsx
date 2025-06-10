@@ -1,4 +1,5 @@
 import React from 'react';
+import { Plus } from 'lucide-react';
 
 interface SchemaTabsProps {
   selectedId: string;
@@ -18,9 +19,7 @@ const schemaTabs = [
 const SchemaTabs: React.FC<SchemaTabsProps> = ({ selectedId, onSelect }) => (
   <div className="schema-tables">
     <div className="add-table">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
-      </svg>
+      <Plus className="add-icon" />
     </div>
     {schemaTabs.map(tab => (
       <div

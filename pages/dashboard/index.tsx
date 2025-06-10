@@ -98,19 +98,26 @@ const Dashboard = () => {
   const [selectedYAxes, setSelectedYAxes] = useState<string[]>([]);
 
   // Fetch dashboard data on load
-  useEffect(() => {
+ useEffect(() => {
     const fetchDashboard = async () => {
       setLoading(true);
       try {
         const apiRes = await getUserDashboard(DEFAULT_USER_NAME);
         const data = apiRes.data;
         setDashboardData(data);
-        const keys = Object.keys(data.dashboards);
-        setDashboardKeys(keys);
-        setDefaultDashboardId(data.default_dashboard);
-        setSelectedDashboard(data.default_dashboard);
-        // Load tiles for default dashboard
-        handleDashboardSelect(data.default_dashboard, data);
+        if (!data || !data.dashboards || Object.keys(data.dashboards).length === 0) {
+          setDashboardKeys([]);
+          setDefaultDashboardId("");
+          setSelectedDashboard("");
+          setCards([]);
+        } else {
+          const keys = Object.keys(data.dashboards);
+          setDashboardKeys(keys);
+          setDefaultDashboardId(data.default_dashboard);
+          setSelectedDashboard(data.default_dashboard);
+          // Load tiles for default dashboard
+          handleDashboardSelect(data.default_dashboard, data);
+        }
       } finally {
         setLoading(false);
       }
@@ -167,9 +174,19 @@ const Dashboard = () => {
           const res = await askDBDashboard({
             user_id: DEFAULT_USER_ID,
             question: tile.question,
-            dashboard: dashboardId, // or selectedDashboard if that's your key
+            dashboard: dashboardId,
             tile: tileKey,
           });
+
+          // --- SKIP rendering tile if askDB returns access error as text ---
+          if (
+            res?.response?.data?.type === "text" &&
+            typeof res.response.data.data === "string" &&
+            res.response.data.data.includes("Please rephrase your question or contact your system administrator for missing access rights")
+          ) {
+            // Skip this tile
+            continue;
+          }
 
           let chartData: any = {};
           let chartLayout: any = {};
@@ -919,15 +936,15 @@ const handleEditMode = () => {
         </div>
       )}
       {/* Sidebar */}
-      {dashboardData && (
+      
         <DashboardSidebar
           dashboardKeys={dashboardKeys}
-          dashboards={dashboardData.dashboards}
+          dashboards={dashboardData?.dashboards}
           selectedDashboard={selectedDashboard}
           setSelectedDashboard={(id) => handleDashboardSelect(id)}
           onAddDashboard={() => setAddDashboardDialogOpen(true)}
         />
-      )}
+      
 
       {/* Main content */}
       <Box flex={1} p={3} position="relative">
