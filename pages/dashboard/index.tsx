@@ -65,12 +65,59 @@ const generateDummyData = (type: ChartType) => {
 const DEFAULT_USER_ID = '56376e63-0377-413d-8c9e-359028e2380d';
 const DEFAULT_USER_NAME = 'chandra@ctrls.com';
 
-const Dashboard = () => {
+// REMOVE local dashboard state
+// const [dashboardData, setDashboardData] = useState<any>(null);
+// const [dashboardKeys, setDashboardKeys] = useState<string[]>([]);
+// const [selectedDashboard, setSelectedDashboard] = useState<string>("");
+// const [addDashboardDialogOpen, setAddDashboardDialogOpen] = useState(false);
+
+// Instead, accept as props:
+interface DashboardProps {
+  dashboardKeys: string[];
+  setDashboardKeys: (keys: string[]) => void;
+  dashboardData: any;
+  setDashboardData: (data: any) => void;
+  selectedDashboard: string;
+  setSelectedDashboard: (id: string) => void;
+  addDashboardDialogOpen: boolean;
+  setAddDashboardDialogOpen: (open: boolean) => void;
+  // Edit dashboard dialog props
+  editDashboardDialogOpen: boolean;
+  setEditDashboardDialogOpen: (open: boolean) => void;
+  editDashboardId: string;
+  setEditDashboardId: (id: string) => void;
+  editDashboardTitle: string;
+  setEditDashboardTitle: (title: string) => void;
+  editDashboardDescription: string;
+  setEditDashboardDescription: (desc: string) => void;
+  editDashboardAiTables: string[];
+  setEditDashboardAiTables: (tables: string[]) => void;
+  // ...other props as needed
+}
+
+const Dashboard: React.FC<DashboardProps> = ({
+  dashboardKeys,
+  setDashboardKeys,
+  dashboardData,
+  setDashboardData,
+  selectedDashboard,
+  setSelectedDashboard,
+  addDashboardDialogOpen,
+  setAddDashboardDialogOpen,
+  // Edit dashboard dialog props from parent
+  editDashboardDialogOpen,
+  setEditDashboardDialogOpen,
+  editDashboardId,
+  setEditDashboardId,
+  editDashboardTitle,
+  setEditDashboardTitle,
+  editDashboardDescription,
+  setEditDashboardDescription,
+  editDashboardAiTables,
+  setEditDashboardAiTables,
+  // ...other props
+}) => {
   // --- State ---
-  const [dashboardData, setDashboardData] = useState<any>(null);
-  const [dashboardKeys, setDashboardKeys] = useState<string[]>([]);
-  const [defaultDashboardId, setDefaultDashboardId] = useState<string>("");
-  const [selectedDashboard, setSelectedDashboard] = useState<string>("");
   const [cards, setCards] = useState<ChartConfig[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newChartType, setNewChartType] = useState<ChartType>("bar");
@@ -79,9 +126,6 @@ const Dashboard = () => {
   const [editTileId, setEditTileId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteCardId, setDeleteCardId] = useState<string | null>(null);
-  const [addDashboardDialogOpen, setAddDashboardDialogOpen] = useState(false);
-  const [newDashboardTitle, setNewDashboardTitle] = useState("");
-  const [newDashboardDescription, setNewDashboardDescription] = useState("");
   const [aiTablesOptions, setAiTablesOptions] = useState<{ table_id: string; table_name: string }[]>([]);
   const [selectedAiTables, setSelectedAiTables] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,9 +140,65 @@ const Dashboard = () => {
   const [selectedSeries, setSelectedSeries] = useState<string>("");
   const [pendingChartData, setPendingChartData] = useState<any>(null);
   const [selectedYAxes, setSelectedYAxes] = useState<string[]>([]);
+  // Add missing state for new dashboard dialog
+  const [newDashboardTitle, setNewDashboardTitle] = useState<string>("");
+  const [newDashboardDescription, setNewDashboardDescription] = useState<string>("");
+  const [newDashboardColor, setNewDashboardColor] = useState<string>("#4472C4"); // Default blue
+  const [editDashboardColor, setEditDashboardColor] = useState<string>("#4472C4"); // Default blue
+  const [confirmSwitchDialogOpen, setConfirmSwitchDialogOpen] = useState(false);
+  const [pendingDashboardSwitch, setPendingDashboardSwitch] = useState<string | null>(null);
+  // Add a state to track the dashboard before switch
+  const [previousDashboard, setPreviousDashboard] = useState<string | null>(null);
+  const [headers, setHeaders] = useState<string[]>([]);
+
+  // When opening the edit dialog, setEditDashboardColor to the current dashboard color
+  useEffect(() => {
+    if (editDashboardDialogOpen && editDashboardId && dashboardData?.dashboards?.[editDashboardId]) {
+      setEditDashboardColor(
+        dashboardData.dashboards[editDashboardId].description?.dashboard_color || "#4472C4"
+      );
+    }
+    // eslint-disable-next-line
+  }, [editDashboardDialogOpen, editDashboardId]);
+
+  // --- Save Dashboard Edit Handler ---
+  const handleSaveDashboardEdit = async () => {
+    if (!editDashboardId) return;
+    setLoading(true);
+    try {
+      // Update dashboard description and AI tables in memory
+      if (
+        dashboardData &&
+        dashboardData.dashboards &&
+        dashboardData.dashboards[editDashboardId]
+      ) {
+        dashboardData.dashboards[editDashboardId].description = {
+          ...dashboardData.dashboards[editDashboardId].description,
+          dashboard_title: editDashboardTitle,
+          dashboard_description: editDashboardDescription,
+          dashboard_color: editDashboardColor, // Save color
+          dashboard_last_update: new Date().toUTCString(),
+        };
+        dashboardData.ai_tables[editDashboardId] = editDashboardAiTables;
+      }
+      // Persist changes
+      const updatePayload = {
+        default_dashboard: dashboardData.default_dashboard,
+        dashboards: dashboardData.dashboards,
+        ai_tables: dashboardData.ai_tables,
+        username: DEFAULT_USER_NAME,
+      };
+      await dashboardUpdate(DEFAULT_USER_NAME, updatePayload);
+      setEditDashboardDialogOpen(false);
+    } catch (err) {
+      alert("Failed to update dashboard. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Fetch dashboard data on load
- useEffect(() => {
+  useEffect(() => {
     const fetchDashboard = async () => {
       setLoading(true);
       try {
@@ -107,16 +207,15 @@ const Dashboard = () => {
         setDashboardData(data);
         if (!data || !data.dashboards || Object.keys(data.dashboards).length === 0) {
           setDashboardKeys([]);
-          setDefaultDashboardId("");
           setSelectedDashboard("");
           setCards([]);
         } else {
           const keys = Object.keys(data.dashboards);
           setDashboardKeys(keys);
-          setDefaultDashboardId(data.default_dashboard);
           setSelectedDashboard(data.default_dashboard);
           // Load tiles for default dashboard
           handleDashboardSelect(data.default_dashboard, data);
+          setPreviousDashboard(data.default_dashboard); // Set initial previous dashboard
         }
       } finally {
         setLoading(false);
@@ -125,6 +224,23 @@ const Dashboard = () => {
     fetchDashboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Add this effect to update cards when selectedDashboard changes
+  useEffect(() => {
+    if (selectedDashboard !== previousDashboard) {
+      if (selectedDashboard && dashboardData?.dashboards?.[selectedDashboard]) {
+        if (editMode) {
+          setPendingDashboardSwitch(selectedDashboard);
+          setConfirmSwitchDialogOpen(true);
+          return;
+        }
+        else {
+          handleDashboardSelect(selectedDashboard);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDashboard]);
 
   // Fetch AI tables when add dashboard dialog opens
   useEffect(() => {
@@ -143,10 +259,11 @@ const Dashboard = () => {
   //average waiting time by type 
   // Handle dashboard selection and load tiles as cards
   const handleDashboardSelect = async (dashboardId: string, dataOverride?: any) => {
+
     setLoading(true);
+    setPreviousDashboard(dashboardId); // Store current dashboard
     try {
       const data = dataOverride || dashboardData;
-      setSelectedDashboard(dashboardId);
       const dashboard = data.dashboards[dashboardId];
       if (!dashboard) return;
 
@@ -199,6 +316,7 @@ const Dashboard = () => {
             const tableData = res.response.data.data.data;
             const headers = tableData[0];
             const rows = tableData.slice(1);
+            setHeaders(headers); // Store headers for axis selection
 
             // --- Use x_axis, y_axis, series from tile if present ---
             if (headers.length >= 3 && tile.x_axis && tile.y_axis && tile.series) {
@@ -294,22 +412,27 @@ const Dashboard = () => {
       }
       setCards(newCards);
       setCardsBackup(newCards);
+      setSelectedDashboard(dashboardId);
     } finally {
       setLoading(false);
     }
   };
 
   // When entering edit mode, save a backup of the current cards
-const handleEditMode = () => {
-  if (!editMode) {
-    setCardsBackup(cards);
-    setEditMode(true);
-  } else {
-    // On cancel, revert cards to backup and exit edit mode
-    setCards(cardsBackup);
-    setEditMode(false);
-  }
-};
+  const handleEditMode = () => {
+    if (!editMode) {
+      // Deep clone cards to avoid reference issues
+      setCardsBackup(JSON.parse(JSON.stringify(cards)));
+      setEditMode(true);
+    } else {
+      // On cancel, revert cards to a deep clone of backup and exit edit mode
+      setCards(prev => {
+        // Also force a rerender by changing the reference
+        return JSON.parse(JSON.stringify(cardsBackup));
+      });
+      setTimeout(() => setEditMode(false), 0); // ensure state update flushes
+    }
+  };
 
   // --- Pin/Unpin Handlers ---
   const handlePinCard = (id: string) => {
@@ -478,15 +601,15 @@ const handleEditMode = () => {
         const tableData = res.response.data.data.data;
         const headers = tableData[0];
         const rows = tableData.slice(1);
-
+        setHeaders(headers); // Store headers for axis selection
         if (headers.length >= 3) {
           // Prompt user to select axes
           setAxisOptions(headers);
           setSelectedXAxis(headers[1]); // e.g., "month"
           setSelectedSeries(headers[0]); // e.g., "appointment_type"
           // Default: select all numeric columns as Y axes
-          const numericCols = headers.filter((h:any, i:any) =>
-            rows.some((row:any) => typeof row[i] === "number")
+          const numericCols = headers.filter((h: any, i: any) =>
+            rows.some((row: any) => typeof row[i] === "number")
           );
           setSelectedYAxes(numericCols.length ? numericCols : [headers[2]]);
           setPendingChartData({ headers, rows, raw: tableData });
@@ -533,13 +656,13 @@ const handleEditMode = () => {
           prev.map((c) =>
             c.id === editTileId
               ? {
-                  ...c,
-                  type: chartType,
-                  title: newChartTitle,
-                  data: chartType === "text" && typeof chartData !== "string" ? String(chartData) : chartData,
-                  layout: chartLayout,
-                  question: newChartQuestion,
-                }
+                ...c,
+                type: chartType,
+                title: newChartTitle,
+                data: chartType === "text" && typeof chartData !== "string" ? String(chartData) : chartData,
+                layout: chartLayout,
+                question: newChartQuestion,
+              }
               : c
           )
         );
@@ -683,6 +806,7 @@ const handleEditMode = () => {
             description: {
               dashboard_title: newDashboardTitle,
               dashboard_description: newDashboardDescription,
+              dashboard_color: newDashboardColor, // Save color
               dashboard_last_update: now,
             },
           },
@@ -703,13 +827,12 @@ const handleEditMode = () => {
           ai_tables: newAiTables,
           default_dashboard: newDashboardKey,
         });
-        setDashboardKeys([newDashboardKey]);
-        setDefaultDashboardId(newDashboardKey);
         setSelectedDashboard(newDashboardKey);
         setAddDashboardDialogOpen(false);
+        setSelectedAiTables([]);
         setNewDashboardTitle("");
         setNewDashboardDescription("");
-        setSelectedAiTables([]);
+        setNewDashboardColor("#4472C4");
         return;
       }
 
@@ -725,6 +848,7 @@ const handleEditMode = () => {
         description: {
           dashboard_title: newDashboardTitle,
           dashboard_description: newDashboardDescription,
+          dashboard_color: newDashboardColor, // Save color
           dashboard_last_update: now,
         },
       };
@@ -744,6 +868,7 @@ const handleEditMode = () => {
       setNewDashboardTitle("");
       setNewDashboardDescription("");
       setSelectedAiTables([]);
+      setNewDashboardColor("#4472C4");
     } finally {
       setLoading(false);
     }
@@ -829,12 +954,12 @@ const handleEditMode = () => {
         prev.map((c) =>
           c.id === editTileId
             ? {
-                ...c,
-                type: newChartType,
-                data: traces,
-                layout: { ...c.layout, title: newChartTitle },
-                question: newChartQuestion,
-              }
+              ...c,
+              type: newChartType,
+              data: traces,
+              layout: { ...c.layout, title: newChartTitle },
+              question: newChartQuestion,
+            }
             : c
         )
       );
@@ -919,13 +1044,32 @@ const handleEditMode = () => {
     setPendingChartData(null);
   };
 
+  // Add these handlers before the Dashboard component's return statement
+  const handleConfirmDashboardSwitch = () => {
+    if (pendingDashboardSwitch) {
+      setEditMode(false); // Exit edit mode, discarding changes
+      setConfirmSwitchDialogOpen(false);
+      setSelectedDashboard(pendingDashboardSwitch);
+      setPendingDashboardSwitch(null);
+      setPreviousDashboard(pendingDashboardSwitch); // Clear previous dashboard
+    }
+  };
+
+  const handleCancelDashboardSwitch = () => {
+    setConfirmSwitchDialogOpen(false);
+    setPendingDashboardSwitch(null);
+    if (previousDashboard) {
+      setSelectedDashboard(previousDashboard);
+      setPreviousDashboard(previousDashboard);
+    }
+  };
+
   // --- Sidebar rendering ---
   return (
     <Box
       display="flex"
       minHeight="100vh"
       sx={{
-        ml: "-5rem",
         background: "linear-gradient(120deg, #e9efff 0%, #f5f8ff 100%)"
       }}
     >
@@ -935,16 +1079,6 @@ const handleEditMode = () => {
           <div className="oscar-loading-text">Loading...</div>
         </div>
       )}
-      {/* Sidebar */}
-      
-        <DashboardSidebar
-          dashboardKeys={dashboardKeys}
-          dashboards={dashboardData?.dashboards}
-          selectedDashboard={selectedDashboard}
-          setSelectedDashboard={(id) => handleDashboardSelect(id)}
-          onAddDashboard={() => setAddDashboardDialogOpen(true)}
-        />
-      
 
       {/* Main content */}
       <Box flex={1} p={3} position="relative">
@@ -957,7 +1091,7 @@ const handleEditMode = () => {
               setDialogOpen(true);
             }}
             sx={{
-              bgcolor: "#0a2fff",
+              bgcolor: dashboardData?.dashboards?.[selectedDashboard]?.description?.dashboard_color || "#0a2fff",
               color: "#fff",
               fontWeight: 600,
               borderRadius: "10px",
@@ -966,8 +1100,8 @@ const handleEditMode = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              "&:hover": {
-                bgcolor: "#0039cb"
+              '&:hover': {
+                bgcolor: dashboardData?.dashboards?.[selectedDashboard]?.description?.dashboard_color || "#0039cb"
               }
             }}
           >
@@ -978,17 +1112,17 @@ const handleEditMode = () => {
             color="primary"
             onClick={handleEditMode}
             sx={{
-              borderColor: "#0a2fff",
-              color: "#0a2fff",
+              borderColor: dashboardData?.dashboards?.[selectedDashboard]?.description?.dashboard_color || "#0a2fff",
+              color: dashboardData?.dashboards?.[selectedDashboard]?.description?.dashboard_color || "#0a2fff",
               fontWeight: 600,
               borderRadius: "10px",
               textTransform: "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              "&:hover": {
-                borderColor: "#0039cb",
-                color: "#0039cb",
+              '&:hover': {
+                borderColor: dashboardData?.dashboards?.[selectedDashboard]?.description?.dashboard_color || "#0039cb",
+                color: dashboardData?.dashboards?.[selectedDashboard]?.description?.dashboard_color || "#0039cb",
                 background: "#f5f8ff"
               }
             }}
@@ -1006,7 +1140,11 @@ const handleEditMode = () => {
                 fontWeight: 600,
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center"
+                justifyContent: "center",
+                bgcolor: dashboardData?.dashboards?.[selectedDashboard]?.description?.dashboard_color || "#388e3c",
+                '&:hover': {
+                  bgcolor: dashboardData?.dashboards?.[selectedDashboard]?.description?.dashboard_color || "#2e7031"
+                }
               }}
             >
               Save Layout
@@ -1016,8 +1154,8 @@ const handleEditMode = () => {
 
         <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditTileId(null); }}>
           <DialogTitle>{editTileId ? "Edit Chart" : "Add Chart"}</DialogTitle>
-          <DialogContent sx={{pt:1}}>
-            <FormControl fullWidth sx={{ mb: 2}}>
+          <DialogContent sx={{ pt: 1 }}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel id="chart-type-label">Chart Type</InputLabel>
               <Select
                 labelId="chart-type-label"
@@ -1100,59 +1238,125 @@ const handleEditMode = () => {
           </DialogActions>
         </Dialog>
 
-        <Box position="relative" minHeight="100vh" display="flex" bgcolor="#f9f9f9" sx={{
-      background: "linear-gradient(120deg, #e9efff 0%, #f5f8ff 100%)"
-    }}>
-          {cards.map((card) => (
-            <Card
-              key={card.id}
-              {...card}
-              cardSize={card.size}
-              onDelete={handleDeleteRequest}
-              onEdit={handleEditTile}
-              onDragStop={editMode ? handleDragStop : undefined}
-              disableDragging={!editMode}
-              disableResizing={!editMode}
-              isPinned={pinnedCards.includes(card.id)}
-              onPin={() => handlePinCard(card.id)}
-              onUnpin={() => handleUnpinCard(card.id)}
-              onChartTypeChange={(newType) => {
-                setCards((prev) =>
-                  prev.map((c) =>
-                    c.id === card.id
-                      ? {
-                          ...c,
-                          type: newType,
-                          data: Array.isArray(c.data)
-                            ? c.data.map(trace => ({ ...trace, type: newType }))
-                            : c.data,
-                          layout: { ...c.layout, title: c.title }
-                        }
-                      : c
-                  )
-                );
-                // Optionally update dashboardData as well if you want to persist type change
-                const tileKey = card.id.split("-").slice(1).join("-");
-                if (
-                  dashboardData &&
-                  dashboardData.dashboards &&
-                  dashboardData.dashboards[selectedDashboard] &&
-                  dashboardData.dashboards[selectedDashboard][tileKey]
-                ) {
-                  dashboardData.dashboards[selectedDashboard][tileKey].graph_type = newType;
-                }
-              }}
-              onResizeStop={(id, x, y, width, height) => {
-                setCards((prev) =>
-                  prev.map((c) =>
-                    c.id === id
-                      ? { ...c, position: { x, y }, size: { width, height } }
-                      : c
-                  )
-                );
-              }}
+        {/* Edit Dashboard Dialog */}
+        <Dialog open={editDashboardDialogOpen} onClose={() => setEditDashboardDialogOpen(false)}>
+          <DialogTitle>Edit Dashboard</DialogTitle>
+          <DialogContent>
+            <TextField
+              fullWidth
+              label="Dashboard Title"
+              value={editDashboardTitle}
+              onChange={e => setEditDashboardTitle(e.target.value)}
+              sx={{ mb: 2, mt: 1 }}
             />
-          ))}
+            <TextField
+              fullWidth
+              label="Dashboard Description"
+              value={editDashboardDescription}
+              onChange={e => setEditDashboardDescription(e.target.value)}
+              multiline
+              minRows={2}
+              sx={{ mb: 2 }}
+            />
+            <Box sx={{ mb: 2 }}>
+              <label style={{ fontWeight: 500, marginRight: 12 }}>Dashboard Color</label>
+              <input
+                type="color"
+                value={editDashboardColor}
+                onChange={e => setEditDashboardColor(e.target.value)}
+                style={{ width: 40, height: 32, border: 'none', background: 'none', cursor: 'pointer' }}
+                aria-label="Dashboard Color"
+              />
+            </Box>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="edit-ai-tables-label">AI Tables</InputLabel>
+              <Select
+                labelId="edit-ai-tables-label"
+                multiple
+                value={editDashboardAiTables}
+                onChange={e => setEditDashboardAiTables(e.target.value as string[])}
+                label="AI Tables"
+                renderValue={selected =>
+                  (selected as string[])
+                    .map(id => aiTablesOptions.find(t => t.table_id === id)?.table_name || id)
+                    .join(", ")
+                }
+              >
+                {aiTablesOptions.map(table => (
+                  <MenuItem key={table.table_id} value={table.table_id}>
+                    {table.table_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditDashboardDialogOpen(false)}>Cancel</Button>
+            <Button variant="contained" onClick={handleSaveDashboardEdit}>
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Box position="relative" minHeight="100vh" display="flex" bgcolor="#f9f9f9" sx={{
+          background: "linear-gradient(120deg, #e9efff 0%, #f5f8ff 100%)"
+        }}>
+          {cards.map((card) => {
+            // If card.data is an array with x/y and type is tabular/table/bar/line/scatter, extract headers
+            
+            return (
+              <Card
+                key={card.id}
+                {...card}
+                cardSize={card.size}
+                dashboardColor={dashboardData?.dashboards?.[selectedDashboard]?.description?.dashboard_color || "#4472C4"}
+                onDelete={handleDeleteRequest}
+                onEdit={handleEditTile}
+                onDragStop={editMode ? handleDragStop : undefined}
+                disableDragging={!editMode}
+                disableResizing={!editMode}
+                isPinned={pinnedCards.includes(card.id)}
+                onPin={() => handlePinCard(card.id)}
+                onUnpin={() => handleUnpinCard(card.id)}
+                onChartTypeChange={(newType) => {
+                  setCards((prev) =>
+                    prev.map((c) =>
+                      c.id === card.id
+                        ? {
+                            ...c,
+                            type: newType,
+                            data: Array.isArray(c.data)
+                              ? c.data.map(trace => ({ ...trace, type: newType }))
+                              : c.data,
+                            layout: { ...c.layout, title: c.title }
+                          }
+                        : c
+                    )
+                  );
+                  // Optionally update dashboardData as well if you want to persist type change
+                  const tileKey = card.id.split("-").slice(1).join("-");
+                  if (
+                    dashboardData &&
+                    dashboardData.dashboards &&
+                    dashboardData.dashboards[selectedDashboard] &&
+                    dashboardData.dashboards[selectedDashboard][tileKey]
+                  ) {
+                    dashboardData.dashboards[selectedDashboard][tileKey].graph_type = newType;
+                  }
+                }}
+                onResizeStop={(id, x, y, width, height) => {
+                  setCards((prev) =>
+                    prev.map((c) =>
+                      c.id === id
+                        ? { ...c, position: { x, y }, size: { width, height } }
+                        : c
+                    )
+                  );
+                }}
+                headers={headers}
+              />
+            );
+          })}
           {/* Pin warning message */}
           {pinWarning && (
             <div
@@ -1210,6 +1414,16 @@ const handleEditMode = () => {
               minRows={2}
               sx={{ mb: 2 }}
             />
+            <Box sx={{ mb: 2 }}>
+              <label style={{ fontWeight: 500, marginRight: 12 }}>Dashboard Color</label>
+              <input
+                type="color"
+                value={newDashboardColor}
+                onChange={e => setNewDashboardColor(e.target.value)}
+                style={{ width: 40, height: 32, border: 'none', background: 'none', cursor: 'pointer' }}
+                aria-label="Dashboard Color"
+              />
+            </Box>
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel id="ai-tables-label">AI Tables</InputLabel>
               <Select
@@ -1248,47 +1462,47 @@ const handleEditMode = () => {
           <DialogTitle>Select Chart Axes</DialogTitle>
           <DialogContent>
             {axisOptions.length >= 3 && (
-  <>
-    <FormControl fullWidth sx={{ mt: 2 }}>
-      <InputLabel>X Axis</InputLabel>
-      <Select
-        value={selectedXAxis}
-        label="X Axis"
-        onChange={e => setSelectedXAxis(e.target.value)}
-      >
-        {axisOptions.map(opt => (
-          <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-    <FormControl fullWidth sx={{ mt: 2 }}>
-      <InputLabel>Y Axis</InputLabel>
-      <Select
-        multiple
-        value={selectedYAxes}
-        label="Y Axis"
-        onChange={e => setSelectedYAxes(typeof e.target.value === "string" ? e.target.value.split(",") : e.target.value)}
-        renderValue={(selected) => selected.join(", ")}
-      >
-        {axisOptions.map(opt => (
-          <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-    <FormControl fullWidth sx={{ mt: 2 }}>
-      <InputLabel>Series (Color/Group)</InputLabel>
-      <Select
-        value={selectedSeries}
-        label="Series"
-        onChange={e => setSelectedSeries(e.target.value)}
-      >
-        {axisOptions.map(opt => (
-          <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-  </>
-)}
+              <>
+                <FormControl fullWidth sx={{ mt: 2 }}>
+                  <InputLabel>X Axis</InputLabel>
+                  <Select
+                    value={selectedXAxis}
+                    label="X Axis"
+                    onChange={e => setSelectedXAxis(e.target.value)}
+                  >
+                    {axisOptions.map(opt => (
+                      <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth sx={{ mt: 2 }}>
+                  <InputLabel>Y Axis</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedYAxes}
+                    label="Y Axis"
+                    onChange={e => setSelectedYAxes(typeof e.target.value === "string" ? e.target.value.split(",") : e.target.value)}
+                    renderValue={(selected) => selected.join(", ")}
+                  >
+                    {axisOptions.map(opt => (
+                      <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth sx={{ mt: 2 }}>
+                  <InputLabel>Series (Color/Group)</InputLabel>
+                  <Select
+                    value={selectedSeries}
+                    label="Series"
+                    onChange={e => setSelectedSeries(e.target.value)}
+                  >
+                    {axisOptions.map(opt => (
+                      <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setAxisDialogOpen(false)}>Cancel</Button>
@@ -1297,11 +1511,25 @@ const handleEditMode = () => {
               onClick={() => {
                 handleAxisSelection();
                 setAxisDialogOpen(false);
-                 setDialogOpen(false); 
-                 setEditTileId(null);
+                setDialogOpen(false);
+                setEditTileId(null);
               }}
             >
               OK
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Confirmation dialog for switching dashboards during edit mode */}
+        <Dialog open={confirmSwitchDialogOpen} onClose={handleCancelDashboardSwitch}>
+          <DialogTitle>Unsaved Layout Changes</DialogTitle>
+          <DialogContent>
+            You have unsaved layout changes. Are you sure you want to switch dashboards? Your unsaved changes will be lost.
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancelDashboardSwitch}>Cancel</Button>
+            <Button color="error" variant="contained" onClick={handleConfirmDashboardSwitch}>
+              Switch Dashboard
             </Button>
           </DialogActions>
         </Dialog>

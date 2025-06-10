@@ -49,16 +49,16 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState<string>('');
-  
+
   // Navigation state
   const [activeNav, setActiveNav] = useState<string>('');
   const [activeSubNav, setActiveSubNav] = useState<string>('');
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  
+
   // Database-specific state
   const [selectedDatabaseType, setSelectedDatabaseType] = useState<string>('');
   const [connectedDatabases, setConnectedDatabases] = useState<string[]>([]);
-  
+
   // Chatbot sidebar state
   const [chatbotChats, setChatbotChats] = useState<ChatSession[]>([]);
   const [chatbotFolders, setChatbotFolders] = useState<ChatFolder[]>([]);
@@ -66,7 +66,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [selectedChatId, setSelectedChatId] = useState<string>('');
   const [selectedNewChatId, setSelectedNewChatId] = useState<string>('');
   const [newChatStarted, setNewChatStarted] = useState<boolean>(false);
-  
+
   // Enhanced bookmark state management
   const [currentChatContext, setCurrentChatContext] = useState<{
     isBookmarked: boolean;
@@ -87,6 +87,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isFromFolder, setIsFromFolder] = useState(false);
   const [chatData, setChatData] = useState<any | null>(null);
 
+  // Dashboard state for sidebar props
+  const [dashboardKeys, setDashboardKeys] = useState<string[]>([]);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [selectedDashboard, setSelectedDashboard] = useState<string>("");
+  const [addDashboardDialogOpen, setAddDashboardDialogOpen] = useState(false);
+
   // Listen for database type changes and tab updates
   useEffect(() => {
     const handleDatabaseTypeChange = (e: any) => {
@@ -98,7 +104,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     const handleDatabaseTabsUpdate = (e: any) => {
       console.log('🔄 Database tabs update event received:', e.detail);
-      
+
       if (e.detail && e.detail.connectedDatabases) {
         // Use the connectedDatabases array directly from the event
         setConnectedDatabases(e.detail.connectedDatabases);
@@ -111,7 +117,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             // Extract database type from title
             const titleToType: Record<string, string> = {
               'PostgreSQL': 'postgresql',
-              'MySQL': 'mysql', 
+              'MySQL': 'mysql',
               'Oracle': 'oracle',
               'Excel': 'excel',
               'SAP HANA': 'sap',
@@ -121,7 +127,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             };
             return titleToType[tab.title] || tab.title.toLowerCase();
           });
-        
+
         setConnectedDatabases(connected);
         console.log('✅ Connected databases extracted from tabs:', connected);
       }
@@ -130,7 +136,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     if (typeof window !== 'undefined') {
       window.addEventListener('databaseTypeChanged', handleDatabaseTypeChange);
       window.addEventListener('databaseTabsUpdated', handleDatabaseTabsUpdate);
-      
+
       return () => {
         window.removeEventListener('databaseTypeChanged', handleDatabaseTypeChange);
         window.removeEventListener('databaseTabsUpdated', handleDatabaseTabsUpdate);
@@ -229,7 +235,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             // Take first non-null element from array
             queryId = q.query_id.find((id: any) => id !== null) || '';
           }
-          
+
           return {
             query_id: queryId,
             messages: q.messages || []
@@ -268,14 +274,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           if (bookmark.queries && Array.isArray(bookmark.queries)) {
             bookmark.queries.forEach((q: any) => {
               let queryId: string = '';
-              
+
               // Handle different query_id formats
               if (typeof q.query_id === 'string') {
                 queryId = q.query_id;
               } else if (Array.isArray(q.query_id)) {
                 queryId = q.query_id.find((id: any) => id !== null) || '';
               }
-              
+
               if (queryId) {
                 queryToBookmarkId[queryId] = bookmark.bookmark_id || bookmark.id || '';
               }
@@ -345,7 +351,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         bookmarks: bookmarks.length,
         chatSessions: chatSessions.length
       });
-      
+
       return { chatSessions, folders, bookmarks };
     } catch (error) {
       console.error('❌ Error converting API data:', error);
@@ -371,11 +377,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         bookmarks: chatbotData.bookmarks.length,
         chats: chatbotData.chatSessions.length
       });
-      
+
       setChatbotChats(chatbotData.chatSessions || []);
       setChatbotFolders(chatbotData.folders || []);
       setChatbotBookmarks(chatbotData.bookmarks || []);
-      
+
       // Reset selection when data loads if no chat is selected
       if (!selectedChatId && !selectedNewChatId) {
         setSelectedChatId('');
@@ -404,7 +410,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         chatId: null,
         isNewChat: true
       });
-      
+
       // Reload data after new chat
       loadChatbotData();
     }
@@ -415,7 +421,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     console.log(`💬 Chat selected in Layout: ${id}`);
     setSelectedChatId(id);
     setSelectedNewChatId(''); // Clear new chat when selecting existing chat
-    
+
     // Find the selected chat and determine if it's bookmarked
     const selectedChat = chatbotChats.find(chat => chat.id === id);
     setCurrentChatContext({
@@ -447,10 +453,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         updatedAt: new Date().toISOString(),
         queryIds: []
       };
-      
+
       setSelectedNewChatId(newChat.id);
       setSelectedChatId("");
-      
+
       // Reset bookmark context for new chat
       setCurrentChatContext({
         isBookmarked: false,
@@ -478,7 +484,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     try {
       await deleteFolder(folderId);
       setChatbotFolders(prev => prev.filter(f => f.id !== folderId));
-      setChatbotChats(prev => prev.map(chat => 
+      setChatbotChats(prev => prev.map(chat =>
         chat.folderId === folderId ? { ...chat, folderId: undefined } : chat
       ));
     } catch (error) {
@@ -493,9 +499,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       // Don't call the mock deleteChat function since we're using real API
       // The actual deletion is handled in ChatbotTabs component using deletedThreadById API
       // This function is just for updating local state after successful deletion
-      
+
       setChatbotChats(prev => prev.filter(chat => chat.id !== chatId));
-      
+
       if (selectedChatId === chatId) {
         const remainingChats = chatbotChats.filter(chat => chat.id !== chatId);
         setSelectedChatId(remainingChats.length > 0 ? remainingChats[0].id : '');
@@ -514,10 +520,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleToggleBookmark = useCallback(async (chatId: string) => {
     try {
       await toggleBookmark(chatId);
-      setChatbotChats(prev => prev.map(chat => 
+      setChatbotChats(prev => prev.map(chat =>
         chat.id === chatId ? { ...chat, bookmarked: !chat.bookmarked } : chat
       ));
-      
+
       // Update current context if this is the selected chat
       if (selectedChatId === chatId) {
         setCurrentChatContext(prev => ({
@@ -534,7 +540,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleMoveToFolder = useCallback(async (chatId: string, folderId: string | null) => {
     try {
       await moveToFolder(chatId, folderId);
-      setChatbotChats(prev => prev.map(chat => 
+      setChatbotChats(prev => prev.map(chat =>
         chat.id === chatId ? { ...chat, folderId: folderId || undefined } : chat
       ));
     } catch (error) {
@@ -546,7 +552,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleRenameFolder = useCallback(async (folderId: string, newName: string) => {
     try {
       await renameFolder(folderId, newName);
-      setChatbotFolders(prev => prev.map(f => 
+      setChatbotFolders(prev => prev.map(f =>
         f.id === folderId ? { ...f, name: newName } : f
       ));
     } catch (error) {
@@ -621,10 +627,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       break;
     case 'database':
       // Dynamic database tabs based on connected databases
-      try { 
+      try {
         const getDatabaseTabs = require('../../pages/database/index').getDatabaseTabs;
         subNavItems = getDatabaseTabs ? getDatabaseTabs(connectedDatabases) : [];
-      } catch { 
+      } catch {
         subNavItems = [{ id: 'database-1', title: 'Database', parentId: 'database' }];
       }
       break;
@@ -699,17 +705,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       );
     }
 
-    if (activeNav === 'dashboard') {
-      return (
-        <button className="add-card-button">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 4.5v15m7.5-7.5h-15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Add Card
-        </button>
-      );
-    }
-
     return null;
   }, [activeNav]);
 
@@ -718,18 +713,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return (
       <div className="layout-container">
         <Sidebar items={navItems} />
-        <div className="error-container" style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
+        <div className="error-container" style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
           height: '100vh',
           padding: '2rem'
         }}>
           <p style={{ marginBottom: '1rem', color: '#dc2626' }}>
             There was an error loading the chatbot data. Please try refreshing the page.
           </p>
-          <button 
+          <button
             onClick={() => router.reload()}
             style={{
               padding: '0.5rem 1rem',
@@ -746,6 +741,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
     );
   }
+  const [editDashboardDialogOpen, setEditDashboardDialogOpen] = useState(false);
+  const [editDashboardId, setEditDashboardId] = useState<string>("");
+  const [editDashboardTitle, setEditDashboardTitle] = useState<string>("");
+  const [editDashboardDescription, setEditDashboardDescription] = useState<string>("");
+  const [editDashboardAiTables, setEditDashboardAiTables] = useState<string[]>([]);
+
+  // --- Handler for editing dashboard (sidebar edit button) ---
+  const handleEditDashboard = (dashboardId: string) => {
+    setEditDashboardId(dashboardId);
+    const dashboard = dashboardData?.dashboards?.[dashboardId];
+    setEditDashboardTitle(dashboard?.description?.dashboard_title || "");
+    setEditDashboardDescription(dashboard?.description?.dashboard_description || "");
+    setEditDashboardAiTables(dashboardData?.ai_tables?.[dashboardId] || []);
+    setEditDashboardDialogOpen(true);
+  };
 
   // UPDATED: Define props for SubcontentBar with folder support
   const subContentBarProps = {
@@ -774,7 +784,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     // Add database-specific props
     selectedDatabaseType: selectedDatabaseType,
     onAddDatabase: handleAddDatabase,
-    connectedDatabases: connectedDatabases // NEW: Pass connected databases array
+    connectedDatabases: connectedDatabases,
+    // Always provide onEditDashboard to satisfy SubcontentBarProps
+    onEditDashboard: activeNav === 'dashboard' ? handleEditDashboard : () => { },
+    // Add dashboard-specific props if activeNav is dashboard
+   
+      dashboardKeys: dashboardKeys ?? [],
+      dashboards: dashboardData?.dashboards,
+      selectedDashboard,
+      setSelectedDashboard,
+      onAddDashboard: () => setAddDashboardDialogOpen(true)
   };
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -794,22 +813,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className={`layout-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${!shouldShowSubcontentBar ? 'without-subcontent' : ''}`}>
         <Sidebar items={navItems} />
 
-        {(shouldShowSubcontentBar && activeNav !== "dashboard") && (
+        {(shouldShowSubcontentBar) && (
           <SubcontentBar {...subContentBarProps} />
         )}
 
-        <MainContent 
-          navId={activeNav} 
-          subNavId={activeSubNav} 
-          selectedChatId={selectedChatId} 
-          selectedNewChatId={selectedNewChatId} 
-          setNewChatStarted={setNewChatStarted} 
-          isBookmarked={currentChatContext.isBookmarked} 
-          bookmarks={chatbotBookmarks} 
+        <MainContent
+          navId={activeNav}
+          subNavId={activeSubNav}
+          selectedChatId={selectedChatId}
+          selectedNewChatId={selectedNewChatId}
+          setNewChatStarted={setNewChatStarted}
+          isBookmarked={currentChatContext.isBookmarked}
+          bookmarks={chatbotBookmarks}
           refreshBookmarks={refreshBookmarks}
           chatData={chatData}
           isFromBookmarks={isFromBookmarks}
           isFromFolder={isFromFolder}
+          // Dashboard props
+          dashboardKeys={dashboardKeys}
+          setDashboardKeys={setDashboardKeys}
+          dashboardData={dashboardData}
+          setDashboardData={setDashboardData}
+          selectedDashboard={selectedDashboard}
+          setSelectedDashboard={setSelectedDashboard}
+          addDashboardDialogOpen={addDashboardDialogOpen}
+          setAddDashboardDialogOpen={setAddDashboardDialogOpen}
+          onEditDashboard={handleEditDashboard} // <-- pass down
+          editDashboardDialogOpen={editDashboardDialogOpen}
+          setEditDashboardDialogOpen={setEditDashboardDialogOpen}
+          editDashboardId={editDashboardId}
+          setEditDashboardId={setEditDashboardId}
+          editDashboardTitle={editDashboardTitle}
+          setEditDashboardTitle={setEditDashboardTitle}
+          editDashboardDescription={editDashboardDescription}
+          setEditDashboardDescription={setEditDashboardDescription}
+          editDashboardAiTables={editDashboardAiTables}
+          setEditDashboardAiTables={setEditDashboardAiTables}
         >
           {children}
         </MainContent>
