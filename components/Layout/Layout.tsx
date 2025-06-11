@@ -12,10 +12,10 @@ const navItems: NavItem[] = [
   { id: 'dashboard', title: 'Dashboard', route: 'dashboard' },
   { id: 'chatbot', title: 'Chatbot', route: 'chatbot' },
   { id: 'database', title: 'Database', route: 'database' },
-  { id: 'schema', title: 'Schema', route: 'schema' },
+  { id: 'schema', title: 'Predict', route: 'schema' },
   { id: 'llm', title: 'LLM', route: 'llm' },
   { id: 'settings', title: 'User Settings', route: 'user-settings' },
-  { id: 'onboarding', title: 'Customer Onboarding', route: 'customer-onboarding' },
+  { id: 'onboarding', title: 'Org Setup', route: 'customer-onboarding' },
   { id: 'reports', title: 'Reports', route: 'reports' },
 ];
 

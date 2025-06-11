@@ -63,6 +63,8 @@ import '../components/Login/Login.css';
 //schematabs
 import '../components/navbars/SchemaTabs.css';
 
+import '../components/Database/ElegantAlignView.css';
+
 // Loading spinner styles
 import '../styles/LoadingSpinner.css';
 
