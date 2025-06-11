@@ -685,11 +685,12 @@ async function askDbAndFormatResponse({
     bookmarkname: '',
     bookmark_id: '',
     thread_id: threadId || '',
-    query_type: queryType // This will be 'DB_QUERY', 'SCRAP', or 'CHAT'
+    query_type: queryType, // This will be 'DB_QUERY', 'SCRAP', or 'CHAT',
+    ai_table: isFromFolder ? selectedChatId || '' : undefined, // Only include if from folder
   };
 
   console.log('API Request Body:', apiRequestBody); // Debug log
-
+ 
   if (isAudio && msg instanceof Blob) {
     const formData = new FormData();
     formData.append('audio', msg, 'audio.webm');
@@ -701,6 +702,9 @@ async function askDbAndFormatResponse({
     formData.append('bookmark_id', '');
     formData.append('thread_id', threadId || '');
     formData.append('query_type', queryType); // Ensure query_type is sent for audio
+   if(isFromFolder){
+      formData.append('ai_table', selectedChatId || '');
+    }
     response = await fetch('/ask_db', { method: 'POST', body: formData });
     contentType = response.headers.get('Content-Type');
   } else {
