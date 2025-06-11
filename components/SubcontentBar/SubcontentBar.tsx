@@ -6,6 +6,7 @@ import SettingsTabs from '../navbars/SettingsTabs';
 import LLMTabs from '../navbars/LLMTabs';
 import SchemaTabs from '../navbars/SchemaTabs';
 import DbTabs from '../navbars/DbTabs';
+import DashboardSidebar from '../../pages/dashboard/DashboardSidebar';
 
 interface SubcontentBarProps {
   items: SubNavItem[];
@@ -32,18 +33,25 @@ interface SubcontentBarProps {
   setIsFromBookmarks?: (isFromBookmarks: boolean) => void;
   setIsFromFolder?: (isFromFolder: boolean) => void;
   // New props for database section
-  selectedDatabaseType?: string;
-  onAddDatabase?: () => void;
+  selectedDatabaseType: string;
+  onAddDatabase: () => void;
   connectedDatabases?: string[];
+  // Dashboard sidebar props
+  dashboardKeys: string[];
+  dashboards: any;
+  selectedDashboard: string;
+  setSelectedDashboard: (id: string) => void;
+  onAddDashboard: () => void;
+  onEditDashboard: (id: string) => void; // New prop
 }
 
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 420;
 
-const SubcontentBar: React.FC<SubcontentBarProps> = ({ 
-  items, 
-  selectedId, 
-  onSelect, 
+const SubcontentBar: React.FC<SubcontentBarProps> = ({
+  items,
+  selectedId,
+  onSelect,
   title,
   searchBox,
   filters,
@@ -65,7 +73,14 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
   setIsFromFolder,
   selectedDatabaseType,
   onAddDatabase,
-  connectedDatabases
+  connectedDatabases,
+  // Dashboard sidebar props
+  dashboardKeys,
+  dashboards,
+  selectedDashboard,
+  setSelectedDashboard,
+  onAddDashboard,
+  onEditDashboard
 }) => {
   // Enhanced section tabs renderer with better error handling
   const renderSectionTabs = useCallback(() => {
@@ -97,38 +112,38 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
               refreshChats={refreshChats}
             />
           );
-        
+
         case 'onboarding':
           return <OnboardingTabs {...commonProps} />;
-        
+
         case 'settings':
           return <SettingsTabs {...commonProps} />;
-        
+
         case 'llm':
           return <LLMTabs {...commonProps} />;
-        
+
         case 'schema':
           return <SchemaTabs {...commonProps} />;
-        
+
         case 'database':
           return (
-            <DbTabs 
+            <DbTabs
               {...commonProps}
               selectedDatabaseType={selectedDatabaseType}
               onAddDatabase={onAddDatabase}
               connectedDatabases={connectedDatabases}
             />
           );
-        
+
         default:
           return null;
       }
     } catch (error) {
       console.error('Error rendering section tabs:', error);
       return (
-        <div className="error-message" style={{ 
-          padding: '20px', 
-          textAlign: 'center', 
+        <div className="error-message" style={{
+          padding: '20px',
+          textAlign: 'center',
           color: '#dc2626',
           backgroundColor: '#fef2f2',
           borderRadius: '8px',
@@ -147,11 +162,11 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
 
   // Check if we should show the default items list
   const shouldShowDefaultItems = ![
-    'chatbot', 
-    'onboarding', 
-    'settings', 
-    'llm', 
-    'schema', 
+    'chatbot',
+    'onboarding',
+    'settings',
+    'llm',
+    'schema',
     'database'
   ].includes(sectionType || '');
 
@@ -185,16 +200,16 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
       newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
       setSidebarWidth(newWidth);
     };
-    
+
     const handleMouseUp = () => {
       isResizing.current = false;
       document.body.style.cursor = '';
     };
-    
+
     if (typeof window !== 'undefined') {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
-      
+
       return () => {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
@@ -214,70 +229,84 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
       style={{ width: sidebarWidth, minWidth: MIN_WIDTH, maxWidth: MAX_WIDTH }}
     >
       <div className="inner-container">
-        {/* Enhanced header with better typography */}
-        <div className="subnav-header" role="heading" aria-level={2}>
-          {title}
-        </div>
-        
-        {/* Controls section with improved layout */}
-        {/* {(searchBox || filters) && (
-          <div className="subcontent-controls">
-            {searchBox && (
-              <div className="subcontent-search" role="search">
-                {searchBox}
-              </div>
-            )}
-            {filters && (
-              <div className="subcontent-filters">
-                {filters}
-              </div>
-            )}
-          </div>
-        )} */}
-        
-        {/* Main content section */}
-        <div className="section-content" role="main">
-          {renderSectionTabs()}
-        </div>
-        
-        {/* Default items list with enhanced accessibility */}
-        {shouldShowDefaultItems && items.length > 0 && (
-          <div 
-            className="subnav-items-container" 
-            role="navigation" 
-            aria-label="Navigation items"
-          >
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className={`subnav-item-container ${item.id === selectedId ? 'active' : ''}`}
-                onClick={() => handleItemSelect(item.id)}
-                onKeyDown={(e) => handleKeyDown(e, item.id)}
-                aria-current={item.id === selectedId ? 'page' : undefined}
-                tabIndex={0}
-                role="button"
-                aria-label={`Navigate to ${item.title}`}
-                style={{ userSelect: 'none' }}
-              >
-                <div className="subnav-icon-placeholder" aria-hidden="true"></div>
-                <span className="subnav-item-title">{item.title}</span>
-                {/* Active indicator for better visual feedback */}
-                {item.id === selectedId && (
-                  <div className="active-indicator" aria-hidden="true"></div>
+        {/* DashboardSidebar integration for dashboard section */}
+        {sectionType === 'dashboard' ? (
+          <DashboardSidebar
+            dashboardKeys={dashboardKeys}
+            dashboards={dashboards}
+            selectedDashboard={selectedDashboard}
+            setSelectedDashboard={setSelectedDashboard}
+            onAddDashboard={onAddDashboard}
+            onEditDashboard={onEditDashboard}
+          />
+        ) : (
+          <>
+            {/* Enhanced header with better typography */}
+            <div className="subnav-header" role="heading" aria-level={2}>
+              {title}
+            </div>
+
+            {/* Controls section with improved layout */}
+            {(searchBox || filters) && (
+              <div className="subcontent-controls">
+                {searchBox && (
+                  <div className="subcontent-search" role="search">
+                    {searchBox}
+                  </div>
+                )}
+                {filters && (
+                  <div className="subcontent-filters">
+                    {filters}
+                  </div>
                 )}
               </div>
-            ))}
-          </div>
-        )}
-        
-        {/* Additional controls section */}
-        {additionalControls && (
-          <div className="subcontent-additional-controls">
-            {additionalControls}
-          </div>
+            )}
+
+            {/* Main content section */}
+            <div className="section-content" role="main">
+              {renderSectionTabs()}
+            </div>
+
+            {/* Default items list with enhanced accessibility */}
+            {shouldShowDefaultItems && items.length > 0 && (
+              <div
+                className="subnav-items-container"
+                role="navigation"
+                aria-label="Navigation items"
+              >
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`subnav-item-container ${item.id === selectedId ? 'active' : ''}`}
+                    onClick={() => handleItemSelect(item.id)}
+                    onKeyDown={(e) => handleKeyDown(e, item.id)}
+                    aria-current={item.id === selectedId ? 'page' : undefined}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Navigate to ${item.title}`}
+                    style={{ userSelect: 'none' }}
+                  >
+                    <div className="subnav-icon-placeholder" aria-hidden="true"></div>
+                    <span className="subnav-item-title">{item.title}</span>
+                    {/* Active indicator for better visual feedback */}
+                    {item.id === selectedId && (
+                      <div className="active-indicator" aria-hidden="true"></div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Additional controls section */}
+            {additionalControls && (
+              <div className="subcontent-additional-controls">
+                {additionalControls}
+              </div>
+            )}
+          </>
         )}
       </div>
-      
+
       <div
         className="subcontentbar-resizer"
         onMouseDown={handleResizerMouseDown}

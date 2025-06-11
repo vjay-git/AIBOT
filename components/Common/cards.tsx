@@ -1,7 +1,7 @@
 // components/Card.tsx
 import React, { useRef, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Box, Typography, IconButton, Paper } from "@mui/material";
+import { Box, Typography, IconButton, Paper, Button } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import Grid from '@mui/material/Grid';
@@ -38,6 +38,8 @@ interface CardProps {
   chartTypeDropdown?: React.ReactNode;
   onChartTypeChange?: (type: ChartType) => void;
   onResizeStop?: (id: string, x: number, y: number, width: number, height: number) => void;
+  dashboardColor?: string; // NEW: dashboard color for chart palette
+  headers?: string[]; // NEW: headers for tabular data
 }
 
 const CARD_BG = "#fff";
@@ -47,13 +49,33 @@ const CARD_SHADOW_HOVER = "0 8px 32px 0 rgba(10,47,255,0.18)";
 const TITLE_COLOR = "#0a2fff";
 const SERIES_DOT = "#2563eb";
 
-const Card: React.FC<CardProps> = ({
-  id, type, cardSize, title, data, layout, onDelete, onEdit, position, onDragStop, isPinned, onPin, onUnpin, disableDragging, disableResizing, chartTypeDropdown, onChartTypeChange, onResizeStop
-}) => {
+// Softly mix a base color toward white to get lighter shades
+function generateShades(base: string, count: number): string[] {
+  const hex = base.replace('#', '');
+  const r0 = parseInt(hex.slice(0, 2), 16);
+  const g0 = parseInt(hex.slice(2, 4), 16);
+  const b0 = parseInt(hex.slice(4, 6), 16);
+
+  return Array.from({ length: count }, (_, i) => {
+    // i = 0 → darkest (~base), i = count-1 → lightest (toward white)
+    const t = i / Math.max(1, count - 1);
+    const factor = 0.5 + 0.5 * t; // range [0.5, 1.0]
+    const r = Math.round(r0 + (255 - r0) * (1 - factor));
+    const g = Math.round(g0 + (255 - g0) * (1 - factor));
+    const b = Math.round(b0 + (255 - b0) * (1 - factor));
+    return `rgb(${r},${g},${b})`;
+  });
+}
+
+const Card = (props: CardProps) => {
+  const {
+    id, type, cardSize, title, data, layout, onDelete, onEdit, position, onDragStop, isPinned, onPin, onUnpin, disableDragging, disableResizing, chartTypeDropdown, onChartTypeChange, onResizeStop, dashboardColor, headers
+  } = props;
   const [size, setSize] = useState(cardSize || { width: 400, height: 300 });
   const [resizeWarning, setResizeWarning] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [showTable, setShowTable] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const onResize: RndResizeCallback = (_e, _dir, ref) => {
@@ -98,6 +120,9 @@ const Card: React.FC<CardProps> = ({
   // Convert data to correct graph type if needed
   let plotData = data;
 
+  // Use dashboardColor for chart palette
+  const chartColor = dashboardColor || '#4472C4';
+
   if (
     Array.isArray(data) &&
     data.length === 1 &&
@@ -106,18 +131,22 @@ const Card: React.FC<CardProps> = ({
     Array.isArray(data[0].y)
   ) {
     if (isBarLike) {
-      plotData = [{ ...data[0], type: "bar" }];
+      // Use a gradient for bar series
+      const barColors = generateShades(chartColor, data[0].x.length);
+      plotData = [{ ...data[0], type: "bar", marker: { color: barColors } }];
     } else if (type === "line") {
-      plotData = [{ ...data[0], type: "scatter", mode: "lines+markers" }];
+      plotData = [{ ...data[0], type: "scatter", mode: "lines+markers", line: { color: chartColor } }];
     } else if (type === "scatter") {
-      plotData = [{ ...data[0], type: "scatter", mode: "markers" }];
+      plotData = [{ ...data[0], type: "scatter", mode: "markers", marker: { color: chartColor } }];
     } else if (type === "pie") {
+      // Use a gradient palette for pie
+      const pieColors = generateShades(chartColor, data[0].x.length);
       plotData = [
         {
           type: "pie",
           labels: data[0].x,
           values: data[0].y,
-          ...(data[0].marker ? { marker: data[0].marker } : {}),
+          marker: { colors: pieColors },
         },
       ];
     }
@@ -143,7 +172,7 @@ const Card: React.FC<CardProps> = ({
     { label: 'Pie', value: 'pie', icon: <PieChart fontSize="small" /> },
     { label: 'Scatter', value: 'scatter', icon: <ScatterChart fontSize="small" /> },
   ];
-
+console.log(headers, "data in card component");
   return (
     <>
       <Rnd
@@ -213,7 +242,10 @@ const Card: React.FC<CardProps> = ({
             {type !== "text" &&
             <Typography
               variant="subtitle1"
-              sx={titleStyle}
+              sx={{
+                ...titleStyle,
+                color: dashboardColor || TITLE_COLOR, // Use dashboard color for title
+              }}
               title={title}
             >
               {title}
@@ -243,21 +275,54 @@ const Card: React.FC<CardProps> = ({
               </IconButton>
             </Box>
           </Box>
+         
           <Box flexGrow={1} display="flex" flexDirection="column"  >
-            {/* Chart type icons in content area (not header) */}
+            {/* Unified row for Table button and chart type icons */}
             {type !== "text" && onChartTypeChange && (
               <Box display="flex" alignItems="center" justifyContent="flex-end" mt={1} mb={1}>
+                {/* Table button */}
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setShowTable((prev) => !prev)}
+                  sx={{
+                    bgcolor: showTable ? (dashboardColor ? `${dashboardColor}22` : "#e9efff") : "transparent",
+                    borderRadius: 1,
+                    mx: 0.25,
+                    p: 0.5,
+                    width: "40px",
+                    textTransform: "none",
+                    color: dashboardColor || "#0a2fff",
+                    fontWeight: 600,
+                    fontSize: "0.875rem",
+                    borderColor: dashboardColor || "#0a2fff",
+                    '&:hover': {
+                      bgcolor: dashboardColor ? `${dashboardColor}33` : "#e9efff"
+                    }
+                  }}
+                  title={showTable ? "Show Chart" : "Show Table"}
+                >
+                  Table
+                </Button>
+                {/* Chart type icons */}
                 {chartTypes.map((ct) => (
                   <IconButton
                     key={ct.value}
                     size="small"
-                    color={type === ct.value ? "primary" : "default"}
-                    onClick={() => onChartTypeChange(ct.value as ChartType)}
+                    color={type === ct.value && !showTable ? "primary" : "default"}
+                    onClick={() => {
+                      setShowTable(false);
+                      onChartTypeChange(ct.value as ChartType);
+                    }}
                     sx={{
-                      bgcolor: type === ct.value ? "#e9efff" : "transparent",
+                      bgcolor: type === ct.value && !showTable ? (dashboardColor ? `${dashboardColor}22` : "#e9efff") : "transparent",
+                      color: dashboardColor || (type === ct.value && !showTable ? "#0a2fff" : undefined),
                       borderRadius: 1,
                       mx: 0.25,
                       p: 0.5,
+                      '&:hover': {
+                        bgcolor: dashboardColor ? `${dashboardColor}33` : "#e9efff"
+                      }
                     }}
                   >
                     {ct.icon}
@@ -265,6 +330,7 @@ const Card: React.FC<CardProps> = ({
                 ))}
               </Box>
             )}
+            
             {type === "text" ? (
               <Box
                 sx={{
@@ -282,13 +348,17 @@ const Card: React.FC<CardProps> = ({
                     fontFamily: "Inter, sans-serif",
                     fontWeight: 700,
                     fontSize: "1.6rem",
-                    color: "#0a2fff",
+                    color: dashboardColor || "#0a2fff", // Use dashboard color for text
                     textAlign: "center",
                     lineHeight: "1.2",
                     mb: "2px"
                   }}
                 >
-                  {typeof data === "string" && /^\d/.test(data.trim()) ? data.split(" ")[0] : data}
+                  {typeof data === "string"
+                    ? (/^\d/.test(data.trim()) ? data.split(" ")[0] : data)
+                    : typeof data === "object" && data !== null
+                      ? JSON.stringify(data)
+                      : "No data"}
                 </Typography>
                 <Typography
                   sx={{
@@ -311,7 +381,7 @@ const Card: React.FC<CardProps> = ({
                       lineHeight: "20px",
                       letterSpacing: 0,
                       textAlign: "center",
-                      color: "#222", // or your preferred body color
+                      color: dashboardColor || "#222", // Use dashboard color for subtitle
                       mt: "4px"
                     }}
                   >
@@ -320,28 +390,113 @@ const Card: React.FC<CardProps> = ({
                 )}
               </Box>
             ) : (
-              <Box flexGrow={1} width="100%" height="100%">
-                <Plot
-                  data={plotData}
-                  layout={{
-                    ...layout,
-                    autosize: true,
-                    margin: plotMargin,
-                    width: size.width - 30,
-                    height: size.height - 110,
-                    font: { color: TITLE_COLOR, family: "Inter, sans-serif" },
-                    legend: {
-                      orientation: "h",
-                      x: 0.5,
-                      y: -0.2,
-                      xanchor: "center",
-                      font: { color: TITLE_COLOR, size: 13 }
-                    }
-                  }}
-                  useResizeHandler
-                  style={{ width: "100%", height: "100%" }}
-                  config={{ responsive: true, displayModeBar: false }}
-                />
+              <Box flexGrow={1} width="100%" height="100%" >
+                {showTable ? (
+                  Array.isArray(data) && data.length > 0 && data[0].x && data[0].y ? (
+                    <Box sx={{
+                      overflowX: 'auto',
+                      width: '100%',
+                      height: size.height - 100, // leave a little padding
+                      maxHeight: 'calc(size.height - 100px)', // leave a little padding
+                      p: 2,
+                      m: 0,
+                    }}>
+                      <table style={{ minWidth: '100%', width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', background: 'transparent' }}>
+                       <thead>
+                          <tr style={{ background: dashboardColor ? `${dashboardColor}22` : '#e9efff' }}>
+                            {headers && headers.length > 0 ? (
+                              headers.map((h, idx) => (
+                                <th key={h + idx} style={{ border: "1px solid #ccc", padding: 6, textAlign: 'left', fontWeight: 600 }}>{h}</th>
+                              ))
+                            ) : (
+                              <>
+                                <th style={{ border: "1px solid #ccc", padding: 6, textAlign: 'left', fontWeight: 600 }}>X</th>
+                                <th style={{ border: "1px solid #ccc", padding: 6, textAlign: 'left', fontWeight: 600 }}>Y</th>
+                              </>
+                            )}
+                          </tr> 
+                          </thead>
+                        <tbody>
+                          {data[0].x.map((xVal: any, idx: number) => (
+                            <tr key={idx} style={{ background: idx % 2 === 0 ? '#fff' : (dashboardColor ? `${dashboardColor}22` : '#e9efff') }}>
+                            
+                                  <td style={{ border: "1px solid #ccc", padding: 6, wordBreak: 'break-word', maxWidth: 200, textOverflow: 'ellipsis' }}>{xVal}</td>
+                                  <td style={{ border: "1px solid #ccc", padding: 6, wordBreak: 'break-word', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{data[0].y[idx]}</td>
+                               </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </Box>
+                  ) : (
+                    <div>No tabular data available.</div>
+                  )
+                ) : (
+                  <Plot
+                    data={Array.isArray(plotData) ? plotData.map(trace => {
+                      let patched = {
+                        ...trace,
+                        marker: {
+                          ...trace.marker,
+                          color: dashboardColor || TITLE_COLOR,
+                          line: {
+                            ...trace.marker?.line,
+                            color: dashboardColor || TITLE_COLOR
+                          }
+                        },
+                        line: trace.line ? {
+                          ...trace.line,
+                          color: dashboardColor || TITLE_COLOR
+                        } : undefined,
+                        text: (trace.y && Array.isArray(trace.y)) ? trace.y : undefined,
+                        textfont: { color: '#222', size: 13, family: 'Inter, sans-serif' },
+                      };
+                      // For line charts, ensure mode includes 'text' and set textposition
+                      if (type === 'line' && patched.type === 'scatter') {
+                        patched.mode = (patched.mode || 'lines+markers') + '+text';
+                        patched.textposition = 'top center';
+                      } else if (type === 'bar' || type === 'scatter') {
+                        patched.textposition = 'auto';
+                      } else if (type === 'pie' && patched.type === 'pie') {
+                        patched.textinfo = 'label+percent+value';
+                        patched.textposition = 'inside';
+                        patched.textfont = { color: '#222', size: 14, family: 'Inter, sans-serif' };
+                      }
+                      return patched;
+                    }) : plotData}
+                    layout={{
+                      ...layout,
+                      autosize: true,
+                      margin: plotMargin,
+                      width: size.width - 30,
+                      height: size.height - 110,
+                      font: { color: dashboardColor || TITLE_COLOR, family: "Inter, sans-serif" },
+                      legend: {
+                        orientation: "h",
+                        x: 0.5,
+                        y: -0.2,
+                        xanchor: "center",
+                        font: { color: dashboardColor || TITLE_COLOR, size: 13 },
+                        visible: false
+                      }
+                    }}
+                    useResizeHandler
+                    style={{ width: "100%", height: "100%" }}
+                    config={{
+                      responsive: true,
+                      displayModeBar: true, // Enable the mode bar
+                      modeBarButtonsToRemove: [
+                        "select2d",
+                        "lasso2d",
+                        "autoScale2d",
+                        "resetScale2d",
+                        "toggleSpikelines",
+                        "hoverClosestCartesian",
+                        "hoverCompareCartesian"
+                      ],
+                      scrollZoom: true // Enable zoom with mouse wheel
+                    }}
+                  />
+                )}
               </Box>
             )}
           </Box>

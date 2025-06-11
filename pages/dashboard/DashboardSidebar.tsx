@@ -1,5 +1,8 @@
 import React from "react";
-import { Box, Button } from "@mui/material";
+import { Box, Button, IconButton } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
 interface DashboardSidebarProps {
   dashboardKeys: string[];
@@ -7,6 +10,10 @@ interface DashboardSidebarProps {
   selectedDashboard: string;
   setSelectedDashboard: (id: string) => void;
   onAddDashboard: () => void;
+  onEditDashboard: (id: string) => void; // New prop
+  // Optionally add handlers for bookmark and delete if needed
+  onBookmarkDashboard?: (id: string) => void;
+  onDeleteDashboard?: (id: string) => void;
 }
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
@@ -15,15 +22,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   selectedDashboard,
   setSelectedDashboard,
   onAddDashboard,
+  onEditDashboard,
+  onBookmarkDashboard,
+  onDeleteDashboard,
 }) => (
-  <Box
+  <Box 
     sx={{
-      width: 280,
-      bgcolor: "#fff",
-      borderRight: "1px solid #e0e0e0",
-      p: 2,
-      minHeight: "100vh",
-      
+      ml:'-3rem'
     }}
   >
     <Box display="flex" alignItems="center" justifyContent="space-between" mb={2} ml={8}>
@@ -44,6 +49,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <Box
             key={dashboardId}
             sx={{
+              display: "flex",
+              alignItems: "center",
               px: 1.5,
               py: 1,
               mb: 0.5,
@@ -56,13 +63,47 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               transition: "background 0.2s",
-              "&:hover": {
+              '&:hover': {
                 background: "#e8edfa",
               },
             }}
-            onClick={() => setSelectedDashboard(dashboardId)}
           >
-            {title}
+            <Box flex={1} onClick={() => setSelectedDashboard(dashboardId)}>
+              {title}
+            </Box>
+            <IconButton
+              size="small"
+              sx={{ ml: 1, color: '#888' }}
+              onClick={e => {
+                e.stopPropagation();
+                onEditDashboard(dashboardId);
+              }}
+              aria-label="Edit dashboard"
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              sx={{ ml: 1, color: '#888' }}
+              onClick={e => {
+                e.stopPropagation();
+                onBookmarkDashboard && onBookmarkDashboard(dashboardId);
+              }}
+              aria-label="Bookmark dashboard"
+            >
+              <BookmarkBorderIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              sx={{ ml: 1, color: '#888' }}
+              onClick={e => {
+                e.stopPropagation();
+                onDeleteDashboard && onDeleteDashboard(dashboardId);
+              }}
+              aria-label="Delete dashboard"
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
           </Box>
         );
       })}

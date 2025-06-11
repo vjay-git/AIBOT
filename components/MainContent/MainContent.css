@@ -10,7 +10,6 @@
 
 .content-container {
   flex: 1 1 0;
-  padding: 24px 24px 32px 24px; /* Increase horizontal padding for more spacious look */
   height: 100vh;
   overflow-y: auto;
   background-color: #F8F9FB;
