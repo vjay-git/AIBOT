@@ -364,14 +364,31 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
     }
   };
 
-  // Delete record API call
+  // Enhanced delete record to handle multiple related records if needed
   const deleteRecord = async (row: MappingRecord) => {
     if (!row.id) return;
     
     setDeleting(row.id.toString());
     try {
-      console.log('Deleting record:', row);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // For field_mapping, you might want to show which related records will be affected
+      if (selectedMapping === 'field_mapping') {
+        const fieldRow = row as FieldMappingRecord;
+        console.log(`Deleting field mapping: ${fieldRow.db_table}.${fieldRow.db_field} -> ${fieldRow.ai_field}`);
+      }
+      
+      // Implement actual delete API call here
+      const response = await fetch(`${BASE_URL}/${COMPANY_CONFIG_ID}/records?filename=${selectedMapping}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filter_fields: {
+            id: row.id
+          }
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to delete record');
+      
       await loadMappingData();
       setShowDeleteConfirm(null);
     } catch (err) {
@@ -404,11 +421,12 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
       
       const result = await response.json();
       
+      // Filter out current AI field from proposals to avoid duplicates
       const fields = result.proposals?.map((proposal: any, index: number) => ({
         id: `field-${index}`,
         name: proposal.ai_field_proposed,
         type: proposal.proposed_format || 'string'
-      })) || [];
+      })).filter((field: FieldOption) => field.name !== row.ai_field) || [];
       
       setAvailableFields(fields);
     } catch (err) {
@@ -495,11 +513,13 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
     }
   };
 
-  // Enhanced field selection for field_mapping
+  // Enhanced field selection for field_mapping - creates new rows for each selected field
   const handleFieldSelection = async () => {
     if (!currentEditingRow || (selectedFields.length === 0 && !customFieldName.trim())) return;
 
     try {
+      setUpdating(true);
+      
       // Determine which fields to apply
       const fieldsToApply = [];
       
@@ -508,34 +528,83 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
         if (fieldId !== 'custom') {
           const selectedFieldData = availableFields.find(field => field.id === fieldId);
           if (selectedFieldData) {
-            fieldsToApply.push(selectedFieldData.name);
+            fieldsToApply.push({
+              name: selectedFieldData.name,
+              type: selectedFieldData.type,
+              isCustom: false
+            });
           }
         }
       });
       
       // Add custom field if specified
       if (selectedFields.includes('custom') && customFieldName.trim()) {
-        fieldsToApply.push(customFieldName.trim());
+        fieldsToApply.push({
+          name: customFieldName.trim(),
+          type: 'custom',
+          isCustom: true
+        });
       } else if (!selectedFields.includes('custom') && customFieldName.trim()) {
         // Custom field entered but not explicitly selected
-        fieldsToApply.push(customFieldName.trim());
+        fieldsToApply.push({
+          name: customFieldName.trim(),
+          type: 'custom',
+          isCustom: true
+        });
       }
 
-      // For now, we'll update with the first field (you might want to handle multiple fields differently)
-      // Or concatenate them, depending on your backend requirements
-      const finalFieldValue = fieldsToApply.length === 1 ? 
-        fieldsToApply[0] : 
-        fieldsToApply.join(', '); // or however you want to handle multiple selections
+      if (fieldsToApply.length === 0) return;
 
-      await updateRecord(currentEditingRow, 'ai_field', finalFieldValue);
+      // If only one field is selected, update the existing row
+      if (fieldsToApply.length === 1) {
+        await updateRecord(currentEditingRow, 'ai_field', fieldsToApply[0].name);
+      } else {
+        // Multiple fields: Update existing row with first field, create new rows for the rest
+        const baseRowData = currentEditingRow as FieldMappingRecord;
+        
+        // Update the existing row with the first field
+        await updateRecord(currentEditingRow, 'ai_field', fieldsToApply[0].name);
+        
+        // Create new rows for remaining fields
+        for (let i = 1; i < fieldsToApply.length; i++) {
+          const field = fieldsToApply[i];
+          
+          // Create new record with same DB table/field but different AI field
+          const newRecordPayload = {
+            schema: baseRowData.schema || 'public',
+            db_table: baseRowData.db_table,
+            db_field: baseRowData.db_field,
+            ai_field: field.name,
+            ai_field_format: baseRowData.ai_field_format || 'string'
+          };
+
+          const response = await fetch(`${BASE_URL}/${COMPANY_CONFIG_ID}/records?filename=${selectedMapping}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newRecordPayload)
+          });
+
+          if (!response.ok) {
+            console.error(`Failed to create record for field: ${field.name}`);
+            // Continue with other fields even if one fails
+            continue;
+          }
+        }
+        
+        // Reload the data to show all new rows
+        await loadMappingData();
+      }
 
       setShowFieldSelectionModal(false);
       setSelectedFields([]);
       setCustomFieldName('');
       setCurrentEditingRow(null);
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update AI field');
-      console.error('Error updating AI field:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update AI field(s)');
+      console.error('Error updating AI field(s):', err);
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -581,6 +650,49 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
 
   const getActiveFilterCount = () => {
     return Object.values(activeFilters).filter(Boolean).length;
+  };
+
+  // Enhanced helper functions for new row logic
+  const getRelatedFieldMappings = (row: FieldMappingRecord) => {
+    if (selectedMapping !== 'field_mapping') return [];
+    
+    return filteredData.filter((r) => {
+      const fieldRow = r as FieldMappingRecord;
+      return fieldRow.db_table === row.db_table && 
+             fieldRow.db_field === row.db_field &&
+             fieldRow.id !== row.id; // Exclude current row
+    });
+  };
+
+  const getModalDescription = () => {
+    if (selectedMapping === 'field_mapping' && currentEditingRow) {
+      const fieldRow = currentEditingRow as FieldMappingRecord;
+      return `Choose multiple AI-proposed fields or create a custom field. Each selected field will create a new row with the same DB table (${fieldRow.db_table}) and DB field (${fieldRow.db_field}).`;
+    }
+    return "Choose multiple AI-proposed fields or create a custom field. Our AI has analyzed the database structure to suggest the most suitable options.";
+  };
+
+  const getSelectionSummary = () => {
+    const selectedCount = selectedFields.length + (customFieldName.trim() && !selectedFields.includes('custom') ? 1 : 0);
+    
+    if (selectedCount === 0) return null;
+    
+    if (selectedCount === 1) {
+      return "1 field selected - will update the current row";
+    }
+    
+    return `${selectedCount} fields selected - will update current row and create ${selectedCount - 1} new row${selectedCount - 1 === 1 ? '' : 's'}`;
+  };
+
+  const getApplyButtonText = () => {
+    const selectedCount = selectedFields.length + (customFieldName.trim() && !selectedFields.includes('custom') ? 1 : 0);
+    
+    if (updating) return 'Updating...';
+    
+    if (selectedCount === 0) return 'No Fields Selected';
+    if (selectedCount === 1) return 'Update Current Row';
+    
+    return `Update + Create ${selectedCount - 1} New Row${selectedCount - 1 === 1 ? '' : 's'}`;
   };
 
   const selectedOption = mappingOptions.find(opt => opt.id === selectedMapping);
@@ -947,6 +1059,19 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
           border: 1px solid rgba(0, 21, 118, 0.3);
         }
 
+        .elegant-related-indicator {
+          position: absolute;
+          top: 4px;
+          left: 8px;
+          font-size: 10px;
+          font-weight: 600;
+          padding: 2px 6px;
+          border-radius: 6px;
+          background: rgba(34, 197, 94, 0.1);
+          color: #15803d;
+          border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
         .elegant-edit-input {
           width: 100%;
           padding: 8px 12px;
@@ -1089,8 +1214,7 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
           margin-bottom: 8px;
           color: #334155;
         }
-
-        .elegant-empty-description {
+          .elegant-empty-description {
           font-size: 14px;
           color: #64748b;
         }
@@ -1125,9 +1249,9 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
           backdrop-filter: blur(20px);
           border-radius: 24px;
           padding: 32px;
-          max-width: 600px;
+          max-width: 800px;
           width: 90%;
-          max-height: 80vh;
+          max-height: 90vh;
           overflow-y: auto;
           box-shadow: 0 32px 64px rgba(0, 0, 0, 0.12), 0 16px 32px rgba(0, 0, 0, 0.08);
           border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1273,8 +1397,8 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
 
         .elegant-field-selection {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
           max-height: 400px;
           overflow-y: auto;
           padding: 16px;
@@ -1300,15 +1424,15 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
         .elegant-field-option {
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          padding: 16px;
+          gap: 8px;
+          padding: 12px;
           border-radius: 12px;
           background: rgba(255, 255, 255, 0.9);
           border: 2px solid rgba(226, 232, 240, 0.6);
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           position: relative;
-          min-height: 100px;
+          min-height: 80px;
         }
 
         .elegant-field-option:hover {
@@ -1351,29 +1475,29 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
         }
 
         .elegant-field-name {
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 600;
           color: #1e293b;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
           word-break: break-word;
         }
 
         .elegant-field-type {
-          font-size: 12px;
+          font-size: 11px;
           color: #64748b;
           font-style: italic;
         }
 
         .elegant-custom-input {
           width: 100%;
-          padding: 8px 12px;
+          padding: 6px 8px;
           border: 2px solid rgba(0, 21, 118, 0.2);
           border-radius: 8px;
-          font-size: 14px;
+          font-size: 12px;
           color: #1e293b;
           background: rgba(255, 255, 255, 0.9);
           transition: all 0.3s ease;
-          margin-top: 8px;
+          margin-top: 4px;
         }
 
         .elegant-custom-input:focus {
@@ -1409,8 +1533,8 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
         }
 
         .elegant-check-icon {
-          width: 24px;
-          height: 24px;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           background: linear-gradient(135deg, #001576 0%, #002bb8 100%);
           display: flex;
@@ -1636,78 +1760,86 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
                   {filteredData.length === 0 ? (
                     <div className="elegant-loading">No matching records found</div>
                   ) : (
-                    filteredData.map((row, index) => (
-                      <div key={row.id || index} className="elegant-table-row">
-                        {columns.map((column) => {
-                          const isEditing = editingCell?.rowIndex === index && editingCell?.columnKey === column.key;
-                          const isEditable = !column.isDbColumn;
-                          const currentValue = row[column.key as keyof MappingRecord]?.toString() || '';
-                          
-                          return (
-                            <div 
-                              key={column.key} 
-                              className={`elegant-cell ${column.isDbColumn ? 'db-column' : 'ai-column'}`}
-                              onClick={() => handleCellClick(index, column.key, currentValue, isEditable)}
+                    filteredData.map((row, index) => {
+                      const relatedMappings = selectedMapping === 'field_mapping' ? getRelatedFieldMappings(row as FieldMappingRecord) : [];
+                      
+                      return (
+                        <div key={row.id || index} className="elegant-table-row">
+                          {columns.map((column) => {
+                            const isEditing = editingCell?.rowIndex === index && editingCell?.columnKey === column.key;
+                            const isEditable = !column.isDbColumn;
+                            const currentValue = row[column.key as keyof MappingRecord]?.toString() || '';
+                            
+                            return (
+                              <div 
+                                key={column.key} 
+                                className={`elegant-cell ${column.isDbColumn ? 'db-column' : 'ai-column'}`}
+                                onClick={() => handleCellClick(index, column.key, currentValue, isEditable)}
+                              >
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={editingCell.value}
+                                    onChange={(e) => handleCellEdit(e.target.value)}
+                                    onBlur={handleCellSave}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleCellSave();
+                                      if (e.key === 'Escape') handleCellCancel();
+                                    }}
+                                    className="elegant-edit-input"
+                                    autoFocus
+                                    disabled={updating}
+                                  />
+                                ) : (
+                                  <>
+                                    {currentValue || '-'}
+                                    <div className={`elegant-cell-badge ${column.isDbColumn ? 'db' : 'ai'}`}>
+                                      {column.isDbColumn ? 'DB' : 'AI'}
+                                    </div>
+                                    {/* Show indicator if there are related mappings */}
+                                    {column.key === 'ai_field' && relatedMappings.length > 0 && (
+                                      <div className="elegant-related-indicator" title={`${relatedMappings.length} more mapping(s) for this DB field`}>
+                                        +{relatedMappings.length}
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                          <div className="elegant-actions">
+                            <button 
+                              onClick={() => handlePropose(row)}
+                              className="elegant-action-button elegant-propose-button"
+                              title={selectedMapping === 'field_mapping' ? 'Propose field selection' : 'Propose record creation'}
+                              disabled={selectedMapping === 'hide_columns_output'}
                             >
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={editingCell.value}
-                                  onChange={(e) => handleCellEdit(e.target.value)}
-                                  onBlur={handleCellSave}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleCellSave();
-                                    if (e.key === 'Escape') handleCellCancel();
-                                  }}
-                                  className="elegant-edit-input"
-                                  autoFocus
-                                  disabled={updating}
-                                />
-                              ) : (
-                                <>
-                                  {currentValue || '-'}
-                                  <div className={`elegant-cell-badge ${column.isDbColumn ? 'db' : 'ai'}`}>
-                                    {column.isDbColumn ? 'DB' : 'AI'}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
-                        <div className="elegant-actions">
-                          {/* Propose Button with beautiful icon */}
-                          <button 
-                            onClick={() => handlePropose(row)}
-                            className="elegant-action-button elegant-propose-button"
-                            title={selectedMapping === 'field_mapping' ? 'Propose field selection' : 'Propose record creation'}
-                            disabled={selectedMapping === 'hide_columns_output'}
-                          >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </button>
-                          
-                          {/* Delete Button */}
-                          <button 
-                            onClick={() => handleDeleteClick(row)}
-                            className="elegant-action-button elegant-delete-button"
-                            title="Delete record"
-                            disabled={deleting === row.id?.toString()}
-                          >
-                            {deleting === row.id?.toString() ? (
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinner">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/>
-                                <path d="M8 12h8" stroke="currentColor" strokeWidth="2"/>
-                              </svg>
-                            ) : (
                               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                               </svg>
-                            )}
-                          </button>
+                            </button>
+                            
+                            <button 
+                              onClick={() => handleDeleteClick(row)}
+                              className="elegant-action-button elegant-delete-button"
+                              title="Delete record"
+                              disabled={deleting === row.id?.toString()}
+                            >
+                              {deleting === row.id?.toString() ? (
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinner">
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/>
+                                  <path d="M8 12h8" stroke="currentColor" strokeWidth="2"/>
+                                </svg>
+                              ) : (
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </>
@@ -1777,7 +1909,7 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
                 Select Proposed AI Fields
               </h3>
               <p className="elegant-modal-description">
-                Choose multiple AI-proposed fields or create a custom field. Our AI has analyzed the database structure to suggest the most suitable options.
+                {getModalDescription()}
               </p>
               {currentEditingRow && (
                 <div style={{ 
@@ -1829,7 +1961,7 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
                           />
                           {selectedFields.includes('custom') && (
                             <div className="elegant-check-icon">
-                              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <svg width="12" height="12" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="currentColor"/>
                               </svg>
                             </div>
@@ -1866,7 +1998,7 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
                             />
                             {selectedFields.includes(field.id) && (
                               <div className="elegant-check-icon">
-                                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <svg width="12" height="12" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                   <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="currentColor"/>
                                 </svg>
                               </div>
@@ -1883,11 +2015,11 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
                 </div>
               )}
               
-              {/* Selection Summary */}
+              {/* Enhanced Selection Summary */}
               {!loadingFields && (selectedFields.length > 0 || customFieldName.trim()) && (
                 <div className="elegant-selection-summary">
                   <div className="elegant-summary-title">
-                    Selected Fields ({selectedFields.length + (customFieldName.trim() && !selectedFields.includes('custom') ? 1 : 0)})
+                    {getSelectionSummary()}
                   </div>
                   <div className="elegant-summary-content">
                     {selectedFields.includes('custom') && customFieldName.trim() ? (
@@ -1922,7 +2054,7 @@ const ElegantAlignView: React.FC<AlignViewProps> = ({ onCopy, onOptions }) => {
                 disabled={selectedFields.length === 0 && !customFieldName.trim() || updating}
                 className="elegant-button elegant-button-primary"
               >
-                {updating ? 'Updating...' : `Apply Selected Fields (${selectedFields.length + (customFieldName.trim() && !selectedFields.includes('custom') ? 1 : 0)})`}
+                {getApplyButtonText()}
               </button>
             </div>
           </div>

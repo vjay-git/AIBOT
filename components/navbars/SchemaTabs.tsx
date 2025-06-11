@@ -333,7 +333,7 @@ const SchemaTabs: React.FC<SchemaTabsProps> = ({ selectedId, onSelect }) => {
       </div>
 
       {/* Quick Actions */}
-      <div className="quick-actions">
+      {/* <div className="quick-actions">
         <button 
           className="quick-action-btn"
           onClick={() => {
@@ -344,7 +344,7 @@ const SchemaTabs: React.FC<SchemaTabsProps> = ({ selectedId, onSelect }) => {
           <Plus size={16} />
           Train New Model
         </button>
-      </div>
+      </div> */}
     </div>
   );
 };

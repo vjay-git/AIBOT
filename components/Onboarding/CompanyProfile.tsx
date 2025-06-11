@@ -44,7 +44,6 @@ const companyService = {
   },
 
   async createCompany(data: CreateCompanyData): Promise<Company> {
-    // POST endpoint for creating new company
     const response = await fetch('http://20.204.162.66:5001/companies', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -61,7 +60,6 @@ const companyService = {
   },
 
   async updateCompany(companyId: string, data: Partial<CreateCompanyData>): Promise<Company> {
-    // Use the correct PUT endpoint format
     const response = await fetch(`http://20.204.162.66:5001/companies/${companyId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -127,6 +125,17 @@ const CompanyProfile = () => {
 
   const handleSelectCompany = (company: Company) => {
     setSelectedCompany(company);
+    
+    const parseExpiryDate = (dateString: string) => {
+      try {
+        const date = new Date(dateString);
+        return date.toISOString().split('T')[0];
+      } catch (error) {
+        console.error('Error parsing date:', error);
+        return '2025-12-31';
+      }
+    };
+    
     setFormData({
       company_name: company.company_name,
       company_license_id: company.company_license_id,
@@ -136,7 +145,7 @@ const CompanyProfile = () => {
       is_verify: company.is_verify,
       is_setup: company.is_setup,
       created_by: company.created_by,
-      license_expiry_date: company.license_expiry_date.split('T')[0]
+      license_expiry_date: parseExpiryDate(company.license_expiry_date)
     });
     setShowCreateModal(false);
   };
@@ -201,11 +210,31 @@ const CompanyProfile = () => {
   );
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid Date';
+    }
+  };
+
+  const formatExpiryDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting expiry date:', error);
+      return 'Invalid Date';
+    }
   };
 
   // Clear messages after 3 seconds
@@ -226,70 +255,108 @@ const CompanyProfile = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f8fafc',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+      background: 'linear-gradient(135deg, #001576 0%, #002B8F 50%, #0040A3 100%)',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      overflow: 'hidden'
     }}>
+      {/* Animated Background Elements */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        zIndex: 0
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '10%',
+          left: '10%',
+          width: '200px',
+          height: '200px',
+          background: 'rgba(255, 255, 255, 0.1)',
+          borderRadius: '50%',
+          filter: 'blur(80px)',
+          animation: 'float 6s ease-in-out infinite'
+        }}></div>
+        <div style={{
+          position: 'absolute',
+          top: '60%',
+          right: '10%',
+          width: '150px',
+          height: '150px',
+          background: 'rgba(255, 255, 255, 0.08)',
+          borderRadius: '50%',
+          filter: 'blur(60px)',
+          animation: 'float 8s ease-in-out infinite reverse'
+        }}></div>
+      </div>
+
       {/* Top Navigation */}
       <div style={{
-        background: '#ffffff',
-        borderBottom: '1px solid #e2e8f0',
-        padding: '0 24px',
-        height: '72px',
+        position: 'relative',
+        zIndex: 10,
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+        padding: '0 32px',
+        height: '80px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
       }}>
         <div>
           <h1 style={{
-            fontSize: '24px',
-            fontWeight: '700',
-            color: '#1e293b',
-            margin: 0
+            fontSize: '28px',
+            fontWeight: '800',
+            background: 'linear-gradient(135deg, #001576 0%, #0040A3 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            margin: 0,
+            letterSpacing: '-0.5px'
           }}>
             Company Management
           </h1>
           <p style={{
-            fontSize: '14px',
+            fontSize: '15px',
             color: '#64748b',
-            margin: '2px 0 0 0'
+            margin: '4px 0 0 0',
+            fontWeight: '500'
           }}>
-            Manage your company profiles and settings
+            Manage your company profiles with elegance
           </p>
         </div>
         
         <button
           onClick={handleCreateNew}
           style={{
-            background: '#3b82f6',
+            background: 'linear-gradient(135deg, #001576 0%, #0040A3 100%)',
             color: 'white',
             border: 'none',
-            borderRadius: '8px',
-            padding: '10px 16px',
-            fontSize: '14px',
+            borderRadius: '12px',
+            padding: '12px 24px',
+            fontSize: '15px',
             fontWeight: '600',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            transition: 'all 0.2s ease',
-            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+            gap: '8px',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 4px 20px rgba(0, 21, 118, 0.4)',
+            transform: 'translateY(0)'
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.background = '#2563eb';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-            e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 21, 118, 0.5)';
           }}
           onMouseOut={(e) => {
-            e.currentTarget.style.background = '#3b82f6';
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 21, 118, 0.4)';
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M12 5v14M5 12h14"/>
           </svg>
           Add Company
@@ -298,42 +365,46 @@ const CompanyProfile = () => {
 
       {/* Main Content */}
       <div style={{
+        position: 'relative',
+        zIndex: 5,
         display: 'flex',
-        height: 'calc(100vh - 72px)'
+        height: 'calc(100vh - 80px)',
+        padding: '24px',
+        gap: '24px'
       }}>
         
         {/* Sidebar */}
         <div style={{
-          width: '320px',
-          background: '#ffffff',
-          borderRight: '1px solid #e2e8f0',
+          width: '380px',
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '20px',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          overflow: 'hidden'
         }}>
           {/* Search */}
           <div style={{
-            padding: '16px',
-            borderBottom: '1px solid #e2e8f0'
+            padding: '24px 24px 16px 24px'
           }}>
             <div style={{
               position: 'relative'
             }}>
-              <svg 
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '16px',
-                  height: '16px',
-                  color: '#9ca3af'
-                }}
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <div style={{
+                position: 'absolute',
+                left: '16px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'linear-gradient(135deg, #001576 0%, #0040A3 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}>
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
               <input
                 type="text"
                 placeholder="Search companies..."
@@ -341,20 +412,24 @@ const CompanyProfile = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '8px 12px 8px 36px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
+                  padding: '14px 16px 14px 48px',
+                  border: '2px solid transparent',
+                  borderRadius: '12px',
+                  fontSize: '15px',
                   outline: 'none',
-                  transition: 'all 0.2s ease',
-                  background: '#ffffff'
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  background: 'rgba(0, 21, 118, 0.08)',
+                  color: '#1e293b',
+                  fontWeight: '500'
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  e.target.style.borderColor = '#001576';
+                  e.target.style.background = 'rgba(255, 255, 255, 0.9)';
+                  e.target.style.boxShadow = '0 0 0 4px rgba(0, 21, 118, 0.1)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = '#d1d5db';
+                  e.target.style.borderColor = 'transparent';
+                  e.target.style.background = 'rgba(0, 21, 118, 0.08)';
                   e.target.style.boxShadow = 'none';
                 }}
               />
@@ -364,87 +439,106 @@ const CompanyProfile = () => {
           {/* Companies List */}
           <div style={{
             flex: 1,
-            overflowY: 'auto'
+            overflowY: 'auto',
+            padding: '0 16px 16px 16px'
           }}>
             {loading ? (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                height: '200px',
-                color: '#64748b'
+                height: '300px',
+                flexDirection: 'column',
+                gap: '16px'
               }}>
                 <div style={{
-                  width: '24px',
-                  height: '24px',
-                  border: '2px solid #e2e8f0',
-                  borderTop: '2px solid #3b82f6',
+                  width: '32px',
+                  height: '32px',
+                  border: '3px solid rgba(0, 21, 118, 0.2)',
+                  borderTop: '3px solid #001576',
                   borderRadius: '50%',
                   animation: 'spin 1s linear infinite'
                 }}></div>
+                <p style={{ color: '#64748b', fontSize: '15px', fontWeight: '500' }}>Loading companies...</p>
               </div>
             ) : filteredCompanies.length === 0 ? (
               <div style={{
-                padding: '32px 16px',
+                padding: '48px 24px',
                 textAlign: 'center',
                 color: '#64748b'
               }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🏢</div>
-                <p style={{ fontSize: '14px', margin: 0 }}>No companies found</p>
+                <div style={{ 
+                  fontSize: '48px', 
+                  marginBottom: '16px',
+                  filter: 'grayscale(1)',
+                  opacity: 0.5
+                }}>🏢</div>
+                <p style={{ fontSize: '16px', margin: 0, fontWeight: '500' }}>No companies found</p>
+                <p style={{ fontSize: '14px', margin: '8px 0 0 0', opacity: 0.7 }}>Try adjusting your search</p>
               </div>
             ) : (
-              <div style={{ padding: '8px' }}>
-                {filteredCompanies.map((company) => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {filteredCompanies.map((company, index) => (
                   <div
                     key={company.company_id}
                     onClick={() => handleSelectCompany(company)}
                     style={{
-                      padding: '12px',
-                      marginBottom: '4px',
-                      borderRadius: '6px',
+                      padding: '16px',
+                      borderRadius: '16px',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      background: selectedCompany?.company_id === company.company_id ? '#eff6ff' : '#ffffff',
-                      border: selectedCompany?.company_id === company.company_id ? '1px solid #3b82f6' : '1px solid transparent'
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      background: selectedCompany?.company_id === company.company_id 
+                        ? 'linear-gradient(135deg, rgba(0, 21, 118, 0.15) 0%, rgba(0, 64, 163, 0.15) 100%)'
+                        : 'rgba(255, 255, 255, 0.7)',
+                      border: selectedCompany?.company_id === company.company_id 
+                        ? '2px solid rgba(0, 21, 118, 0.3)' 
+                        : '2px solid transparent',
+                      transform: 'translateY(0)',
+                      animation: `slideIn 0.5s ease-out ${index * 0.1}s both`
                     }}
                     onMouseOver={(e) => {
                       if (selectedCompany?.company_id !== company.company_id) {
-                        e.currentTarget.style.background = '#f8fafc';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.15)';
                       }
                     }}
                     onMouseOut={(e) => {
                       if (selectedCompany?.company_id !== company.company_id) {
-                        e.currentTarget.style.background = '#ffffff';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
                       }
                     }}
                   >
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '10px'
+                      gap: '12px'
                     }}>
                       <div style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '6px',
-                        background: '#3b82f6',
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '12px',
+                        background: 'linear-gradient(135deg, #001576 0%, #0040A3 100%)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: 'white',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        flexShrink: 0
+                        fontSize: '18px',
+                        fontWeight: '700',
+                        flexShrink: 0,
+                        boxShadow: '0 4px 12px rgba(0, 21, 118, 0.4)'
                       }}>
                         {company.company_name.charAt(0).toUpperCase()}
                       </div>
                       
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
+                          fontSize: '16px',
+                          fontWeight: '700',
                           color: '#1e293b',
-                          marginBottom: '2px',
+                          marginBottom: '4px',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis'
@@ -452,20 +546,21 @@ const CompanyProfile = () => {
                           {company.company_name}
                         </div>
                         <div style={{
-                          fontSize: '12px',
+                          fontSize: '13px',
                           color: '#64748b',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis'
+                          textOverflow: 'ellipsis',
+                          marginBottom: '4px'
                         }}>
                           {company.admin_email}
                         </div>
                         <div style={{
-                          fontSize: '11px',
+                          fontSize: '12px',
                           color: '#94a3b8',
-                          marginTop: '1px'
+                          fontWeight: '500'
                         }}>
-                          {company.company_number_user} users
+                          {company.company_number_user} users • Expires: {formatExpiryDate(company.license_expiry_date)}
                         </div>
                       </div>
                       
@@ -473,29 +568,35 @@ const CompanyProfile = () => {
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'flex-end',
-                        gap: '2px'
+                        gap: '6px'
                       }}>
                         <span style={{
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          background: company.is_active ? '#dcfce7' : '#fee2e2',
-                          color: company.is_active ? '#166534' : '#991b1b',
-                          fontWeight: '500'
+                          fontSize: '11px',
+                          padding: '4px 8px',
+                          borderRadius: '8px',
+                          background: company.is_active 
+                            ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
+                            : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          color: 'white',
+                          fontWeight: '600',
+                          boxShadow: company.is_active 
+                            ? '0 2px 8px rgba(16, 185, 129, 0.3)' 
+                            : '0 2px 8px rgba(239, 68, 68, 0.3)'
                         }}>
                           {company.is_active ? 'Active' : 'Inactive'}
                         </span>
                         {company.is_verify && (
                           <div style={{
-                            width: '12px',
-                            height: '12px',
+                            width: '20px',
+                            height: '20px',
                             borderRadius: '50%',
-                            background: '#22c55e',
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)'
                           }}>
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="white">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="3">
                               <path d="M9 12l2 2 4-4"/>
                             </svg>
                           </div>
@@ -512,53 +613,82 @@ const CompanyProfile = () => {
         {/* Main Panel */}
         <div style={{
           flex: 1,
-          background: '#ffffff',
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '20px',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          overflow: 'hidden'
         }}>
           {/* Status Messages */}
           {error && (
             <div style={{
-              margin: '16px',
-              padding: '12px 16px',
-              background: '#fee2e2',
-              border: '1px solid #fecaca',
-              borderRadius: '6px',
+              margin: '20px 24px 0 24px',
+              padding: '16px 20px',
+              background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: '12px',
               color: '#991b1b',
-              fontSize: '14px',
+              fontSize: '15px',
+              fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '12px',
+              animation: 'slideInDown 0.3s ease-out'
             }}>
-              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
+              <div style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                background: '#ef4444',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="12" height="12" fill="white" viewBox="0 0 24 24">
+                  <path d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </div>
               {error}
             </div>
           )}
 
           {success && (
             <div style={{
-              margin: '16px',
-              padding: '12px 16px',
-              background: '#dcfce7',
-              border: '1px solid #bbf7d0',
-              borderRadius: '6px',
+              margin: '20px 24px 0 24px',
+              padding: '16px 20px',
+              background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
+              border: '1px solid rgba(34, 197, 94, 0.2)',
+              borderRadius: '12px',
               color: '#166534',
-              fontSize: '14px',
+              fontSize: '15px',
+              fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '12px',
+              animation: 'slideInDown 0.3s ease-out'
             }}>
-              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
+              <div style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                background: '#22c55e',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="12" height="12" fill="white" viewBox="0 0 24 24">
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
+              </div>
               {success}
             </div>
           )}
 
           {!selectedCompany && !showCreateModal ? (
-            /* Empty State */
+            /* Elegant Empty State */
             <div style={{
               flex: 1,
               display: 'flex',
@@ -566,96 +696,86 @@ const CompanyProfile = () => {
               alignItems: 'center',
               justifyContent: 'center',
               textAlign: 'center',
-              padding: '32px'
+              padding: '48px'
             }}>
               <div style={{
-                width: '80px',
-                height: '80px',
-                background: '#f1f5f9',
-                borderRadius: '16px',
+                width: '120px',
+                height: '120px',
+                background: 'linear-gradient(135deg, rgba(0, 21, 118, 0.1) 0%, rgba(0, 64, 163, 0.1) 100%)',
+                borderRadius: '24px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '16px'
+                marginBottom: '24px',
+                animation: 'float 3s ease-in-out infinite'
               }}>
-                <svg width="40" height="40" fill="#64748b" viewBox="0 0 24 24">
+                <svg width="60" height="60" fill="none" stroke="#001576" strokeWidth="1.5" viewBox="0 0 24 24">
                   <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                  <path d="M17 21v-8a2 2 0 00-2-2H9a2 2 0 00-2 2v8"/>
                 </svg>
               </div>
               <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#1e293b',
-                marginBottom: '8px'
+                fontSize: '24px',
+                fontWeight: '700',
+                background: 'linear-gradient(135deg, #001576 0%, #0040A3 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                marginBottom: '12px'
               }}>
                 Select a Company
               </h3>
               <p style={{
-                fontSize: '14px',
+                fontSize: '16px',
                 color: '#64748b',
                 maxWidth: '400px',
-                lineHeight: '1.5'
+                lineHeight: '1.6',
+                fontWeight: '500'
               }}>
-                Choose a company from the sidebar to view and edit its details, or create a new company profile.
+                Choose a company from the sidebar to view and edit its details, or create a new company profile to get started.
               </p>
             </div>
           ) : (
-            /* Form Content */
+            /* Enhanced Form Content */
             <div style={{
               flex: 1,
-              padding: '24px',
+              padding: '32px',
               overflowY: 'auto'
             }}>
-              {/* Header */}
+              {/* Enhanced Form */}
               <div style={{
-                marginBottom: '24px'
+                maxWidth: '900px',
+                margin: '0 auto'
               }}>
-                <h2 style={{
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  color: '#1e293b',
-                  marginBottom: '4px'
-                }}>
-                  {selectedCompany ? 'Edit Company Profile' : 'Create New Company'}
-                </h2>
-                <p style={{
-                  fontSize: '14px',
-                  color: '#64748b'
-                }}>
-                  {selectedCompany 
-                    ? 'Update company information and settings'
-                    : 'Fill in the details to create a new company profile'
-                  }
-                </p>
-              </div>
-
-              {/* Form */}
-              <div style={{
-                maxWidth: '800px'
-              }}>
-                {/* Basic Information Section */}
+                {/* Beautiful Basic Information Section */}
                 <div style={{
-                  marginBottom: '24px'
+                  marginBottom: '32px',
+                  background: 'rgba(0, 21, 118, 0.05)',
+                  borderRadius: '20px',
+                  padding: '28px',
+                  border: '1px solid rgba(0, 21, 118, 0.1)'
                 }}>
                   <h3 style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#1e293b',
-                    marginBottom: '16px',
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    background: 'linear-gradient(135deg, #001576 0%, #0040A3 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    marginBottom: '20px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '12px'
                   }}>
                     <div style={{
-                      width: '20px',
-                      height: '20px',
-                      background: '#3b82f6',
-                      borderRadius: '4px',
+                      width: '28px',
+                      height: '28px',
+                      background: 'linear-gradient(135deg, #001576 0%, #0040A3 100%)',
+                      borderRadius: '8px',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      boxShadow: '0 4px 12px rgba(0, 21, 118, 0.3)'
                     }}>
-                      <svg width="12" height="12" fill="white" viewBox="0 0 24 24">
+                      <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
                         <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
                       </svg>
                     </div>
@@ -664,17 +784,17 @@ const CompanyProfile = () => {
                   
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '16px',
-                    marginBottom: '16px'
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: '20px',
+                    marginBottom: '20px'
                   }}>
                     <div>
                       <label style={{
                         display: 'block',
-                        fontSize: '14px',
-                        fontWeight: '500',
+                        fontSize: '15px',
+                        fontWeight: '600',
                         color: '#374151',
-                        marginBottom: '6px'
+                        marginBottom: '8px'
                       }}>
                         Company Name *
                       </label>
@@ -685,20 +805,24 @@ const CompanyProfile = () => {
                         placeholder="Enter company name"
                         style={{
                           width: '100%',
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
+                          padding: '14px 16px',
+                          border: '2px solid transparent',
+                          borderRadius: '12px',
+                          fontSize: '15px',
                           outline: 'none',
-                          transition: 'all 0.2s ease',
-                          background: '#ffffff'
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: '#1e293b',
+                          fontWeight: '500'
                         }}
                         onFocus={(e) => {
-                          e.target.style.borderColor = '#3b82f6';
-                          e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                          e.target.style.borderColor = '#001576';
+                          e.target.style.background = 'rgba(255, 255, 255, 1)';
+                          e.target.style.boxShadow = '0 0 0 4px rgba(0, 21, 118, 0.1)';
                         }}
                         onBlur={(e) => {
-                          e.target.style.borderColor = '#d1d5db';
+                          e.target.style.borderColor = 'transparent';
+                          e.target.style.background = 'rgba(255, 255, 255, 0.8)';
                           e.target.style.boxShadow = 'none';
                         }}
                       />
@@ -707,10 +831,10 @@ const CompanyProfile = () => {
                     <div>
                       <label style={{
                         display: 'block',
-                        fontSize: '14px',
-                        fontWeight: '500',
+                        fontSize: '15px',
+                        fontWeight: '600',
                         color: '#374151',
-                        marginBottom: '6px'
+                        marginBottom: '8px'
                       }}>
                         Admin Email *
                       </label>
@@ -721,20 +845,24 @@ const CompanyProfile = () => {
                         placeholder="admin@company.com"
                         style={{
                           width: '100%',
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
+                          padding: '14px 16px',
+                          border: '2px solid transparent',
+                          borderRadius: '12px',
+                          fontSize: '15px',
                           outline: 'none',
-                          transition: 'all 0.2s ease',
-                          background: '#ffffff'
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: '#1e293b',
+                          fontWeight: '500'
                         }}
                         onFocus={(e) => {
-                          e.target.style.borderColor = '#3b82f6';
-                          e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                          e.target.style.borderColor = '#667eea';
+                          e.target.style.background = 'rgba(255, 255, 255, 1)';
+                          e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
                         }}
                         onBlur={(e) => {
-                          e.target.style.borderColor = '#d1d5db';
+                          e.target.style.borderColor = 'transparent';
+                          e.target.style.background = 'rgba(255, 255, 255, 0.8)';
                           e.target.style.boxShadow = 'none';
                         }}
                       />
@@ -743,17 +871,16 @@ const CompanyProfile = () => {
 
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '16px',
-                    marginBottom: '16px'
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: '20px'
                   }}>
                     <div>
                       <label style={{
                         display: 'block',
-                        fontSize: '14px',
-                        fontWeight: '500',
+                        fontSize: '15px',
+                        fontWeight: '600',
                         color: '#374151',
-                        marginBottom: '6px'
+                        marginBottom: '8px'
                       }}>
                         License ID
                       </label>
@@ -764,20 +891,24 @@ const CompanyProfile = () => {
                         placeholder="Enter license ID"
                         style={{
                           width: '100%',
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
+                          padding: '14px 16px',
+                          border: '2px solid transparent',
+                          borderRadius: '12px',
+                          fontSize: '15px',
                           outline: 'none',
-                          transition: 'all 0.2s ease',
-                          background: '#ffffff'
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: '#1e293b',
+                          fontWeight: '500'
                         }}
                         onFocus={(e) => {
-                          e.target.style.borderColor = '#3b82f6';
-                          e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                          e.target.style.borderColor = '#667eea';
+                          e.target.style.background = 'rgba(255, 255, 255, 1)';
+                          e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
                         }}
                         onBlur={(e) => {
-                          e.target.style.borderColor = '#d1d5db';
+                          e.target.style.borderColor = 'transparent';
+                          e.target.style.background = 'rgba(255, 255, 255, 0.8)';
                           e.target.style.boxShadow = 'none';
                         }}
                       />
@@ -786,10 +917,10 @@ const CompanyProfile = () => {
                     <div>
                       <label style={{
                         display: 'block',
-                        fontSize: '14px',
-                        fontWeight: '500',
+                        fontSize: '15px',
+                        fontWeight: '600',
                         color: '#374151',
-                        marginBottom: '6px'
+                        marginBottom: '8px'
                       }}>
                         Number of Users
                       </label>
@@ -800,33 +931,37 @@ const CompanyProfile = () => {
                         min="1"
                         style={{
                           width: '100%',
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
+                          padding: '14px 16px',
+                          border: '2px solid transparent',
+                          borderRadius: '12px',
+                          fontSize: '15px',
                           outline: 'none',
-                          transition: 'all 0.2s ease',
-                          background: '#ffffff'
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: '#1e293b',
+                          fontWeight: '500'
                         }}
                         onFocus={(e) => {
-                          e.target.style.borderColor = '#3b82f6';
-                          e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                          e.target.style.borderColor = '#667eea';
+                          e.target.style.background = 'rgba(255, 255, 255, 1)';
+                          e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
                         }}
                         onBlur={(e) => {
-                          e.target.style.borderColor = '#d1d5db';
+                          e.target.style.borderColor = 'transparent';
+                          e.target.style.background = 'rgba(255, 255, 255, 0.8)';
                           e.target.style.boxShadow = 'none';
                         }}
                       />
                     </div>
                   </div>
 
-                  <div style={{ marginBottom: '16px' }}>
+                  <div style={{ marginTop: '20px' }}>
                     <label style={{
                       display: 'block',
-                      fontSize: '14px',
-                      fontWeight: '500',
+                      fontSize: '15px',
+                      fontWeight: '600',
                       color: '#374151',
-                      marginBottom: '6px'
+                      marginBottom: '8px'
                     }}>
                       License Expiry Date
                     </label>
@@ -836,50 +971,61 @@ const CompanyProfile = () => {
                       onChange={(e) => setFormData({...formData, license_expiry_date: e.target.value})}
                       style={{
                         width: '100%',
-                        maxWidth: '200px',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
+                        maxWidth: '280px',
+                        padding: '14px 16px',
+                        border: '2px solid transparent',
+                        borderRadius: '12px',
+                        fontSize: '15px',
                         outline: 'none',
-                        transition: 'all 0.2s ease',
-                        background: '#ffffff'
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        color: '#1e293b',
+                        fontWeight: '500'
                       }}
                       onFocus={(e) => {
-                        e.target.style.borderColor = '#3b82f6';
-                        e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                        e.target.style.borderColor = '#667eea';
+                        e.target.style.background = 'rgba(255, 255, 255, 1)';
+                        e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.1)';
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = '#d1d5db';
+                        e.target.style.borderColor = 'transparent';
+                        e.target.style.background = 'rgba(255, 255, 255, 0.8)';
                         e.target.style.boxShadow = 'none';
                       }}
                     />
                   </div>
                 </div>
 
-                {/* Status Settings Section */}
+                {/* Beautiful Status Settings Section */}
                 <div style={{
-                  marginBottom: '32px'
+                  marginBottom: '32px',
+                  background: 'rgba(0, 43, 143, 0.05)',
+                  borderRadius: '20px',
+                  padding: '28px',
+                  border: '1px solid rgba(0, 43, 143, 0.1)'
                 }}>
                   <h3 style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#1e293b',
-                    marginBottom: '16px',
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    background: 'linear-gradient(135deg, #002B8F 0%, #0040A3 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    marginBottom: '20px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '12px'
                   }}>
                     <div style={{
-                      width: '20px',
-                      height: '20px',
-                      background: '#10b981',
-                      borderRadius: '4px',
+                      width: '28px',
+                      height: '28px',
+                      background: 'linear-gradient(135deg, #002B8F 0%, #0040A3 100%)',
+                      borderRadius: '8px',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      boxShadow: '0 4px 12px rgba(0, 43, 143, 0.3)'
                     }}>
-                      <svg width="12" height="12" fill="white" viewBox="0 0 24 24">
+                      <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
                         <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                         <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                       </svg>
@@ -889,47 +1035,59 @@ const CompanyProfile = () => {
                   
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '12px'
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: '16px'
                   }}>
                     {[
                       { 
                         key: 'is_active', 
                         label: 'Company Active', 
-                        description: 'Enable company operations',
-                        color: '#10b981'
+                        description: 'Enable company operations and user access',
+                        color: '#002B8F',
+                        icon: '⚡'
                       },
                       { 
                         key: 'is_verify', 
-                        label: 'Verified', 
-                        description: 'Company verification status',
-                        color: '#3b82f6'
+                        label: 'Verified Status', 
+                        description: 'Company verification and compliance status',
+                        color: '#001576',
+                        icon: '✓'
                       },
                       { 
                         key: 'is_setup', 
                         label: 'Setup Complete', 
-                        description: 'Initial setup finished',
-                        color: '#8b5cf6'
+                        description: 'Initial setup and configuration finished',
+                        color: '#0040A3',
+                        icon: '⚙️'
                       }
-                    ].map(({ key, label, description, color }) => (
+                    ].map(({ key, label, description, color, icon }) => (
                       <label key={key} style={{
                         display: 'flex',
                         alignItems: 'flex-start',
-                        gap: '10px',
-                        padding: '12px',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
+                        gap: '16px',
+                        padding: '20px',
+                        border: '2px solid transparent',
+                        borderRadius: '16px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        background: '#ffffff'
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        background: (formData[key as keyof typeof formData] as boolean)
+                          ? `${color}08`
+                          : 'rgba(255, 255, 255, 0.8)',
+                        transform: 'translateY(0)'
                       }}
                       onMouseOver={(e) => {
                         e.currentTarget.style.borderColor = color;
-                        e.currentTarget.style.backgroundColor = `${color}08`;
+                        e.currentTarget.style.background = `${color}15`;
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = `0 8px 25px ${color}25`;
                       }}
                       onMouseOut={(e) => {
-                        e.currentTarget.style.borderColor = '#e2e8f0';
-                        e.currentTarget.style.backgroundColor = '#ffffff';
+                        e.currentTarget.style.borderColor = 'transparent';
+                        e.currentTarget.style.background = (formData[key as keyof typeof formData] as boolean)
+                          ? `${color}08`
+                          : 'rgba(255, 255, 255, 0.8)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
                       }}
                       >
                         <div style={{
@@ -947,36 +1105,45 @@ const CompanyProfile = () => {
                             }}
                           />
                           <div style={{
-                            width: '16px',
-                            height: '16px',
-                            borderRadius: '3px',
-                            border: `2px solid ${(formData[key as keyof typeof formData] as boolean) ? color : '#d1d5db'}`,
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '8px',
+                            border: `3px solid ${(formData[key as keyof typeof formData] as boolean) ? color : '#d1d5db'}`,
                             background: (formData[key as keyof typeof formData] as boolean) ? color : '#ffffff',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: (formData[key as keyof typeof formData] as boolean) 
+                              ? `0 4px 12px ${color}40` 
+                              : 'none'
                           }}>
                             {(formData[key as keyof typeof formData] as boolean) && (
-                              <svg width="10" height="10" fill="white" viewBox="0 0 24 24">
+                              <svg width="14" height="14" fill="white" viewBox="0 0 24 24">
                                 <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z"/>
                               </svg>
                             )}
                           </div>
                         </div>
-                        <div>
+                        
+                        <div style={{ flex: 1 }}>
                           <div style={{
-                            fontSize: '14px',
-                            fontWeight: '500',
+                            fontSize: '16px',
+                            fontWeight: '700',
                             color: '#1e293b',
-                            marginBottom: '2px'
+                            marginBottom: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
                           }}>
+                            <span style={{ fontSize: '18px' }}>{icon}</span>
                             {label}
                           </div>
                           <div style={{
-                            fontSize: '12px',
+                            fontSize: '14px',
                             color: '#64748b',
-                            lineHeight: '1.4'
+                            lineHeight: '1.5',
+                            fontWeight: '500'
                           }}>
                             {description}
                           </div>
@@ -986,50 +1153,58 @@ const CompanyProfile = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
+                {/* Enhanced Action Buttons */}
                 <div style={{
                   display: 'flex',
-                  gap: '8px',
-                  paddingTop: '16px',
-                  borderTop: '1px solid #e2e8f0'
+                  gap: '12px',
+                  paddingTop: '24px',
+                  borderTop: '2px solid rgba(0, 21, 118, 0.1)',
+                  justifyContent: 'center',
+                  flexWrap: 'wrap'
                 }}>
                   <button
                     onClick={handleSave}
                     disabled={saving || !formData.company_name || !formData.admin_email}
                     style={{
-                      padding: '10px 16px',
+                      padding: '14px 28px',
                       background: saving || !formData.company_name || !formData.admin_email 
                         ? '#94a3b8' 
-                        : '#3b82f6',
+                        : 'linear-gradient(135deg, #001576 0%, #0040A3 100%)',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: '600',
+                      borderRadius: '12px',
+                      fontSize: '15px',
+                      fontWeight: '700',
                       cursor: saving || !formData.company_name || !formData.admin_email ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '8px',
+                      boxShadow: saving || !formData.company_name || !formData.admin_email 
+                        ? 'none' 
+                        : '0 4px 20px rgba(0, 21, 118, 0.4)',
+                      transform: 'translateY(0)'
                     }}
                     onMouseOver={(e) => {
                       if (!saving && formData.company_name && formData.admin_email) {
-                        e.currentTarget.style.background = '#2563eb';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 21, 118, 0.5)';
                       }
                     }}
                     onMouseOut={(e) => {
                       if (!saving && formData.company_name && formData.admin_email) {
-                        e.currentTarget.style.background = '#3b82f6';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 21, 118, 0.4)';
                       }
                     }}
                   >
                     {saving ? (
                       <>
                         <div style={{
-                          width: '14px',
-                          height: '14px',
-                          border: '2px solid transparent',
-                          borderTop: '2px solid white',
+                          width: '18px',
+                          height: '18px',
+                          border: '3px solid transparent',
+                          borderTop: '3px solid white',
                           borderRadius: '50%',
                           animation: 'spin 1s linear infinite'
                         }}></div>
@@ -1037,7 +1212,7 @@ const CompanyProfile = () => {
                       </>
                     ) : (
                       <>
-                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4z"/>
                           <polyline points="9,11 11,13 15,9"/>
                         </svg>
@@ -1050,59 +1225,68 @@ const CompanyProfile = () => {
                     <button
                       onClick={handleDelete}
                       style={{
-                        padding: '10px 16px',
-                        background: '#ef4444',
+                        padding: '14px 28px',
+                        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '600',
+                        borderRadius: '12px',
+                        fontSize: '15px',
+                        fontWeight: '700',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px'
+                        gap: '8px',
+                        boxShadow: '0 4px 20px rgba(239, 68, 68, 0.4)',
+                        transform: 'translateY(0)'
                       }}
                       onMouseOver={(e) => {
-                        e.currentTarget.style.background = '#dc2626';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 8px 30px rgba(239, 68, 68, 0.5)';
                       }}
                       onMouseOut={(e) => {
-                        e.currentTarget.style.background = '#ef4444';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 4px 20px rgba(239, 68, 68, 0.4)';
                       }}
                     >
-                      <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                      <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M3 6h18m-9 0V4a2 2 0 012-2h4a2 2 0 012 2v2M8 6v12a2 2 0 002 2h8a2 2 0 002-2V6H8z"/>
                       </svg>
-                      Delete
+                      Delete Company
                     </button>
                   )}
 
                   <button
                     onClick={loadCompanies}
                     style={{
-                      padding: '10px 16px',
-                      background: '#ffffff',
+                      padding: '14px 28px',
+                      background: 'rgba(255, 255, 255, 0.9)',
                       color: '#374151',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: '600',
+                      border: '2px solid rgba(0, 21, 118, 0.2)',
+                      borderRadius: '12px',
+                      fontSize: '15px',
+                      fontWeight: '700',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '8px',
+                      transform: 'translateY(0)'
                     }}
                     onMouseOver={(e) => {
-                      e.currentTarget.style.background = '#f9fafb';
-                      e.currentTarget.style.borderColor = '#9ca3af';
+                      e.currentTarget.style.background = 'rgba(0, 21, 118, 0.1)';
+                      e.currentTarget.style.borderColor = '#001576';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 21, 118, 0.2)';
                     }}
                     onMouseOut={(e) => {
-                      e.currentTarget.style.background = '#ffffff';
-                      e.currentTarget.style.borderColor = '#d1d5db';
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+                      e.currentTarget.style.borderColor = 'rgba(0, 21, 118, 0.2)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
                     }}
                   >
-                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
                     Refresh
@@ -1115,27 +1299,32 @@ const CompanyProfile = () => {
                         setShowCreateModal(false);
                       }}
                       style={{
-                        padding: '10px 16px',
-                        background: '#ffffff',
+                        padding: '14px 28px',
+                        background: 'rgba(255, 255, 255, 0.9)',
                         color: '#6b7280',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '600',
+                        border: '2px solid rgba(156, 163, 175, 0.3)',
+                        borderRadius: '12px',
+                        fontSize: '15px',
+                        fontWeight: '700',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px'
+                        gap: '8px',
+                        transform: 'translateY(0)'
                       }}
                       onMouseOver={(e) => {
-                        e.currentTarget.style.background = '#f9fafb';
+                        e.currentTarget.style.background = 'rgba(156, 163, 175, 0.1)';
+                        e.currentTarget.style.borderColor = '#9ca3af';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
                       }}
                       onMouseOut={(e) => {
-                        e.currentTarget.style.background = '#ffffff';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+                        e.currentTarget.style.borderColor = 'rgba(156, 163, 175, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(0)';
                       }}
                     >
-                      <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                      <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M6 18L18 6M6 6l12 12"/>
                       </svg>
                       Cancel
@@ -1143,113 +1332,199 @@ const CompanyProfile = () => {
                   )}
                 </div>
 
-                {/* Company Details Card */}
+                {/* Beautiful Company Details Card */}
                 {selectedCompany && (
                   <div style={{
-                    marginTop: '24px',
-                    padding: '16px',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px'
+                    marginTop: '32px',
+                    padding: '24px',
+                    background: 'linear-gradient(135deg, rgba(0, 21, 118, 0.05) 0%, rgba(0, 64, 163, 0.05) 100%)',
+                    border: '1px solid rgba(0, 21, 118, 0.1)',
+                    borderRadius: '20px'
                   }}>
                     <h4 style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#1e293b',
-                      marginBottom: '12px',
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      background: 'linear-gradient(135deg, #001576 0%, #0040A3 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      marginBottom: '20px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '10px'
                     }}>
-                      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                      </svg>
+                      <div style={{
+                        width: '24px',
+                        height: '24px',
+                        background: 'linear-gradient(135deg, #001576 0%, #0040A3 100%)',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(0, 21, 118, 0.3)'
+                      }}>
+                        <svg width="14" height="14" fill="white" viewBox="0 0 24 24">
+                          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                      </div>
                       Company Details
                     </h4>
                     
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                      gap: '12px'
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                      gap: '16px'
                     }}>
-                      <div>
+                      <div style={{
+                        padding: '16px',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.3)'
+                      }}>
                         <div style={{
-                          fontSize: '11px',
+                          fontSize: '12px',
                           color: '#64748b',
-                          fontWeight: '500',
+                          fontWeight: '600',
                           textTransform: 'uppercase',
                           letterSpacing: '0.5px',
-                          marginBottom: '4px'
+                          marginBottom: '6px'
                         }}>
                           Company ID
                         </div>
                         <div style={{
-                          fontSize: '12px',
+                          fontSize: '14px',
                           color: '#1e293b',
                           fontFamily: 'monospace',
-                          background: '#ffffff',
-                          padding: '4px 6px',
-                          borderRadius: '4px',
-                          border: '1px solid #e2e8f0'
+                          background: 'rgba(0, 21, 118, 0.1)',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          fontWeight: '600'
                         }}>
                           {selectedCompany.company_id}
                         </div>
                       </div>
 
-                      <div>
+                      <div style={{
+                        padding: '16px',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.3)'
+                      }}>
                         <div style={{
-                          fontSize: '11px',
+                          fontSize: '12px',
                           color: '#64748b',
-                          fontWeight: '500',
+                          fontWeight: '600',
                           textTransform: 'uppercase',
                           letterSpacing: '0.5px',
-                          marginBottom: '4px'
+                          marginBottom: '6px'
                         }}>
                           Created By
                         </div>
                         <div style={{
-                          fontSize: '12px',
-                          color: '#1e293b'
+                          fontSize: '14px',
+                          color: '#1e293b',
+                          fontWeight: '600'
                         }}>
                           {selectedCompany.created_by}
                         </div>
                       </div>
 
-                      <div>
+                      <div style={{
+                        padding: '16px',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.3)'
+                      }}>
                         <div style={{
-                          fontSize: '11px',
+                          fontSize: '12px',
                           color: '#64748b',
-                          fontWeight: '500',
+                          fontWeight: '600',
                           textTransform: 'uppercase',
                           letterSpacing: '0.5px',
-                          marginBottom: '4px'
+                          marginBottom: '6px'
+                        }}>
+                          License Expiry
+                        </div>
+                        <div style={{
+                          fontSize: '14px',
+                          color: '#1e293b',
+                          fontWeight: '600'
+                        }}>
+                          {formatExpiryDate(selectedCompany.license_expiry_date)}
+                        </div>
+                      </div>
+
+                      <div style={{
+                        padding: '16px',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.3)'
+                      }}>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#64748b',
+                          fontWeight: '600',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          marginBottom: '6px'
                         }}>
                           Created Date
                         </div>
                         <div style={{
-                          fontSize: '12px',
-                          color: '#1e293b'
+                          fontSize: '14px',
+                          color: '#1e293b',
+                          fontWeight: '600'
                         }}>
                           {formatDate(selectedCompany.created_at)}
                         </div>
                       </div>
 
-                      <div>
+                      <div style={{
+                        padding: '16px',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.3)'
+                      }}>
                         <div style={{
-                          fontSize: '11px',
+                          fontSize: '12px',
                           color: '#64748b',
-                          fontWeight: '500',
+                          fontWeight: '600',
                           textTransform: 'uppercase',
                           letterSpacing: '0.5px',
-                          marginBottom: '4px'
+                          marginBottom: '6px'
                         }}>
                           Last Updated
                         </div>
                         <div style={{
-                          fontSize: '12px',
-                          color: '#1e293b'
+                          fontSize: '14px',
+                          color: '#1e293b',
+                          fontWeight: '600'
                         }}>
                           {selectedCompany.updated_at ? formatDate(selectedCompany.updated_at) : 'Never'}
+                        </div>
+                      </div>
+
+                      <div style={{
+                        padding: '16px',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.3)'
+                      }}>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#64748b',
+                          fontWeight: '600',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          marginBottom: '6px'
+                        }}>
+                          Updated By
+                        </div>
+                        <div style={{
+                          fontSize: '14px',
+                          color: '#1e293b',
+                          fontWeight: '600'
+                        }}>
+                          {selectedCompany.updated_by || 'N/A'}
                         </div>
                       </div>
                     </div>
@@ -1266,6 +1541,52 @@ const CompanyProfile = () => {
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+
+        @keyframes slideIn {
+          0% {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes slideInDown {
+          0% {
+            opacity: 0;
+            transform: translateY(-30px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, #001576 0%, #0040A3 100%);
+          border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, #000c52 0%, #002B8F 100%);
         }
       `}</style>
     </div>

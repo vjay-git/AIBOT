@@ -247,7 +247,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
             </div>
 
             {/* Controls section with improved layout */}
-            {(searchBox || filters) && (
+            {/* {(searchBox || filters) && (
               <div className="subcontent-controls">
                 {searchBox && (
                   <div className="subcontent-search" role="search">
@@ -260,7 +260,7 @@ const SubcontentBar: React.FC<SubcontentBarProps> = ({
                   </div>
                 )}
               </div>
-            )}
+            )} */}
 
             {/* Main content section */}
             <div className="section-content" role="main">
