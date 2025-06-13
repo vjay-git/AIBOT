@@ -29,19 +29,26 @@ export interface LLMSettings {
 }
 
 export const PROVIDER_OPTIONS = [
-  { id: 'ChatGPT', name: 'Chat GPT', icon: '🤖' },
+  { id: 'None', name: 'None', icon: '❌' },
+  { id: 'Ollama', name: 'Ollama', icon: '🦙' },
+  { id: 'GPT', name: 'GPT', icon: '🤖' },
+  { id: 'HuggingFace', name: 'Hugging Face', icon: '🤗' },
   { id: 'Gemini', name: 'Gemini', icon: '💎' },
   { id: 'Claude', name: 'Claude', icon: '🎭' },
-  { id: 'Deepseek', name: 'Deepseek', icon: '🔍' },
-  { id: 'Perplexity', name: 'Perplexity', icon: '🔄' },
-  { id: 'Ollama', name: 'Ollama', icon: '🦙' },
-  { id: 'Copilot', name: 'Copilot', icon: '🚁' },
-  { id: 'None', name: 'None', icon: '❌' },
 ];
 
 // Mock whitelisted websites for web scraping (only for UI)
 export const WHITELISTED_WEBSITES = [
-  { id: 'cloud4c', name: 'www.cloud4c.com', url: 'https://www.cloud4c.com' }
+  { id: 'cloud4c', name: 'www.cloud4c.com', url: 'https://www.cloud4c.com' },
+  { id: 'github', name: 'github.com', url: 'https://github.com' },
+  { id: 'stackoverflow', name: 'stackoverflow.com', url: 'https://stackoverflow.com' },
+  { id: 'medium', name: 'medium.com', url: 'https://medium.com' },
+  { id: 'techcrunch', name: 'techcrunch.com', url: 'https://techcrunch.com' },
+  { id: 'hackernews', name: 'news.ycombinator.com', url: 'https://news.ycombinator.com' },
+  { id: 'reddit', name: 'reddit.com', url: 'https://reddit.com' },
+  { id: 'aws', name: 'aws.amazon.com', url: 'https://aws.amazon.com' },
+  { id: 'azure', name: 'azure.microsoft.com', url: 'https://azure.microsoft.com' },
+  { id: 'gcp', name: 'cloud.google.com', url: 'https://cloud.google.com' },
 ];
 
 export class LLMApiService {

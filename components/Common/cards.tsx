@@ -1,7 +1,7 @@
 // components/Card.tsx
 import React, { useRef, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Box, Typography, IconButton, Paper, Button } from "@mui/material";
+import { Box, Typography, IconButton, Paper, Button, Fade, Zoom, Tooltip } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import Grid from '@mui/material/Grid';
@@ -11,6 +11,9 @@ import BarChart2 from "@mui/icons-material/BarChart";
 import LineChart from "@mui/icons-material/ShowChart";
 import PieChart from "@mui/icons-material/PieChart";
 import ScatterChart from "@mui/icons-material/BubbleChart";
+import TableViewIcon from "@mui/icons-material/TableView";
+import TimelineIcon from "@mui/icons-material/Timeline";
+import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import { Rnd, RndResizeCallback } from "react-rnd";
 import Snackbar from "@mui/material/Snackbar";
 import MuiAlert from "@mui/material/Alert";
@@ -38,16 +41,9 @@ interface CardProps {
   chartTypeDropdown?: React.ReactNode;
   onChartTypeChange?: (type: ChartType) => void;
   onResizeStop?: (id: string, x: number, y: number, width: number, height: number) => void;
-  dashboardColor?: string; // NEW: dashboard color for chart palette
-  headers?: string[]; // NEW: headers for tabular data
+  dashboardColor?: string;
+  headers?: string[];
 }
-
-const CARD_BG = "#fff";
-const CARD_BORDER = "#e9efff";
-const CARD_SHADOW = "0 1.5px 8px 0 rgba(10,47,255,0.06)";
-const CARD_SHADOW_HOVER = "0 8px 32px 0 rgba(10,47,255,0.18)";
-const TITLE_COLOR = "#0a2fff";
-const SERIES_DOT = "#2563eb";
 
 // Softly mix a base color toward white to get lighter shades
 function generateShades(base: string, count: number): string[] {
@@ -57,9 +53,8 @@ function generateShades(base: string, count: number): string[] {
   const b0 = parseInt(hex.slice(4, 6), 16);
 
   return Array.from({ length: count }, (_, i) => {
-    // i = 0 → darkest (~base), i = count-1 → lightest (toward white)
     const t = i / Math.max(1, count - 1);
-    const factor = 0.5 + 0.5 * t; // range [0.5, 1.0]
+    const factor = 0.3 + 0.7 * t; // Enhanced gradient range
     const r = Math.round(r0 + (255 - r0) * (1 - factor));
     const g = Math.round(g0 + (255 - g0) * (1 - factor));
     const b = Math.round(b0 + (255 - b0) * (1 - factor));
@@ -69,23 +64,27 @@ function generateShades(base: string, count: number): string[] {
 
 const Card = (props: CardProps) => {
   const {
-    id, type, cardSize, title, data, layout, onDelete, onEdit, position, onDragStop, isPinned, onPin, onUnpin, disableDragging, disableResizing, chartTypeDropdown, onChartTypeChange, onResizeStop, dashboardColor, headers
+    id, type, cardSize, title, data, layout, onDelete, onEdit, position, onDragStop, 
+    isPinned, onPin, onUnpin, disableDragging, disableResizing, chartTypeDropdown, 
+    onChartTypeChange, onResizeStop, dashboardColor = "#4f46e5", headers
   } = props;
+  
   const [size, setSize] = useState(cardSize || { width: 400, height: 300 });
   const [resizeWarning, setResizeWarning] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [showTable, setShowTable] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const onResize: RndResizeCallback = (_e, _dir, ref) => {
-    const minWidth = type=="text"? 158:270;
-    const minHeight =  type=="text"? 134:200;
+    const minWidth = type === "text" ? 200 : 320;
+    const minHeight = type === "text" ? 160 : 240;
     const width = ref.offsetWidth;
     const height = ref.offsetHeight;
 
     if (width < minWidth || height < minHeight) {
-      setResizeWarning("Minimum size is 270 x 200");
+      setResizeWarning(`Minimum size is ${minWidth} x ${minHeight}px`);
       setSnackbarOpen(true);
       setSize({
         width: Math.max(width, minWidth),
@@ -108,20 +107,13 @@ const Card = (props: CardProps) => {
     handleResize();
   }, []);
 
-  // Use bar chart for table/tabular types
   const isBarLike = type === "bar" || type === "table" || type === "tabular";
 
-  // Pie chart margin fix
-  const plotMargin =
-    type === "pie"
-      ? { l: 10, r: 10, t: 10, b: 10 }
-      : { l: 35, r: 5, t: 5, b: 36 };
+  const plotMargin = type === "pie"
+    ? { l: 20, r: 20, t: 30, b: 20 }
+    : { l: 50, r: 20, t: 30, b: 50 };
 
-  // Convert data to correct graph type if needed
   let plotData = data;
-
-  // Use dashboardColor for chart palette
-  const chartColor = dashboardColor || '#4472C4';
 
   if (
     Array.isArray(data) &&
@@ -131,48 +123,70 @@ const Card = (props: CardProps) => {
     Array.isArray(data[0].y)
   ) {
     if (isBarLike) {
-      // Use a gradient for bar series
-      const barColors = generateShades(chartColor, data[0].x.length);
-      plotData = [{ ...data[0], type: "bar", marker: { color: barColors } }];
+      const barColors = generateShades(dashboardColor, data[0].x.length);
+      plotData = [{ 
+        ...data[0], 
+        type: "bar", 
+        marker: { 
+          color: barColors,
+          line: { color: dashboardColor, width: 1 }
+        }
+      }];
     } else if (type === "line") {
-      plotData = [{ ...data[0], type: "scatter", mode: "lines+markers", line: { color: chartColor } }];
+      plotData = [{ 
+        ...data[0], 
+        type: "scatter", 
+        mode: "lines+markers", 
+        line: { 
+          color: dashboardColor, 
+          width: 3,
+          shape: 'spline'
+        },
+        marker: {
+          color: dashboardColor,
+          size: 8,
+          line: { color: '#fff', width: 2 }
+        }
+      }];
     } else if (type === "scatter") {
-      plotData = [{ ...data[0], type: "scatter", mode: "markers", marker: { color: chartColor } }];
+      plotData = [{ 
+        ...data[0], 
+        type: "scatter", 
+        mode: "markers", 
+        marker: { 
+          color: dashboardColor,
+          size: 10,
+          opacity: 0.8,
+          line: { color: '#fff', width: 1 }
+        }
+      }];
     } else if (type === "pie") {
-      // Use a gradient palette for pie
-      const pieColors = generateShades(chartColor, data[0].x.length);
+      const pieColors = generateShades(dashboardColor, data[0].x.length);
       plotData = [
         {
           type: "pie",
           labels: data[0].x,
           values: data[0].y,
-          marker: { colors: pieColors },
+          marker: { 
+            colors: pieColors,
+            line: { color: '#fff', width: 2 }
+          },
+          textfont: { size: 14, color: '#374151', family: 'Inter, -apple-system, sans-serif' },
+          hovertemplate: '<b>%{label}</b><br>Value: %{value}<br>Percentage: %{percent}<extra></extra>',
         },
       ];
     }
   }
 
-  const titleStyle = {
-    maxWidth: size.width - 80,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    display: "inline-block",
-    verticalAlign: "middle",
-    cursor: "pointer",
-    color: TITLE_COLOR,
-    fontWeight: 700,
-    fontSize: "1.1rem",
-    letterSpacing: 0.1,
-  };
-
   const chartTypes = [
-    { label: 'Bar', value: 'bar', icon: <BarChart2 fontSize="small" /> },
-    { label: 'Line', value: 'line', icon: <LineChart fontSize="small" /> },
-    { label: 'Pie', value: 'pie', icon: <PieChart fontSize="small" /> },
-    { label: 'Scatter', value: 'scatter', icon: <ScatterChart fontSize="small" /> },
+    { label: 'Bar Chart', value: 'bar', icon: <BarChart2 fontSize="small" /> },
+    { label: 'Line Chart', value: 'line', icon: <TimelineIcon fontSize="small" /> },
+    { label: 'Pie Chart', value: 'pie', icon: <PieChart fontSize="small" /> },
+    { label: 'Scatter Plot', value: 'scatter', icon: <ScatterChart fontSize="small" /> },
   ];
-console.log(headers, "data in card component");
+
+  console.log(headers, "data in card component");
+
   return (
     <>
       <Rnd
@@ -184,8 +198,8 @@ console.log(headers, "data in card component");
         }}
         position={position}
         size={size}
-        minWidth={type=="text"? 158:270}
-        minHeight={ type=="text"? 134:200}
+        minWidth={type === "text" ? 200 : 320}
+        minHeight={type === "text" ? 160 : 240}
         onResize={onResize}
         onResizeStop={(_e, _dir, ref, _delta, positionObj) => {
           if (onResizeStop) {
@@ -215,311 +229,529 @@ console.log(headers, "data in card component");
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            borderRadius: '18px',
-            background: CARD_BG,
-            boxShadow: hovered ? CARD_SHADOW_HOVER : CARD_SHADOW,
-            border: `1.5px solid ${CARD_BORDER}`,
-            transition: "box-shadow 0.2s, border 0.2s",
-            cursor: hovered ? "pointer" : "default",
+            borderRadius: 4,
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 255, 0.95) 100%)',
+            backdropFilter: 'blur(20px)',
+            border: `2px solid ${hovered || isPinned ? dashboardColor + '40' : 'rgba(79, 70, 229, 0.08)'}`,
+            boxShadow: hovered || isPinned 
+              ? `0 20px 40px ${dashboardColor}20, 0 4px 12px ${dashboardColor}10`
+              : '0 4px 20px rgba(79, 70, 229, 0.08)',
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            cursor: disableDragging ? "default" : "move",
             position: "relative",
-            p: 0,
+            overflow: 'hidden',
+            '&::before': isPinned ? {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: `linear-gradient(90deg, ${dashboardColor}, ${dashboardColor}cc)`,
+              zIndex: 1,
+            } : {},
             "&:hover": {
-              boxShadow: CARD_SHADOW_HOVER,
-              border: `1.5px solid ${SERIES_DOT}`,
+              transform: disableDragging ? 'none' : 'translateY(-2px)',
+              border: `2px solid ${dashboardColor}60`,
+              boxShadow: `0 24px 48px ${dashboardColor}25, 0 8px 16px ${dashboardColor}15`,
             }
           }}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
+          {/* Header Section */}
           <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            px={2}
-            pt={2}
-            pb={0}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              p: 3,
+              pb: type === "text" ? 1 : 2,
+              background: isPinned 
+                ? `linear-gradient(135deg, ${dashboardColor}08 0%, ${dashboardColor}04 100%)`
+                : 'transparent',
+              borderBottom: type === "text" ? 'none' : `1px solid ${dashboardColor}15`,
+              position: 'relative',
+            }}
           >
-            {type !== "text" &&
-            <Typography
-              variant="subtitle1"
-              sx={{
-                ...titleStyle,
-                color: dashboardColor || TITLE_COLOR, // Use dashboard color for title
-              }}
-              title={title}
-            >
-              {title}
-            </Typography>
-}
-            {/* Show actions only on hover */}
-            <Box
-              sx={{
-                display: hovered ? "flex" : "none",
-                alignItems: "center",
-                gap: 0.5,
-              }}
-            >
-              <IconButton onClick={() => onEdit(id)} size="small">
-                <EditIcon fontSize="small" />
-              </IconButton>
-              <IconButton onClick={() => onDelete(id)} size="small" color="error">
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-              <IconButton
-                onClick={isPinned ? onUnpin : onPin}
-                size="small"
-                color={isPinned ? "primary" : "default"}
-                title={isPinned ? "Unpin" : "Pin"}
-              >
-                {isPinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
-              </IconButton>
-            </Box>
-          </Box>
-         
-          <Box flexGrow={1} display="flex" flexDirection="column"  >
-            {/* Unified row for Table button and chart type icons */}
-            {type !== "text" && onChartTypeChange && (
-              <Box display="flex" alignItems="center" justifyContent="flex-end" mt={1} mb={1}>
-                {/* Table button */}
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => setShowTable((prev) => !prev)}
+            {/* Title Section */}
+            {type !== "text" && (
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                  variant="h6"
                   sx={{
-                    bgcolor: showTable ? (dashboardColor ? `${dashboardColor}22` : "#e9efff") : "transparent",
-                    borderRadius: 1,
-                    mx: 0.25,
-                    p: 0.5,
-                    width: "40px",
-                    textTransform: "none",
-                    color: dashboardColor || "#0a2fff",
-                    fontWeight: 600,
-                    fontSize: "0.875rem",
-                    borderColor: dashboardColor || "#0a2fff",
-                    '&:hover': {
-                      bgcolor: dashboardColor ? `${dashboardColor}33` : "#e9efff"
-                    }
+                    fontWeight: 700,
+                    fontSize: '1.1rem',
+                    color: dashboardColor,
+                    letterSpacing: '-0.02em',
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    lineHeight: 1.3,
+                    fontFamily: 'Inter, -apple-system, sans-serif',
                   }}
-                  title={showTable ? "Show Chart" : "Show Table"}
+                  title={title}
                 >
-                  Table
-                </Button>
-                {/* Chart type icons */}
-                {chartTypes.map((ct) => (
-                  <IconButton
-                    key={ct.value}
-                    size="small"
-                    color={type === ct.value && !showTable ? "primary" : "default"}
-                    onClick={() => {
-                      setShowTable(false);
-                      onChartTypeChange(ct.value as ChartType);
-                    }}
-                    sx={{
-                      bgcolor: type === ct.value && !showTable ? (dashboardColor ? `${dashboardColor}22` : "#e9efff") : "transparent",
-                      color: dashboardColor || (type === ct.value && !showTable ? "#0a2fff" : undefined),
-                      borderRadius: 1,
-                      mx: 0.25,
-                      p: 0.5,
-                      '&:hover': {
-                        bgcolor: dashboardColor ? `${dashboardColor}33` : "#e9efff"
-                      }
-                    }}
-                  >
-                    {ct.icon}
-                  </IconButton>
-                ))}
+                  {title}
+                </Typography>
               </Box>
             )}
-            
-            {type === "text" ? (
+
+            {/* Action Buttons */}
+            <Fade in={hovered || isPinned}>
               <Box
                 sx={{
-                  p: "16px",
-                  gap: "10px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#fff",
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  ml: 2,
                 }}
               >
-                <Typography
-                  sx={{
-                    fontFamily: "Inter, sans-serif",
-                    fontWeight: 700,
-                    fontSize: "1.6rem",
-                    color: dashboardColor || "#0a2fff", // Use dashboard color for text
-                    textAlign: "center",
-                    lineHeight: "1.2",
-                    mb: "2px"
-                  }}
-                >
-                  {typeof data === "string"
-                    ? (/^\d/.test(data.trim()) ? data.split(" ")[0] : data)
-                    : typeof data === "object" && data !== null
-                      ? JSON.stringify(data)
-                      : "No data"}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontFamily: "Inter, sans-serif",
-                    fontWeight: 400,
-                    fontSize: "1rem",
-                    color: "#6b7280",
-                    textAlign: "center",
-                    lineHeight: "1.2"
-                  }}
-                >
-                  {typeof data === "string" && /^\d/.test(data.trim()) ? data.split(" ").slice(1).join(" ") : ""}
-                </Typography>
-                {title && (
-                  <Typography
+                <Tooltip title="Edit Widget" arrow>
+                  <IconButton 
+                    onClick={() => onEdit(id)} 
+                    size="small"
                     sx={{
-                      fontFamily: "Inter, sans-serif", // Body/Font family
-                      fontWeight: 400,
-                      fontSize: "1rem", // Scale 02 (usually 16px, adjust if needed)
-                      lineHeight: "20px",
-                      letterSpacing: 0,
-                      textAlign: "center",
-                      color: dashboardColor || "#222", // Use dashboard color for subtitle
-                      mt: "4px"
+                      background: `${dashboardColor}10`,
+                      color: dashboardColor,
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        background: `${dashboardColor}20`,
+                        transform: 'scale(1.1)',
+                      }
                     }}
                   >
-                    {title}
-                  </Typography>
-                )}
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Delete Widget" arrow>
+                  <IconButton 
+                    onClick={() => onDelete(id)} 
+                    size="small"
+                    sx={{
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      color: '#ef4444',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        transform: 'scale(1.1)',
+                      }
+                    }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title={isPinned ? "Unpin Widget" : "Pin Widget"} arrow>
+                  <IconButton
+                    onClick={isPinned ? onUnpin : onPin}
+                    size="small"
+                    sx={{
+                      background: isPinned ? `${dashboardColor}20` : `${dashboardColor}10`,
+                      color: dashboardColor,
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        background: `${dashboardColor}30`,
+                        transform: 'scale(1.1)',
+                      }
+                    }}
+                  >
+                    {isPinned ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
+                  </IconButton>
+                </Tooltip>
               </Box>
-            ) : (
-              <Box flexGrow={1} width="100%" height="100%" >
-                {showTable ? (
-                  Array.isArray(data) && data.length > 0 && data[0].x && data[0].y ? (
-                    <Box sx={{
-                      overflowX: 'auto',
-                      width: '100%',
-                      height: size.height - 100, // leave a little padding
-                      maxHeight: 'calc(size.height - 100px)', // leave a little padding
-                      p: 2,
-                      m: 0,
-                    }}>
-                      <table style={{ minWidth: '100%', width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', background: 'transparent' }}>
-                       <thead>
-                          <tr style={{ background: dashboardColor ? `${dashboardColor}22` : '#e9efff' }}>
-                            {headers && headers.length > 0 ? (
-                              headers.map((h, idx) => (
-                                <th key={h + idx} style={{ border: "1px solid #ccc", padding: 6, textAlign: 'left', fontWeight: 600 }}>{h}</th>
-                              ))
-                            ) : (
-                              <>
-                                <th style={{ border: "1px solid #ccc", padding: 6, textAlign: 'left', fontWeight: 600 }}>X</th>
-                                <th style={{ border: "1px solid #ccc", padding: 6, textAlign: 'left', fontWeight: 600 }}>Y</th>
-                              </>
-                            )}
-                          </tr> 
-                          </thead>
-                        <tbody>
-                          {data[0].x.map((xVal: any, idx: number) => (
-                            <tr key={idx} style={{ background: idx % 2 === 0 ? '#fff' : (dashboardColor ? `${dashboardColor}22` : '#e9efff') }}>
-                            
-                                  <td style={{ border: "1px solid #ccc", padding: 6, wordBreak: 'break-word', maxWidth: 200, textOverflow: 'ellipsis' }}>{xVal}</td>
-                                  <td style={{ border: "1px solid #ccc", padding: 6, wordBreak: 'break-word', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{data[0].y[idx]}</td>
-                               </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </Box>
-                  ) : (
-                    <div>No tabular data available.</div>
-                  )
-                ) : (
-                  <Plot
-                    data={Array.isArray(plotData) ? plotData.map(trace => {
-                      let patched = {
-                        ...trace,
-                        marker: {
-                          ...trace.marker,
-                          color: dashboardColor || TITLE_COLOR,
-                          line: {
-                            ...trace.marker?.line,
-                            color: dashboardColor || TITLE_COLOR
+            </Fade>
+          </Box>
+
+          {/* Content Section */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            {/* Chart Type Controls */}
+            {type !== "text" && onChartTypeChange && (
+              <Fade in={hovered}>
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'flex-end', 
+                    gap: 1,
+                    px: 3,
+                    pb: 2,
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    zIndex: 10,
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 255, 0.9) 100%)',
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: '0 0 0 16px',
+                    border: `1px solid ${dashboardColor}20`,
+                    borderTop: 'none',
+                    borderRight: 'none',
+                  }}
+                >
+                  {/* Table View Toggle */}
+                  <Tooltip title={showTable ? "Show Chart" : "Show Table"} arrow>
+                    <Button
+                      size="small"
+                      variant={showTable ? "contained" : "outlined"}
+                      onClick={() => setShowTable((prev) => !prev)}
+                      startIcon={<TableViewIcon />}
+                      sx={{
+                        minWidth: 'auto',
+                        px: 2,
+                        py: 0.5,
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        background: showTable 
+                          ? `linear-gradient(135deg, ${dashboardColor} 0%, ${dashboardColor}dd 100%)`
+                          : 'transparent',
+                        color: showTable ? 'white' : dashboardColor,
+                        borderColor: dashboardColor,
+                        boxShadow: showTable ? `0 4px 12px ${dashboardColor}40` : 'none',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          background: showTable 
+                            ? `linear-gradient(135deg, ${dashboardColor}dd 0%, ${dashboardColor}bb 100%)`
+                            : `${dashboardColor}15`,
+                          transform: 'translateY(-1px)',
+                        }
+                      }}
+                    >
+                      Table
+                    </Button>
+                  </Tooltip>
+
+                  {/* Chart Type Icons */}
+                  {chartTypes.map((ct) => (
+                    <Tooltip key={ct.value} title={ct.label} arrow>
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          setShowTable(false);
+                          onChartTypeChange(ct.value as ChartType);
+                        }}
+                        sx={{
+                          background: type === ct.value && !showTable 
+                            ? `linear-gradient(135deg, ${dashboardColor} 0%, ${dashboardColor}dd 100%)`
+                            : `${dashboardColor}10`,
+                          color: type === ct.value && !showTable ? 'white' : dashboardColor,
+                          borderRadius: 2,
+                          transition: 'all 0.2s',
+                          boxShadow: type === ct.value && !showTable ? `0 4px 12px ${dashboardColor}40` : 'none',
+                          '&:hover': {
+                            background: type === ct.value && !showTable
+                              ? `linear-gradient(135deg, ${dashboardColor}dd 0%, ${dashboardColor}bb 100%)`
+                              : `${dashboardColor}20`,
+                            transform: 'translateY(-1px)',
                           }
-                        },
-                        line: trace.line ? {
-                          ...trace.line,
-                          color: dashboardColor || TITLE_COLOR
-                        } : undefined,
-                        text: (trace.y && Array.isArray(trace.y)) ? trace.y : undefined,
-                        textfont: { color: '#222', size: 13, family: 'Inter, sans-serif' },
-                      };
-                      // For line charts, ensure mode includes 'text' and set textposition
-                      if (type === 'line' && patched.type === 'scatter') {
-                        patched.mode = (patched.mode || 'lines+markers') + '+text';
-                        patched.textposition = 'top center';
-                      } else if (type === 'bar' || type === 'scatter') {
-                        patched.textposition = 'auto';
-                      } else if (type === 'pie' && patched.type === 'pie') {
-                        patched.textinfo = 'label+percent+value';
-                        patched.textposition = 'inside';
-                        patched.textfont = { color: '#222', size: 14, family: 'Inter, sans-serif' };
-                      }
-                      return patched;
-                    }) : plotData}
-                    layout={{
-                      ...layout,
-                      autosize: true,
-                      margin: plotMargin,
-                      width: size.width - 30,
-                      height: size.height - 110,
-                      font: { color: dashboardColor || TITLE_COLOR, family: "Inter, sans-serif" },
-                      legend: {
-                        orientation: "h",
-                        x: 0.5,
-                        y: -0.2,
-                        xanchor: "center",
-                        font: { color: dashboardColor || TITLE_COLOR, size: 13 },
-                        visible: false
-                      }
-                    }}
-                    useResizeHandler
-                    style={{ width: "100%", height: "100%" }}
-                    config={{
-                      responsive: true,
-                      displayModeBar: true, // Enable the mode bar
-                      modeBarButtonsToRemove: [
-                        "select2d",
-                        "lasso2d",
-                        "autoScale2d",
-                        "resetScale2d",
-                        "toggleSpikelines",
-                        "hoverClosestCartesian",
-                        "hoverCompareCartesian"
-                      ],
-                      scrollZoom: true // Enable zoom with mouse wheel
-                    }}
-                  />
-                )}
-              </Box>
+                        }}
+                      >
+                        {ct.icon}
+                      </IconButton>
+                    </Tooltip>
+                  ))}
+                </Box>
+              </Fade>
             )}
+
+            {/* Main Content */}
+            <Box sx={{ flex: 1, p: type === "text" ? 2 : 3, pt: type === "text" ? 1 : 3 }}>
+              {type === "text" ? (
+                <Box
+                  sx={{
+                    height: '100%',
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                    background: `linear-gradient(135deg, ${dashboardColor}08 0%, ${dashboardColor}04 100%)`,
+                    borderRadius: 3,
+                    p: 4,
+                    border: `1px solid ${dashboardColor}20`,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontFamily: "Inter, -apple-system, sans-serif",
+                      fontWeight: 800,
+                      fontSize: "2.5rem",
+                      background: `linear-gradient(135deg, ${dashboardColor} 0%, ${dashboardColor}cc 100%)`,
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      lineHeight: 1.1,
+                      mb: 1,
+                      letterSpacing: '-0.02em',
+                    }}
+                  >
+                    {typeof data === "string"
+                      ? (/^\d/.test(data.trim()) ? data.split(" ")[0] : data)
+                      : typeof data === "object" && data !== null
+                        ? JSON.stringify(data)
+                        : "No data"}
+                  </Typography>
+                  
+                  {typeof data === "string" && /^\d/.test(data.trim()) && (
+                    <Typography
+                      sx={{
+                        fontFamily: "Inter, -apple-system, sans-serif",
+                        fontWeight: 500,
+                        fontSize: "1.1rem",
+                        color: "#6b7280",
+                        lineHeight: 1.4,
+                        mb: 2,
+                      }}
+                    >
+                      {data.split(" ").slice(1).join(" ")}
+                    </Typography>
+                  )}
+                  
+                  {title && (
+                    <Typography
+                      sx={{
+                        fontFamily: "Inter, -apple-system, sans-serif",
+                        fontWeight: 600,
+                        fontSize: "1rem",
+                        color: dashboardColor,
+                        lineHeight: 1.4,
+                        opacity: 0.8,
+                      }}
+                    >
+                      {title}
+                    </Typography>
+                  )}
+                </Box>
+              ) : (
+                <Box sx={{ height: '100%', width: '100%' }}>
+                  {showTable ? (
+                    Array.isArray(data) && data.length > 0 && data[0].x && data[0].y ? (
+                      <Box sx={{
+                        height: '100%',
+                        overflowY: 'auto',
+                        background: 'rgba(255, 255, 255, 0.5)',
+                        borderRadius: 3,
+                        border: `1px solid ${dashboardColor}20`,
+                        '&::-webkit-scrollbar': {
+                          width: '6px',
+                        },
+                        '&::-webkit-scrollbar-track': {
+                          background: 'rgba(0,0,0,0.1)',
+                          borderRadius: '3px',
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                          background: dashboardColor,
+                          borderRadius: '3px',
+                        },
+                      }}>
+                        <table style={{ 
+                          width: '100%', 
+                          borderCollapse: 'collapse', 
+                          fontFamily: 'Inter, -apple-system, sans-serif',
+                        }}>
+                          <thead>
+                            <tr style={{ 
+                              background: `linear-gradient(135deg, ${dashboardColor}15 0%, ${dashboardColor}08 100%)`,
+                              position: 'sticky',
+                              top: 0,
+                              zIndex: 1,
+                            }}>
+                              {headers && headers.length > 0 ? (
+                                headers.map((h, idx) => (
+                                  <th key={h + idx} style={{ 
+                                    border: `1px solid ${dashboardColor}30`, 
+                                    padding: '12px 8px', 
+                                    textAlign: 'left', 
+                                    fontWeight: 700,
+                                    color: dashboardColor,
+                                    fontSize: '0.875rem',
+                                    letterSpacing: '-0.01em',
+                                  }}>
+                                    {h}
+                                  </th>
+                                ))
+                              ) : (
+                                <>
+                                  <th style={{ 
+                                    border: `1px solid ${dashboardColor}30`, 
+                                    padding: '12px 8px', 
+                                    textAlign: 'left', 
+                                    fontWeight: 700,
+                                    color: dashboardColor,
+                                    fontSize: '0.875rem',
+                                  }}>X</th>
+                                  <th style={{ 
+                                    border: `1px solid ${dashboardColor}30`, 
+                                    padding: '12px 8px', 
+                                    textAlign: 'left', 
+                                    fontWeight: 700,
+                                    color: dashboardColor,
+                                    fontSize: '0.875rem',
+                                  }}>Y</th>
+                                </>
+                              )}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data[0].x.map((xVal: any, idx: number) => (
+                              <tr key={idx} style={{ 
+                                background: idx % 2 === 0 
+                                  ? 'rgba(255, 255, 255, 0.8)' 
+                                  : `${dashboardColor}08`,
+                                transition: 'background 0.2s',
+                              }}>
+                                <td style={{ 
+                                  border: `1px solid ${dashboardColor}20`, 
+                                  padding: '10px 8px', 
+                                  fontSize: '0.875rem',
+                                  color: '#374151',
+                                }}>{xVal}</td>
+                                <td style={{ 
+                                  border: `1px solid ${dashboardColor}20`, 
+                                  padding: '10px 8px', 
+                                  fontSize: '0.875rem',
+                                  color: '#374151',
+                                  fontWeight: 500,
+                                }}>{data[0].y[idx]}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </Box>
+                    ) : (
+                      <Box sx={{
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: `${dashboardColor}08`,
+                        borderRadius: 3,
+                        border: `1px dashed ${dashboardColor}40`,
+                      }}>
+                        <Typography sx={{ color: '#6b7280', fontWeight: 500 }}>
+                          No tabular data available.
+                        </Typography>
+                      </Box>
+                    )
+                  ) : (
+                    <Box sx={{ 
+                      height: '100%', 
+                      width: '100%',
+                      background: 'rgba(255, 255, 255, 0.5)',
+                      borderRadius: 3,
+                      border: `1px solid ${dashboardColor}20`,
+                      overflow: 'hidden',
+                    }}>
+                      <Plot
+                        data={Array.isArray(plotData) ? plotData.map(trace => ({
+                          ...trace,
+                          marker: {
+                            ...trace.marker,
+                            line: {
+                              ...trace.marker?.line,
+                              color: '#fff'
+                            }
+                          },
+                          textfont: { 
+                            color: '#374151', 
+                            size: 12, 
+                            family: 'Inter, -apple-system, sans-serif' 
+                          },
+                          hoverlabel: {
+                            bgcolor: dashboardColor,
+                            bordercolor: dashboardColor,
+                            font: { color: 'white', family: 'Inter, -apple-system, sans-serif' }
+                          }
+                        })) : plotData}
+                        layout={{
+                          ...layout,
+                          autosize: true,
+                          margin: plotMargin,
+                          width: size.width - 40,
+                          height: size.height - 140,
+                          font: { 
+                            color: '#374151', 
+                            family: "Inter, -apple-system, sans-serif",
+                            size: 12
+                          },
+                          plot_bgcolor: 'rgba(255, 255, 255, 0.8)',
+                          paper_bgcolor: 'transparent',
+                          legend: {
+                            orientation: "h",
+                            x: 0.5,
+                            y: -0.15,
+                            xanchor: "center",
+                            font: { color: '#374151', size: 11, family: "Inter, -apple-system, sans-serif" },
+                            bgcolor: 'rgba(255, 255, 255, 0.9)',
+                            bordercolor: `${dashboardColor}40`,
+                            borderwidth: 1,
+                          },
+                          xaxis: {
+                            ...layout?.xaxis,
+                            gridcolor: `${dashboardColor}20`,
+                            linecolor: `${dashboardColor}40`,
+                            tickcolor: `${dashboardColor}40`,
+                          },
+                          yaxis: {
+                            ...layout?.yaxis,
+                            gridcolor: `${dashboardColor}20`,
+                            linecolor: `${dashboardColor}40`,
+                            tickcolor: `${dashboardColor}40`,
+                          },
+                        }}
+                        useResizeHandler
+                        style={{ width: "100%", height: "100%" }}
+                        config={{
+                          responsive: true,
+                          displayModeBar: hovered,
+                          modeBarButtonsToRemove: [
+                            "select2d",
+                            "lasso2d",
+                            "autoScale2d",
+                            "resetScale2d",
+                            "toggleSpikelines",
+                            "hoverClosestCartesian",
+                            "hoverCompareCartesian"
+                          ],
+                          scrollZoom: true
+                        }}
+                      />
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </Box>
           </Box>
         </Paper>
       </Rnd>
-      {/* Snackbar at center of the page */}
+
+      {/* Enhanced Snackbar */}
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={1500}
+        autoHideDuration={3000}
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         sx={{
           left: "50%",
           transform: "translateX(-50%)",
-          top: "40vh"
+          top: "20vh"
         }}
       >
         <MuiAlert
-          elevation={6}
+          elevation={8}
           variant="filled"
           onClose={() => setSnackbarOpen(false)}
           severity="warning"
-          sx={{ width: '100%' }}
+          sx={{ 
+            width: '100%',
+            borderRadius: 3,
+            fontFamily: 'Inter, -apple-system, sans-serif',
+            fontWeight: 500,
+            boxShadow: '0 12px 32px rgba(245, 158, 11, 0.3)',
+            backdropFilter: 'blur(10px)',
+          }}
         >
           {resizeWarning}
         </MuiAlert>

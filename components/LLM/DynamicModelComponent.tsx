@@ -3,19 +3,27 @@
 import React, { useState, useEffect } from 'react';
 
 // Fallback constants
+// Fallback constants
 const FALLBACK_PROVIDERS = [
-  { id: 'ChatGPT', name: 'Chat GPT', icon: '🤖' },
+  { id: 'None', name: 'None', icon: '❌' },
+  { id: 'Ollama', name: 'Ollama', icon: '🦙' },
+  { id: 'GPT', name: 'GPT', icon: '🤖' },
+  { id: 'HuggingFace', name: 'Hugging Face', icon: '🤗' },
   { id: 'Gemini', name: 'Gemini', icon: '💎' },
   { id: 'Claude', name: 'Claude', icon: '🎭' },
-  { id: 'Deepseek', name: 'Deepseek', icon: '🔍' },
-  { id: 'Perplexity', name: 'Perplexity', icon: '🔄' },
-  { id: 'Ollama', name: 'Ollama', icon: '🦙' },
-  { id: 'Copilot', name: 'Copilot', icon: '🚁' },
-  { id: 'None', name: 'None', icon: '❌' },
 ];
 
 const FALLBACK_WEBSITES = [
-  { id: 'cloud4c', name: 'www.cloud4c.com', url: 'https://www.cloud4c.com' }
+  { id: 'cloud4c', name: 'www.cloud4c.com', url: 'https://www.cloud4c.com' },
+  { id: 'github', name: 'github.com', url: 'https://github.com' },
+  { id: 'stackoverflow', name: 'stackoverflow.com', url: 'https://stackoverflow.com' },
+  { id: 'medium', name: 'medium.com', url: 'https://medium.com' },
+  { id: 'techcrunch', name: 'techcrunch.com', url: 'https://techcrunch.com' },
+  { id: 'hackernews', name: 'news.ycombinator.com', url: 'https://news.ycombinator.com' },
+  { id: 'reddit', name: 'reddit.com', url: 'https://reddit.com' },
+  { id: 'aws', name: 'aws.amazon.com', url: 'https://aws.amazon.com' },
+  { id: 'azure', name: 'azure.microsoft.com', url: 'https://azure.microsoft.com' },
+  { id: 'gcp', name: 'cloud.google.com', url: 'https://cloud.google.com' },
 ];
 
 interface DynamicModelComponentProps {
@@ -29,8 +37,18 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
 }) => {
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [whitelistedWebsites, setWhitelistedWebsites] = useState<string[]>([]);
+  
+  // Local state for editing
+  const [editingConfig, setEditingConfig] = useState({
+    modelType: 'None',
+    ollamaEndpoint: '',
+    ollamaModel: '',
+    apiKey: '',
+    apiBase: '',
+  });
 
   // Load settings from real API
   const loadSettings = async () => {
@@ -49,6 +67,16 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
       console.log('Loaded LLM settings:', data);
       setSettings(data);
       
+      // Set editing config from loaded data
+      const prefix = modelType.toLowerCase();
+      setEditingConfig({
+        modelType: data[`${prefix}_model_type`] || 'None',
+        ollamaEndpoint: data[`${prefix}_ollama_endpoint`] || '',
+        ollamaModel: data[`${prefix}_ollama_model`] || '',
+        apiKey: data[`${prefix}_api_key`] || '',
+        apiBase: data[`${prefix}_api_base`] || '',
+      });
+      
     } catch (err) {
       console.error('Error loading settings:', err);
       setError('Failed to load LLM settings. Please try again.');
@@ -58,9 +86,26 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
   };
 
   // Save settings to real API
-  const saveSettings = async (updates: any) => {
+  const saveSettings = async () => {
     try {
+      setIsSaving(true);
+      setError(null);
+      
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+      const prefix = modelType.toLowerCase();
+      
+      const updates = {
+        [`${prefix}_model_type`]: editingConfig.modelType,
+        [`${prefix}_ollama_endpoint`]: editingConfig.ollamaEndpoint,
+        [`${prefix}_ollama_model`]: editingConfig.ollamaModel,
+      };
+
+      // Only include API fields for non-Ollama providers
+      if (editingConfig.modelType !== 'Ollama' && editingConfig.modelType !== 'None') {
+        updates[`${prefix}_api_key`] = editingConfig.apiKey;
+        updates[`${prefix}_api_base`] = editingConfig.apiBase;
+      }
+
       const response = await fetch(`${baseUrl}/llm_settings`, {
         method: 'PUT',
         headers: {
@@ -82,36 +127,37 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
     } catch (err) {
       console.error('Error saving settings:', err);
       setError('Failed to save settings. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Load settings on component mount
+  // Remove unused functions
   useEffect(() => {
     loadSettings();
-  }, []);
-
-  // Get current config for the model type
-  const getCurrentConfig = () => {
-    if (!settings) return null;
-    
-    const prefix = modelType.toLowerCase();
-    return {
-      modelType: settings[`${prefix}_model_type`] || 'None',
-      ollamaEndpoint: settings[`${prefix}_ollama_endpoint`] || '',
-      ollamaModel: settings[`${prefix}_ollama_model`] || '',
-    };
-  };
+  }, [modelType]);
 
   // Handle field updates
-  const handleFieldUpdate = async (field: string, value: string) => {
-    const prefix = modelType.toLowerCase();
-    const fieldKey = `${prefix}_${field}`;
-    
-    const updates = {
-      [fieldKey]: value
-    };
-    
-    await saveSettings(updates);
+  const handleFieldChange = (field: string, value: string) => {
+    setEditingConfig(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // Handle provider change
+  const handleProviderChange = (provider: string) => {
+    setEditingConfig(prev => ({
+      ...prev,
+      modelType: provider,
+      // Reset fields when changing provider
+      ...(provider === 'None' && {
+        ollamaEndpoint: '',
+        ollamaModel: '',
+        apiKey: '',
+        apiBase: '',
+      })
+    }));
   };
 
   // Handle website selection for scrapper model
@@ -126,16 +172,12 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
 
   // Render provider-specific fields
   const renderProviderFields = () => {
-    const config = getCurrentConfig();
-    if (!config) return null;
+    const provider = editingConfig.modelType;
 
-    const provider = config.modelType;
-
-    if (provider === 'None' || !provider) {
+    if (provider === 'None') {
       return (
         <div className="no-provider-message">
-          <p>Model type: {provider}</p>
-          <p>This model is not currently configured.</p>
+          <p>Select a model type to configure settings.</p>
         </div>
       );
     }
@@ -146,24 +188,32 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
           <div className="form-group">
             <div className="form-label">
               <h3>Ollama Model</h3>
-              <p>Current model configuration from API</p>
+              <p>Specify the Ollama model to use.</p>
             </div>
             <div className="form-field">
-              <div className="read-only-field">
-                {config.ollamaModel || 'Not configured'}
-              </div>
+              <input
+                type="text"
+                className="text-input"
+                placeholder="e.g., llama3.2:latest"
+                value={editingConfig.ollamaModel}
+                onChange={(e) => handleFieldChange('ollamaModel', e.target.value)}
+              />
             </div>
           </div>
 
           <div className="form-group">
             <div className="form-label">
               <h3>Ollama End Point</h3>
-              <p>Current endpoint configuration from API</p>
+              <p>The endpoint URL for your Ollama instance.</p>
             </div>
             <div className="form-field">
-              <div className="read-only-field">
-                {config.ollamaEndpoint || 'Not configured'}
-              </div>
+              <input
+                type="text"
+                className="text-input"
+                placeholder="http://localhost:11434/"
+                value={editingConfig.ollamaEndpoint}
+                onChange={(e) => handleFieldChange('ollamaEndpoint', e.target.value)}
+              />
             </div>
           </div>
 
@@ -173,18 +223,38 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
       );
     }
 
-    // For other providers (would need API support)
+    // For other providers (GPT, HuggingFace, Gemini, Claude)
     return (
       <div className="provider-fields">
         <div className="form-group">
           <div className="form-label">
-            <h3>Provider Configuration</h3>
-            <p>{provider} is configured but detailed settings are not available in current API</p>
+            <h3>API Key</h3>
+            <p>Enter your {provider} API key.</p>
           </div>
           <div className="form-field">
-            <div className="read-only-field">
-              {provider} - Configuration managed externally
-            </div>
+            <input
+              type="password"
+              className="text-input"
+              placeholder="Enter API Key"
+              value={editingConfig.apiKey}
+              onChange={(e) => handleFieldChange('apiKey', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <div className="form-label">
+            <h3>API Base URL</h3>
+            <p>Base URL for the {provider} API (optional).</p>
+          </div>
+          <div className="form-field">
+            <input
+              type="text"
+              className="text-input"
+              placeholder={`Enter ${provider} API base URL`}
+              value={editingConfig.apiBase}
+              onChange={(e) => handleFieldChange('apiBase', e.target.value)}
+            />
           </div>
         </div>
 
@@ -266,8 +336,14 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
     );
   }
 
-  const config = getCurrentConfig();
-  const isConnected = config && config.modelType !== 'None';
+  const isConnected = editingConfig.modelType !== 'None';
+  const hasChanges = settings && (
+    editingConfig.modelType !== (settings[`${modelType.toLowerCase()}_model_type`] || 'None') ||
+    editingConfig.ollamaEndpoint !== (settings[`${modelType.toLowerCase()}_ollama_endpoint`] || '') ||
+    editingConfig.ollamaModel !== (settings[`${modelType.toLowerCase()}_ollama_model`] || '') ||
+    editingConfig.apiKey !== (settings[`${modelType.toLowerCase()}_api_key`] || '') ||
+    editingConfig.apiBase !== (settings[`${modelType.toLowerCase()}_api_base`] || '')
+  );
 
   return (
     <div className="llm-settings-container">
@@ -280,8 +356,8 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
             </span>
           )}
         </h1>
-        <button onClick={loadSettings} className="test-connection-btn">
-          Refresh
+        <button onClick={loadSettings} className="test-connection-btn" disabled={isLoading}>
+          {isLoading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
 
@@ -289,33 +365,46 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
         <div className="form-group">
           <div className="form-label">
             <h2>Model Type</h2>
-            <p>Current model type configuration from API</p>
+            <p>Select the AI model type you want to use for processing requests.</p>
           </div>
           <div className="form-field">
-            <div className="provider-selector">
-              <div className="selected-provider">
-                <div className="provider-display">
-                  <span className="provider-icon">
-                    {FALLBACK_PROVIDERS.find(p => p.id === config?.modelType)?.icon || '❓'}
-                  </span>
-                  <span className="provider-name">
-                    {config?.modelType || 'None'}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <select
+              className="select-input"
+              value={editingConfig.modelType}
+              onChange={(e) => handleProviderChange(e.target.value)}
+            >
+              {FALLBACK_PROVIDERS.map(provider => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        <div className="form-group">
-          <div className="form-label">
-            <h2>Details</h2>
-            <p>Current configuration details from API</p>
+        {editingConfig.modelType !== 'None' && (
+          <div className="form-group">
+            <div className="form-label">
+              <h2>Details</h2>
+              <p>Provide additional details about the selected model configuration.</p>
+            </div>
+            <div className="form-field">
+              {renderProviderFields()}
+            </div>
           </div>
-          <div className="form-field">
-            {renderProviderFields()}
+        )}
+
+        {editingConfig.modelType !== 'None' && (
+          <div className="form-actions">
+            <button 
+              className="save-button" 
+              onClick={saveSettings}
+              disabled={isSaving || !hasChanges}
+            >
+              {isSaving ? 'Saving...' : hasChanges ? 'Save Settings' : 'No Changes'}
+            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

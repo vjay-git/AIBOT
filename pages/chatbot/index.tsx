@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { askDB, fetchThreadById, getQueryById, fetchAiTableById, getAllChats } from '../../utils/api';
+import { askDB, fetchThreadById, getQueryById, fetchAiTableById, getAllChats, clearApiCache } from '../../utils/api';
 import InputBar from '../../components/Chatbot/InputBar';
 import { ChatMessage } from '../../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -105,6 +105,10 @@ const Chatbot: React.FC<ChatbotProps> = ({
   const [queryIds, setQueryIds] = useState<string[]>([]);
   const [isNewChatContext, setIsNewChatContext] = useState(false);
   const [globalUserPrompts, setGlobalUserPrompts] = useState<string[]>([]);
+  
+  // Add loading states to prevent duplicate API calls
+  const [isLoadingExistingChat, setIsLoadingExistingChat] = useState(false);
+  const [isLoadingUserPrompts, setIsLoadingUserPrompts] = useState(false);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -117,29 +121,29 @@ const Chatbot: React.FC<ChatbotProps> = ({
   }, []);
 
   // Helper function to check if a query ID exists in bookmarks
-const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): boolean => {
-  return bookmarks.some(bookmark => 
-    bookmark.queries?.some((q: any) => {
-      // Check if this specific query_id is bookmarked
-      if (typeof q.query_id === 'string') {
-        return q.query_id === queryId;
-      } else if (Array.isArray(q.query_id)) {
-        return q.query_id.includes(queryId);
-      }
-      return false;
-    })
-  );
-}, [bookmarks]);
+  const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): boolean => {
+    return bookmarks.some(bookmark => 
+      bookmark.queries?.some((q: any) => {
+        // Check if this specific query_id is bookmarked
+        if (typeof q.query_id === 'string') {
+          return q.query_id === queryId;
+        } else if (Array.isArray(q.query_id)) {
+          return q.query_id.includes(queryId);
+        }
+        return false;
+      })
+    );
+  }, [bookmarks]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Enhanced new chat handling
+  // Enhanced new chat handling - OPTIMIZED: Single useEffect for new chat
   useEffect(() => {
     if (selectedNewChatId) {
-      console.log('Starting new chat:', selectedNewChatId);
+      console.log('🆕 Starting new chat:', selectedNewChatId);
       setMessages([]);
       setReplyTo(null);
       setThreadId(null);
@@ -150,14 +154,17 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
       // Clear localStorage for new chat
       localStorage.removeItem('chatbot_threadId');
       localStorage.setItem('chatbot_queryIds', JSON.stringify([]));
+      
+      // Clear API cache for fresh start
+      clearApiCache();
     }
   }, [selectedNewChatId]);
 
-  // 🔧 FIXED: Function to convert AI Table response to chat messages
+  // Function to convert AI Table response to chat messages
   const convertAiTableToChatMessages = useCallback((apiResponse: any, tableId: string): ChatMessage[] => {
     const allMessages: ChatMessage[] = [];
     
-    // 🔧 FIX: Access the correct data structure - API returns {"AI Table": {...}}
+    // Access the correct data structure - API returns {"AI Table": {...}}
     const tableData = apiResponse?.["AI Table"] || apiResponse;
     
     if (!tableData || !tableData.queries || !Array.isArray(tableData.queries)) {
@@ -168,13 +175,13 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
     console.log(`📊 Processing ${tableData.queries.length} queries from folder:`, tableData.table_name || tableId);
     
     for (const query of tableData.queries) {
-      // 🔧 FIX: Handle null messages properly
+      // Handle null messages properly
       if (!query.messages || query.messages === null) {
         console.log('⏭️ Skipping query with null messages:', query.query_id);
         continue;
       }
 
-      // 🔧 FIX: Handle the nested array structure from API response
+      // Handle the nested array structure from API response
       const messageGroups = Array.isArray(query.messages) && Array.isArray(query.messages[0])
         ? query.messages[0]  // API returns [[messages]] format
         : query.messages;
@@ -234,7 +241,7 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
   }, []);
 
   // Helper function to convert query response to chat messages (for bookmarks)
-  const convertQueryResponseToChatMessages = (response: any, bookmarkId?: string): ChatMessage[] => {
+  const convertQueryResponseToChatMessages = useCallback((response: any, bookmarkId?: string): ChatMessage[] => {
     const messages: ChatMessage[] = [];
     const messageGroups = Array.isArray(response.message) && Array.isArray(response.message[0])
       ? response.message[0]
@@ -278,92 +285,23 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
       });
     }
     return messages;
-  };
+  }, []);
 
-  // 🔧 ENHANCED: Updated existing chat loading with folder support and better debugging
+  // OPTIMIZED: Single useEffect for existing chat loading with proper dependency management
   useEffect(() => {
-    console.log('🔄 Chatbot useEffect triggered:', {
+    // Prevent duplicate loading
+    if (isLoadingExistingChat) return;
+    if (!selectedChatId || selectedChatId === selectedNewChatId) return;
+
+    console.log('🔄 Loading existing chat:', {
       selectedChatId,
-      selectedNewChatId,
       isFromBookmarks,
       isFromFolder,
       bookmarksCount: bookmarks.length
     });
     
     const loadExistingChat = async () => {
-      if (!selectedChatId) return;
-
-      if (isFromBookmarks) {
-        console.log('🔖 Loading bookmark with ID:', selectedChatId);
-        const allBookmarkMessages: ChatMessage[] = [];
-        let selectedBookmark = bookmarks.find(b => b.id === selectedChatId || b.bookmark_id === selectedChatId);
-
-        if (!selectedBookmark) {
-          console.error('❌ Bookmark not found with ID:', selectedChatId);
-          setError('Bookmark not found');
-          setLoading(false);
-          return;
-        }
-
-        if (selectedBookmark.queries && Array.isArray(selectedBookmark.queries)) {
-          for (const q of selectedBookmark.queries) {
-            let id = q.query_id;
-            if (q.query_id == null) continue;
-            if(Array.isArray(q.query_id) && q.query_id.length === 0) id = q.query_id[0]; 
-            
-            try {
-              const queryObj = await getQueryById(q.query_id);
-              if (!queryObj) {
-                console.warn('⚠️ Query not found:', q.query_id);
-                continue;
-              }
-
-              const msgs = convertQueryResponseToChatMessages(queryObj, selectedBookmark.id || selectedBookmark.bookmark_id);
-              allBookmarkMessages.push(...msgs);
-            } catch (error) {
-              console.error('❌ Error fetching query:', q.query_id, error);
-              continue;
-            }
-          }
-          setMessages(allBookmarkMessages);
-        } else {
-          console.warn('⚠️ Bookmark has no queries or queries is not an array:', selectedBookmark);
-          setMessages([]);
-        }
-        return;
-      }
-      
-      // 🔧 ENHANCED: Handle folder loading with better debugging
-      if (isFromFolder) {
-        console.log('🗂️ Loading folder (AI Table) with ID:', selectedChatId);
-        setMessages([]);
-        setReplyTo(null);
-        setIsNewChatContext(false);
-        setError('');
-        setLoading(true);
-
-        try {
-          console.log('📡 Calling fetchAiTableById with ID:', selectedChatId);
-          const aiTableData = await fetchAiTableById(selectedChatId);
-          console.log('📊 Raw AI Table data received:', aiTableData);
-          
-          const folderMessages = convertAiTableToChatMessages(aiTableData, selectedChatId);
-          console.log('💬 Processed folder messages:', folderMessages.length, 'messages');
-          
-          setMessages(folderMessages);
-          setThreadId(null); // Folders don't have thread IDs
-          
-          console.log(`✅ Successfully loaded ${folderMessages.length} folder messages`);
-        } catch (err) {
-          console.error('❌ Failed to fetch AI table:', err);
-          setError('Failed to load folder data');
-        } finally {
-          setLoading(false);
-        }
-        return;
-      }
-      
-      console.log('💬 Loading regular chat with ID:', selectedChatId);
+      setIsLoadingExistingChat(true);
       setMessages([]);
       setReplyTo(null);
       setIsNewChatContext(false);
@@ -371,25 +309,91 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
       setLoading(true);
 
       try {
-        const data = await fetchThreadById(selectedChatId);
-        const chatMessages = await convertApiMessagesToChatMessages(data);
+        if (isFromBookmarks) {
+          console.log('🔖 Loading bookmark with ID:', selectedChatId);
+          const allBookmarkMessages: ChatMessage[] = [];
+          let selectedBookmark = bookmarks.find(b => b.id === selectedChatId || b.bookmark_id === selectedChatId);
 
-        setMessages(chatMessages);
-        setThreadId(selectedChatId);
+          if (!selectedBookmark) {
+            console.error('❌ Bookmark not found with ID:', selectedChatId);
+            setError('Bookmark not found');
+            return;
+          }
 
-        console.log('✅ Loaded chat messages:', chatMessages.length);
+          if (selectedBookmark.queries && Array.isArray(selectedBookmark.queries)) {
+            for (const q of selectedBookmark.queries) {
+              let id = q.query_id;
+              if (q.query_id == null) continue;
+              if(Array.isArray(q.query_id) && q.query_id.length === 0) id = q.query_id[0]; 
+              
+              try {
+                const queryObj = await getQueryById(q.query_id);
+                if (!queryObj) {
+                  console.warn('⚠️ Query not found:', q.query_id);
+                  continue;
+                }
+
+                const msgs = convertQueryResponseToChatMessages(queryObj, selectedBookmark.id || selectedBookmark.bookmark_id);
+                allBookmarkMessages.push(...msgs);
+              } catch (error) {
+                console.error('❌ Error fetching query:', q.query_id, error);
+                continue;
+              }
+            }
+            setMessages(allBookmarkMessages);
+          } else {
+            console.warn('⚠️ Bookmark has no queries or queries is not an array:', selectedBookmark);
+            setMessages([]);
+          }
+          return;
+        }
+        
+        if (isFromFolder) {
+          console.log('🗂️ Loading folder (AI Table) with ID:', selectedChatId);
+          try {
+            console.log('📡 Calling fetchAiTableById with ID:', selectedChatId);
+            const aiTableData = await fetchAiTableById(selectedChatId);
+            console.log('📊 Raw AI Table data received:', aiTableData);
+            
+            const folderMessages = convertAiTableToChatMessages(aiTableData, selectedChatId);
+            console.log('💬 Processed folder messages:', folderMessages.length, 'messages');
+            
+            setMessages(folderMessages);
+            setThreadId(null); // Folders don't have thread IDs
+            
+            console.log(`✅ Successfully loaded ${folderMessages.length} folder messages`);
+          } catch (err) {
+            console.error('❌ Failed to fetch AI table:', err);
+            setError('Failed to load folder data');
+          }
+          return;
+        }
+        
+        // Regular chat loading
+        console.log('💬 Loading regular chat with ID:', selectedChatId);
+        try {
+          const data = await fetchThreadById(selectedChatId);
+          const chatMessages = await convertApiMessagesToChatMessages(data);
+
+          setMessages(chatMessages);
+          setThreadId(selectedChatId);
+
+          console.log('✅ Loaded chat messages:', chatMessages.length);
+        } catch (err) {
+          console.error('❌ Failed to fetch thread:', err);
+          setError('Failed to load chat history');
+        }
       } catch (err) {
-        console.error('❌ Failed to fetch thread:', err);
-        setError('Failed to load chat history');
+        console.error('❌ Error in loadExistingChat:', err);
+        setError('Failed to load chat data');
       } finally {
         setLoading(false);
+        setIsLoadingExistingChat(false);
       }
     };
 
-    if (selectedChatId && selectedChatId !== selectedNewChatId) {
-      loadExistingChat();
-    }
-  }, [selectedChatId, selectedNewChatId, isFromBookmarks, isFromFolder, bookmarks, convertAiTableToChatMessages]);
+    loadExistingChat();
+  }, [selectedChatId, selectedNewChatId, isFromBookmarks, isFromFolder, bookmarks.length]); // Only depend on length to avoid unnecessary re-renders
 
   // Focus input when replying
   useEffect(() => {
@@ -398,7 +402,7 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
     }
   }, [replyTo]);
 
-  // Welcome message component that shows when no messages exist
+  // Welcome message component
   WelcomeMessage.displayName = 'WelcomeMessage';
 
   // Helper to check greetings/non-question phrases
@@ -462,131 +466,131 @@ const isQueryIdBookmarked = useCallback((queryId: string, messageId: string): bo
   };
 
   // Enhanced function to convert API response to ChatMessage[]
-const convertApiMessagesToChatMessages = async (apiData: any): Promise<ChatMessage[]> => {
-  try {
-    console.log('🔄 Converting API data to chat messages:', apiData);
-    if (!apiData?.Thread?.queries || !Array.isArray(apiData.Thread.queries) || apiData.Thread.queries.length === 0) {
-      console.log('⚠️ No queries found in API data');
-      return [];
-    }
-    const allMessages: ChatMessage[] = [];
-    for (const query of apiData.Thread.queries) {
-      console.log('📝 Processing query:', query.query_id, 'with messages:', query.messages);
-      const isThisQueryBookmarked = isQueryIdBookmarked(query.query_id, `${query.query_id}-0`);
-      let flatMessages: any[] = [];
-      if (!query.messages) {
-        console.log('⏭️ Skipping query with no messages:', query.query_id);
-        continue;
+  const convertApiMessagesToChatMessages = async (apiData: any): Promise<ChatMessage[]> => {
+    try {
+      console.log('🔄 Converting API data to chat messages:', apiData);
+      if (!apiData?.Thread?.queries || !Array.isArray(apiData.Thread.queries) || apiData.Thread.queries.length === 0) {
+        console.log('⚠️ No queries found in API data');
+        return [];
       }
-      if (Array.isArray(query.messages)) {
-        if (query.messages.length === 0) {
-          console.log('⏭️ Skipping query with empty messages array:', query.query_id);
+      const allMessages: ChatMessage[] = [];
+      for (const query of apiData.Thread.queries) {
+        console.log('📝 Processing query:', query.query_id, 'with messages:', query.messages);
+        const isThisQueryBookmarked = isQueryIdBookmarked(query.query_id, `${query.query_id}-0`);
+        let flatMessages: any[] = [];
+        if (!query.messages) {
+          console.log('⏭️ Skipping query with no messages:', query.query_id);
           continue;
         }
-        if (Array.isArray(query.messages[0])) {
-          flatMessages = query.messages.flat();
-          if (Array.isArray(flatMessages[0])) {
-            flatMessages = flatMessages.flat();
+        if (Array.isArray(query.messages)) {
+          if (query.messages.length === 0) {
+            console.log('⏭️ Skipping query with empty messages array:', query.query_id);
+            continue;
+          }
+          if (Array.isArray(query.messages[0])) {
+            flatMessages = query.messages.flat();
+            if (Array.isArray(flatMessages[0])) {
+              flatMessages = flatMessages.flat();
+            }
+          } else {
+            flatMessages = query.messages;
           }
         } else {
-          flatMessages = query.messages;
-        }
-      } else {
-        console.log('⚠️ Messages is not an array for query:', query.query_id);
-        continue;
-      }
-      console.log('📋 Flattened messages for query', query.query_id, ':', flatMessages.length, 'messages');
-      for (let idx = 0; idx < flatMessages.length; idx++) {
-        const msg = flatMessages[idx];
-        console.log(`🔍 Processing message ${idx}:`, msg);
-        let sender: "user" | "bot" = msg.role === "user" ? "user" : "bot";
-        let text = "";
-        let type: ChatMessage["type"] = "text";
-        let rawAnswer: any = undefined;
-        if (msg.table_used) {
-          console.log('⏭️ Skipping table_used message');
+          console.log('⚠️ Messages is not an array for query:', query.query_id);
           continue;
         }
-        if (typeof msg.content === "string" && msg.content.startsWith("SQL Generated by LLM:")) {
-          console.log('⏭️ Skipping SQL Generated by LLM message:', msg.content.substring(0, 50));
-          continue;
-        }
-        if (typeof msg.content === "string") {
-          text = msg.content;
-          console.log('✅ Using content as text:', text.substring(0, 50) + '...');
-        } else if (typeof msg.results === "string" && msg.results.trim() !== "") {
-          text = msg.results;
-          console.log('✅ Using results as text:', text.substring(0, 50) + '...');
-        } else if (typeof msg.results === "object" && msg.results !== null) {
-          console.log('🔍 Processing results object:', msg.results);
-          if (msg.results.type === 'text' && typeof msg.results.data === "string" && msg.results.data.trim() !== "") {
-            text = msg.results.data;
-            type = 'text';
-            console.log('✅ Using results.data as text');
-          } else if (msg.results.data) {
-            const dataToProcess = msg.results.data.data || msg.results.data;
-            if (Array.isArray(dataToProcess)) {
-              console.log('📊 Processing tabular data:', dataToProcess.length, 'rows');
-              const tableData = dataToProcess.map((row: any[]) =>
-                Array.isArray(row)
-                  ? row.map(cell => {
-                      if (cell && typeof cell === 'object' && cell.constructor && cell.constructor.name === 'Decimal') {
-                        return cell.toString();
-                      }
-                      if (typeof cell === 'object' && cell !== null && cell.toString) {
-                        return cell.toString();
-                      }
-                      return cell;
-                    })
-                  : row
-              );
-              rawAnswer = tableData;
-              type = msg.results.type as ChatMessage["type"] || "tabular";
-              text = "";
-              console.log('✅ Processed tabular data with', tableData.length, 'rows');
-            } else if (typeof dataToProcess === "string" && dataToProcess.trim() !== "") {
-              text = dataToProcess;
+        console.log('📋 Flattened messages for query', query.query_id, ':', flatMessages.length, 'messages');
+        for (let idx = 0; idx < flatMessages.length; idx++) {
+          const msg = flatMessages[idx];
+          console.log(`🔍 Processing message ${idx}:`, msg);
+          let sender: "user" | "bot" = msg.role === "user" ? "user" : "bot";
+          let text = "";
+          let type: ChatMessage["type"] = "text";
+          let rawAnswer: any = undefined;
+          if (msg.table_used) {
+            console.log('⏭️ Skipping table_used message');
+            continue;
+          }
+          if (typeof msg.content === "string" && msg.content.startsWith("SQL Generated by LLM:")) {
+            console.log('⏭️ Skipping SQL Generated by LLM message:', msg.content.substring(0, 50));
+            continue;
+          }
+          if (typeof msg.content === "string") {
+            text = msg.content;
+            console.log('✅ Using content as text:', text.substring(0, 50) + '...');
+          } else if (typeof msg.results === "string" && msg.results.trim() !== "") {
+            text = msg.results;
+            console.log('✅ Using results as text:', text.substring(0, 50) + '...');
+          } else if (typeof msg.results === "object" && msg.results !== null) {
+            console.log('🔍 Processing results object:', msg.results);
+            if (msg.results.type === 'text' && typeof msg.results.data === "string" && msg.results.data.trim() !== "") {
+              text = msg.results.data;
               type = 'text';
-              console.log('✅ Using nested data as text');
+              console.log('✅ Using results.data as text');
+            } else if (msg.results.data) {
+              const dataToProcess = msg.results.data.data || msg.results.data;
+              if (Array.isArray(dataToProcess)) {
+                console.log('📊 Processing tabular data:', dataToProcess.length, 'rows');
+                const tableData = dataToProcess.map((row: any[]) =>
+                  Array.isArray(row)
+                    ? row.map(cell => {
+                        if (cell && typeof cell === 'object' && cell.constructor && cell.constructor.name === 'Decimal') {
+                          return cell.toString();
+                        }
+                        if (typeof cell === 'object' && cell !== null && cell.toString) {
+                          return cell.toString();
+                        }
+                        return cell;
+                      })
+                    : row
+                );
+                rawAnswer = tableData;
+                type = msg.results.type as ChatMessage["type"] || "tabular";
+                text = "";
+                console.log('✅ Processed tabular data with', tableData.length, 'rows');
+              } else if (typeof dataToProcess === "string" && dataToProcess.trim() !== "") {
+                text = dataToProcess;
+                type = 'text';
+                console.log('✅ Using nested data as text');
+              } else {
+                console.log('⏭️ Skipping results with no displayable data');
+                continue;
+              }
             } else {
-              console.log('⏭️ Skipping results with no displayable data');
+              console.log('⏭️ Skipping results object with no data');
               continue;
             }
           } else {
-            console.log('⏭️ Skipping results object with no data');
+            console.log('⏭️ Skipping message with no displayable content');
             continue;
           }
-        } else {
-          console.log('⏭️ Skipping message with no displayable content');
-          continue;
-        }
-        if (text === null || text === undefined || (typeof text === "string" && text.trim() === "")) {
-          if (!rawAnswer) {
-            console.log('⏭️ Skipping empty message');
-            continue;
+          if (text === null || text === undefined || (typeof text === "string" && text.trim() === "")) {
+            if (!rawAnswer) {
+              console.log('⏭️ Skipping empty message');
+              continue;
+            }
           }
+          const chatMessage: ChatMessage = {
+            id: `${query.query_id}-${idx}`,
+            sender,
+            text,
+            timestamp: new Date().toISOString(),
+            type,
+            rawAnswer,
+            queryId: query.query_id,
+            bookmarked: isThisQueryBookmarked
+          };
+          allMessages.push(chatMessage);
+          console.log('✅ Added message:', chatMessage.id, 'type:', type, 'sender:', sender);
         }
-        const chatMessage: ChatMessage = {
-          id: `${query.query_id}-${idx}`,
-          sender,
-          text,
-          timestamp: new Date().toISOString(),
-          type,
-          rawAnswer,
-          queryId: query.query_id,
-          bookmarked: isThisQueryBookmarked
-        };
-        allMessages.push(chatMessage);
-        console.log('✅ Added message:', chatMessage.id, 'type:', type, 'sender:', sender);
       }
+      console.log('🎉 Total messages processed:', allMessages.length);
+      return allMessages;
+    } catch (error) {
+      console.error('❌ Error converting API messages to ChatMessages:', error);
+      return [];
     }
-    console.log('🎉 Total messages processed:', allMessages.length);
-    return allMessages;
-  } catch (error) {
-    console.error('❌ Error converting API messages to ChatMessages:', error);
-    return [];
-  }
-};
+  };
 
   // Enhanced fullscreen handlers
   const handleFullscreen = useCallback(() => {
@@ -624,206 +628,38 @@ const convertApiMessagesToChatMessages = async (apiData: any): Promise<ChatMessa
     localStorage.setItem('chatbot_queryIds', JSON.stringify(queryIds));
   }, [threadId, queryIds]);
 
-  // Updated askDbAndFormatResponse function with proper query_type handling
-async function askDbAndFormatResponse({
-  msg,
-  isAudio,
-  replyTo,
-  messages,
-  threadId,
-  isNewChatContext,
-  setNewChatStarted,
-  queryType = 'CHAT'
-}: {
-  msg: string | Blob;
-  isAudio: boolean;
-  replyTo: ChatMessage | null;
-  messages: ChatMessage[];
-  threadId: string | null;
-  isNewChatContext: boolean;
-  setNewChatStarted: (started: boolean) => void;
-  queryType?: 'CHAT' | 'DB_QUERY' | 'SCRAP';
-}) {
-  let userMessage: ChatMessage;
-  let concatenatedQuestion = msg as string;
-
-  if (replyTo && typeof msg === 'string') {
-    const original = getTrueOriginalQuestion(replyTo, messages);
-    concatenatedQuestion = `Original Questions: ${original} | New Question: ${msg}`;
-  }
-
-  if (isAudio && msg instanceof Blob) {
-    userMessage = {
-      id: `msg-${Date.now()}`,
-      sender: 'user',
-      text: '[Voice message]',
-      timestamp: new Date().toISOString(),
-      replyTo: replyTo?.id,
-      type: 'audio',
-      rawAnswer: msg,
-    };
-  } else {
-    userMessage = {
-      id: `msg-${Date.now()}`,
-      sender: 'user',
-      text: concatenatedQuestion,
-      timestamp: new Date().toISOString(),
-      replyTo: replyTo?.id,
-    };
-  }
-
-  let res: any, response, contentType;
-  let botMessages: ChatMessage[] = [];
-  let newThreadId: string | null = threadId;
-
-  // Build API request body with proper query_type
-  const apiRequestBody = {
-    user_id: DEFAULT_USER_ID,
-    question: concatenatedQuestion,
-    dashboard: '',
-    tile: '',
-    bookmarkname: '',
-    bookmark_id: '',
-    thread_id: threadId || '',
-    query_type: queryType // This will be 'DB_QUERY', 'SCRAP', or 'CHAT'
-  };
-
-  console.log('API Request Body:', apiRequestBody); // Debug log
-
-  if (isAudio && msg instanceof Blob) {
-    const formData = new FormData();
-    formData.append('audio', msg, 'audio.webm');
-    formData.append('user_id', DEFAULT_USER_ID);
-    formData.append('question', concatenatedQuestion);
-    formData.append('dashboard', '');
-    formData.append('tile', '');
-    formData.append('bookmarkname', '');
-    formData.append('bookmark_id', '');
-    formData.append('thread_id', threadId || '');
-    formData.append('query_type', queryType); // Ensure query_type is sent for audio
-    response = await fetch('/ask_db', { method: 'POST', body: formData });
-    contentType = response.headers.get('Content-Type');
-  } else {
-    res = await askDB(apiRequestBody);
-    contentType = res?.contentType || 'application/json';
-  }
-
-  if (!threadId && res?.thread_id) {
-    newThreadId = res.thread_id;
-    if (isNewChatContext) setNewChatStarted(true);
-  }
-
-  // Handle different response types
-  if (
-    [
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ].includes(contentType)
-  ) {
-    let fileType: ChatMessage['type'] = 'file';
-    if (contentType === 'application/pdf') fileType = 'pdf';
-    if (contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') fileType = 'xlsx';
-    if (contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') fileType = 'docx';
-
-    let fileBlob;
-    if (response) {
-      fileBlob = await response.blob();
-    } else if (res?.file) {
-      fileBlob = res.file;
-    }
-
-    if (fileBlob) {
-      const fileUrl = URL.createObjectURL(fileBlob);
-      botMessages.push({
-        id: `msg-${Date.now() + 1}`,
-        sender: 'bot',
-        text: '',
-        timestamp: new Date().toISOString(),
-        type: fileType,
-        rawAnswer: fileUrl,
-        queryId: res?.query_id || '',
-      });
-    }
-  } else if (contentType?.startsWith('audio/')) {
-    let audioUrl: string | undefined;
-    if (response) {
-      const audioBlob = await response.blob();
-      audioUrl = URL.createObjectURL(audioBlob);
-    } else if (res?.audio) {
-      audioUrl = res.audio;
-    }
-
-    if (audioUrl) {
-      botMessages.push({
-        id: `msg-${Date.now() + 1}`,
-        sender: 'bot',
-        text: '',
-        timestamp: new Date().toISOString(),
-        type: 'audio',
-        rawAnswer: audioUrl,
-        queryId: res?.query_id || '',
-      });
-    }
-  } else {
-    let answer = res?.answer;
-    let isTabular = false;
-
-    if (
-      Array.isArray(answer) &&
-      answer.length > 1 &&
-      Array.isArray(answer[0]) &&
-      answer[0].every((h: any) => typeof h === 'string')
-    ) {
-      isTabular = true;
-    } else if (Array.isArray(answer) && answer.length > 0 && typeof answer[0] === 'object') {
-      isTabular = true;
-    }
-
-    botMessages.push({
-      id: `msg-${Date.now() + 1}`,
-      sender: 'bot',
-      text: isTabular ? '' : answer || 'No response received',
-      timestamp: new Date().toISOString(),
-      type: isTabular ? 'tabular' : 'text',
-      rawAnswer: isTabular ? answer : undefined,
-      queryId: res?.query_id || '',
-    });
-  }
-
-  return {
-    userMessage,
-    botMessages,
-    res,
-    newThreadId,
-  };
-}
-
-// Wrapper function to handle suggestions with DB_QUERY
-const handleSuggestionClick = useCallback((text: string, queryType: 'CHAT' | 'DB_QUERY' | 'SCRAP' = 'DB_QUERY') => {
-  console.log('🎯 Suggestion clicked:', text, 'with queryType:', queryType);
-  handleSend(text, queryType);
-}, []);
-
-// Updated handleSend function to accept and forward queryType
-const handleSend = useCallback(
-  async (msg: string | Blob, queryType = 'CHAT', isAudio = false) => {
-    console.log('📤 handleSend called with:', { 
-      message: typeof msg === 'string' ? msg.slice(0, 50) : '[Audio]', 
-      queryType, 
-      isAudio 
-    });
-    
-    setReplyTo(null);
-    setError('');
-
-    // Optimistically create user message
+  // OPTIMIZED: askDbAndFormatResponse function with proper query_type handling
+  async function askDbAndFormatResponse({
+    msg,
+    isAudio,
+    replyTo,
+    messages,
+    threadId,
+    isNewChatContext,
+    setNewChatStarted,
+    queryType = 'CHAT',
+    isFromFolder,
+    selectedChatId
+  }: {
+    msg: string | Blob;
+    isAudio: boolean;
+    replyTo: ChatMessage | null;
+    messages: ChatMessage[];
+    threadId: string | null;
+    isNewChatContext: boolean;
+    setNewChatStarted: (started: boolean) => void;
+    queryType?: 'CHAT' | 'DB_QUERY' | 'SCRAP';
+    isFromFolder?: boolean;
+    selectedChatId?: string;
+  }) {
     let userMessage: ChatMessage;
     let concatenatedQuestion = msg as string;
+
     if (replyTo && typeof msg === 'string') {
       const original = getTrueOriginalQuestion(replyTo, messages);
       concatenatedQuestion = `Original Questions: ${original} | New Question: ${msg}`;
     }
+
     if (isAudio && msg instanceof Blob) {
       userMessage = {
         id: `msg-${Date.now()}`,
@@ -843,77 +679,277 @@ const handleSend = useCallback(
         replyTo: replyTo?.id,
       };
     }
-    setMessages(msgs => [...msgs, userMessage]); // Show user message immediately
-    setLoading(true); // Now show loading spinner
 
-    try {
-      const {
-        botMessages,
-        res,
-        newThreadId,
-      } = await askDbAndFormatResponse({
-        msg,
-        isAudio,
-        replyTo,
-        messages: [...messages, userMessage], // include the new user message
-        threadId,
-        isNewChatContext,
-        setNewChatStarted,
-        queryType: queryType as 'CHAT' | 'DB_QUERY' | 'SCRAP' // Always forward queryType
-      });
+    let res: any, response, contentType;
+    let botMessages: ChatMessage[] = [];
+    let newThreadId: string | null = threadId;
 
-      // Step 2: Handle new thread creation
-      if (!threadId && newThreadId) {
-        setThreadId(newThreadId);
-        setIsNewChatContext(false);
+    // Build API request body with proper ai_table handling
+    const apiRequestBody: any = {
+      user_id: DEFAULT_USER_ID,
+      question: concatenatedQuestion,
+      dashboard: '',
+      tile: '',
+      bookmarkname: '',
+      bookmark_id: '',
+      thread_id: threadId || '',
+      query_type: queryType,
+    };
+
+    // Add ai_table ONLY when we're in a folder context
+    if (isFromFolder && selectedChatId) {
+      apiRequestBody.ai_table = selectedChatId;
+      console.log('🗂️ Adding ai_table to payload:', selectedChatId);
+    }
+
+    console.log('📤 Final API Request Body:', apiRequestBody);
+   
+    if (isAudio && msg instanceof Blob) {
+      const formData = new FormData();
+      formData.append('audio', msg, 'audio.webm');
+      formData.append('user_id', DEFAULT_USER_ID);
+      formData.append('question', concatenatedQuestion);
+      formData.append('dashboard', '');
+      formData.append('tile', '');
+      formData.append('bookmarkname', '');
+      formData.append('bookmark_id', '');
+      formData.append('thread_id', threadId || '');
+      formData.append('query_type', queryType);
+      
+      // Add ai_table for audio requests when in folder context
+      if (isFromFolder && selectedChatId) {
+        formData.append('ai_table', selectedChatId);
+        console.log('🗂️ Adding ai_table to FormData:', selectedChatId);
+      }
+      
+      response = await fetch('/ask_db', { method: 'POST', body: formData });
+      contentType = response.headers.get('Content-Type');
+    } else {
+      res = await askDB(apiRequestBody);
+      contentType = res?.contentType || 'application/json';
+    }
+
+    if (!threadId && res?.thread_id) {
+      newThreadId = res.thread_id;
+      if (isNewChatContext) setNewChatStarted(true);
+    }
+
+    // Handle different response types
+    if (
+      [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ].includes(contentType)
+    ) {
+      let fileType: ChatMessage['type'] = 'file';
+      if (contentType === 'application/pdf') fileType = 'pdf';
+      if (contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') fileType = 'xlsx';
+      if (contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') fileType = 'docx';
+
+      let fileBlob;
+      if (response) {
+        fileBlob = await response.blob();
+      } else if (res?.file) {
+        fileBlob = res.file;
       }
 
-      // Step 3: Update query IDs
-      if (res?.query_id) {
-        setQueryIds(prev => prev.includes(res.query_id) ? prev : [...prev, res.query_id]);
-        // Step 4: Update ONLY the user message with queryId (no automatic bookmarking)
-        setMessages(msgs => {
-          const updated = [...msgs];
-          for (let i = updated.length - 1; i >= 0; i--) {
-            if (updated[i].sender === 'user' && !updated[i].queryId) {
-              updated[i] = {
-                ...updated[i],
-                queryId: res.query_id,
-                bookmarked: false
-              };
-              break;
-            }
-          }
-          return updated;
+      if (fileBlob) {
+        const fileUrl = URL.createObjectURL(fileBlob);
+        botMessages.push({
+          id: `msg-${Date.now() + 1}`,
+          sender: 'bot',
+          text: '',
+          timestamp: new Date().toISOString(),
+          type: fileType,
+          rawAnswer: fileUrl,
+          queryId: res?.query_id || '',
         });
       }
+    } else if (contentType?.startsWith('audio/')) {
+      let audioUrl: string | undefined;
+      if (response) {
+        const audioBlob = await response.blob();
+        audioUrl = URL.createObjectURL(audioBlob);
+      } else if (res?.audio) {
+        audioUrl = res.audio;
+      }
 
-      // Step 5: Add bot messages after user message is visible
-      setTimeout(() => {
-        setMessages(msgs => [
-          ...msgs,
-          ...botMessages.map(botMsg => ({
-            ...botMsg,
-            queryId: res?.query_id || '',
-            bookmarked: false
-          }))
-        ]);
-        setLoading(false);
-      }, 100);
-    } catch (err: any) {
-      const errorMessage: ChatMessage = {
+      if (audioUrl) {
+        botMessages.push({
+          id: `msg-${Date.now() + 1}`,
+          sender: 'bot',
+          text: '',
+          timestamp: new Date().toISOString(),
+          type: 'audio',
+          rawAnswer: audioUrl,
+          queryId: res?.query_id || '',
+        });
+      }
+    } else {
+      let answer = res?.answer;
+      let isTabular = false;
+
+      if (
+        Array.isArray(answer) &&
+        answer.length > 1 &&
+        Array.isArray(answer[0]) &&
+        answer[0].every((h: any) => typeof h === 'string')
+      ) {
+        isTabular = true;
+      } else if (Array.isArray(answer) && answer.length > 0 && typeof answer[0] === 'object') {
+        isTabular = true;
+      }
+
+      botMessages.push({
         id: `msg-${Date.now() + 1}`,
         sender: 'bot',
-        text: 'Sorry, there was an error processing your request. Please try again.',
+        text: isTabular ? '' : answer || 'No response received',
         timestamp: new Date().toISOString(),
-      };
-      setMessages(msgs => [...msgs, errorMessage]);
-      setError(err.message || 'Failed to send message');
-      setLoading(false);
+        type: isTabular ? 'tabular' : 'text',
+        rawAnswer: isTabular ? answer : undefined,
+        queryId: res?.query_id || '',
+      });
     }
-  },
-  [replyTo, messages, threadId, isNewChatContext, setNewChatStarted]
-);
+
+    return {
+      userMessage,
+      botMessages,
+      res,
+      newThreadId,
+    };
+  }
+
+  // Wrapper function to handle suggestions with DB_QUERY
+  const handleSuggestionClick = useCallback((text: string, queryType: 'CHAT' | 'DB_QUERY' | 'SCRAP' = 'DB_QUERY') => {
+    console.log('🎯 Suggestion clicked:', text, 'with queryType:', queryType);
+    handleSend(text, queryType);
+  }, []);
+
+  // OPTIMIZED: handleSend function with debouncing to prevent duplicate calls
+  const [sendingRequest, setSendingRequest] = useState(false);
+
+  const handleSend = useCallback(
+    async (msg: string | Blob, queryType = 'CHAT', isAudio = false) => {
+      // Prevent duplicate sends
+      if (sendingRequest) {
+        console.log('🚫 Request already in progress, ignoring duplicate send');
+        return;
+      }
+
+      console.log('📤 handleSend called with:', { 
+        message: typeof msg === 'string' ? msg.slice(0, 50) : '[Audio]', 
+        queryType, 
+        isAudio,
+        isFromFolder,
+        selectedChatId
+      });
+      
+      setSendingRequest(true);
+      setReplyTo(null);
+      setError('');
+
+      // Optimistically create user message
+      let userMessage: ChatMessage;
+      let concatenatedQuestion = msg as string;
+      if (replyTo && typeof msg === 'string') {
+        const original = getTrueOriginalQuestion(replyTo, messages);
+        concatenatedQuestion = `Original Questions: ${original} | New Question: ${msg}`;
+      }
+      if (isAudio && msg instanceof Blob) {
+        userMessage = {
+          id: `msg-${Date.now()}`,
+          sender: 'user',
+          text: '[Voice message]',
+          timestamp: new Date().toISOString(),
+          replyTo: replyTo?.id,
+          type: 'audio',
+          rawAnswer: msg,
+        };
+      } else {
+        userMessage = {
+          id: `msg-${Date.now()}`,
+          sender: 'user',
+          text: concatenatedQuestion,
+          timestamp: new Date().toISOString(),
+          replyTo: replyTo?.id,
+        };
+      }
+      setMessages(msgs => [...msgs, userMessage]); // Show user message immediately
+      setLoading(true); // Now show loading spinner
+
+      try {
+        const {
+          botMessages,
+          res,
+          newThreadId,
+        } = await askDbAndFormatResponse({
+          msg,
+          isAudio,
+          replyTo,
+          messages: [...messages, userMessage],
+          threadId,
+          isNewChatContext,
+          setNewChatStarted,
+          queryType: queryType as 'CHAT' | 'DB_QUERY' | 'SCRAP',
+          isFromFolder,
+          selectedChatId
+        });
+
+        // Handle new thread creation
+        if (!threadId && newThreadId) {
+          setThreadId(newThreadId);
+          setIsNewChatContext(false);
+        }
+
+        // Update query IDs
+        if (res?.query_id) {
+          setQueryIds(prev => prev.includes(res.query_id) ? prev : [...prev, res.query_id]);
+          // Update ONLY the user message with queryId (no automatic bookmarking)
+          setMessages(msgs => {
+            const updated = [...msgs];
+            for (let i = updated.length - 1; i >= 0; i--) {
+              if (updated[i].sender === 'user' && !updated[i].queryId) {
+                updated[i] = {
+                  ...updated[i],
+                  queryId: res.query_id,
+                  bookmarked: false
+                };
+                break;
+              }
+            }
+            return updated;
+          });
+        }
+
+        // Add bot messages after user message is visible
+        setTimeout(() => {
+          setMessages(msgs => [
+            ...msgs,
+            ...botMessages.map(botMsg => ({
+              ...botMsg,
+              queryId: res?.query_id || '',
+              bookmarked: false
+            }))
+          ]);
+          setLoading(false);
+        }, 100);
+      } catch (err: any) {
+        const errorMessage: ChatMessage = {
+          id: `msg-${Date.now() + 1}`,
+          sender: 'bot',
+          text: 'Sorry, there was an error processing your request. Please try again.',
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(msgs => [...msgs, errorMessage]);
+        setError(err.message || 'Failed to send message');
+        setLoading(false);
+      } finally {
+        setSendingRequest(false);
+      }
+    },
+    [replyTo, messages, threadId, isNewChatContext, setNewChatStarted, isFromFolder, selectedChatId, sendingRequest]
+  );
 
   // Enhanced theme toggle
   const toggleTheme = useCallback(() => {
@@ -949,9 +985,12 @@ const handleSend = useCallback(
     ));
   }, []);
 
-  // Fetch all user messages from all chats for suggestions
+  // OPTIMIZED: Fetch all user messages with proper loading state and deduplication
   useEffect(() => {
+    if (isLoadingUserPrompts) return;
+
     async function fetchAllUserPrompts() {
+      setIsLoadingUserPrompts(true);
       try {
         const allChats = await getAllChats();
         // allChats may be { chatSessions: [...] } or an array; handle both
@@ -972,11 +1011,18 @@ const handleSend = useCallback(
         );
         setGlobalUserPrompts(uniquePrompts);
       } catch (err) {
+        console.warn('Failed to fetch user prompts:', err);
         setGlobalUserPrompts([]);
+      } finally {
+        setIsLoadingUserPrompts(false);
       }
     }
-    fetchAllUserPrompts();
-  }, []);
+
+    // Only fetch once when component mounts
+    if (globalUserPrompts.length === 0) {
+      fetchAllUserPrompts();
+    }
+  }, []); // Empty dependency array for one-time fetch
 
   return (
     <div ref={chatbotContainerRef} className={`chatbot-container ${theme}`}>
