@@ -1,8 +1,7 @@
-// components/LLM/DynamicModelComponent.tsx - Simplified Real API Version
+// components/LLM/DynamicModelComponent.tsx - Fixed API Integration
 
 import React, { useState, useEffect } from 'react';
 
-// Fallback constants
 // Fallback constants
 const FALLBACK_PROVIDERS = [
   { id: 'None', name: 'None', icon: '❌' },
@@ -41,14 +40,38 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [whitelistedWebsites, setWhitelistedWebsites] = useState<string[]>([]);
   
-  // Local state for editing
+  // Local state for editing - now properly handles different providers
   const [editingConfig, setEditingConfig] = useState({
     modelType: 'None',
+    // Ollama fields
     ollamaEndpoint: '',
     ollamaModel: '',
+    // GPT fields
+    gptApiKey: '',
+    gptApiBase: '',
+    gptModel: '',
+    gptDeployment: '',
+    gptApiVersion: '',
+    // Generic fields for other providers
     apiKey: '',
     apiBase: '',
+    model: '',
   });
+
+  // Helper function to get the correct field names based on provider and model type
+  const getFieldName = (provider: string, field: string): string => {
+    const prefix = modelType.toLowerCase();
+    
+    if (provider === 'Ollama') {
+      return `${prefix}_ollama_${field}`;
+    } else if (provider === 'GPT') {
+      // GPT uses global fields, not per-model-type
+      return `gpt_${field}`;
+    } else {
+      // For other providers, use generic pattern
+      return `${prefix}_${field}`;
+    }
+  };
 
   // Load settings from real API
   const loadSettings = async () => {
@@ -56,7 +79,7 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
       setIsLoading(true);
       setError(null);
       
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://20.204.162.66:5001';
       const response = await fetch(`${baseUrl}/llm_settings`);
       
       if (!response.ok) {
@@ -69,13 +92,35 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
       
       // Set editing config from loaded data
       const prefix = modelType.toLowerCase();
+      const currentProvider = data[`${prefix}_model_type`] || 'None';
+      
       setEditingConfig({
-        modelType: data[`${prefix}_model_type`] || 'None',
+        modelType: currentProvider,
+        // Ollama fields
         ollamaEndpoint: data[`${prefix}_ollama_endpoint`] || '',
         ollamaModel: data[`${prefix}_ollama_model`] || '',
+        // GPT fields (global)
+        gptApiKey: data.gpt_api_key || '',
+        gptApiBase: data.gpt_api_base || '',
+        gptModel: data.gpt_model || '',
+        gptDeployment: data.gpt_deployment || '',
+        gptApiVersion: data.gpt_api_version || '',
+        // Generic fields (for future providers)
         apiKey: data[`${prefix}_api_key`] || '',
         apiBase: data[`${prefix}_api_base`] || '',
+        model: data[`${prefix}_model`] || '',
       });
+      
+      // Load whitelisted websites if available
+      if (data[`${prefix}_whitelisted_websites`]) {
+        try {
+          const websites = JSON.parse(data[`${prefix}_whitelisted_websites`]);
+          setWhitelistedWebsites(Array.isArray(websites) ? websites : []);
+        } catch (e) {
+          console.warn('Failed to parse whitelisted websites:', e);
+          setWhitelistedWebsites([]);
+        }
+      }
       
     } catch (err) {
       console.error('Error loading settings:', err);
@@ -91,19 +136,35 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
       setIsSaving(true);
       setError(null);
       
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://20.204.162.66:5001';
       const prefix = modelType.toLowerCase();
       
-      const updates = {
+      // Prepare updates based on the selected provider
+      const updates: any = {
+        ...settings, // Keep existing settings
         [`${prefix}_model_type`]: editingConfig.modelType,
-        [`${prefix}_ollama_endpoint`]: editingConfig.ollamaEndpoint,
-        [`${prefix}_ollama_model`]: editingConfig.ollamaModel,
       };
 
-      // Only include API fields for non-Ollama providers
-      if (editingConfig.modelType !== 'Ollama' && editingConfig.modelType !== 'None') {
+      if (editingConfig.modelType === 'Ollama') {
+        updates[`${prefix}_ollama_endpoint`] = editingConfig.ollamaEndpoint;
+        updates[`${prefix}_ollama_model`] = editingConfig.ollamaModel;
+      } else if (editingConfig.modelType === 'GPT') {
+        // GPT uses global settings
+        updates.gpt_api_key = editingConfig.gptApiKey;
+        updates.gpt_api_base = editingConfig.gptApiBase;
+        updates.gpt_model = editingConfig.gptModel;
+        updates.gpt_deployment = editingConfig.gptDeployment;
+        updates.gpt_api_version = editingConfig.gptApiVersion;
+      } else if (editingConfig.modelType !== 'None') {
+        // For other providers, use generic fields
         updates[`${prefix}_api_key`] = editingConfig.apiKey;
         updates[`${prefix}_api_base`] = editingConfig.apiBase;
+        updates[`${prefix}_model`] = editingConfig.model;
+      }
+
+      // Add whitelisted websites for scrapper model
+      if (modelType === 'scrapper' && whitelistedWebsites.length > 0) {
+        updates[`${prefix}_whitelisted_websites`] = JSON.stringify(whitelistedWebsites);
       }
 
       const response = await fetch(`${baseUrl}/llm_settings`, {
@@ -111,11 +172,12 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...settings, ...updates }),
+        body: JSON.stringify(updates),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to save settings: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to save settings: ${response.status} - ${errorText}`);
       }
 
       const result = await response.json();
@@ -126,13 +188,12 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
       
     } catch (err) {
       console.error('Error saving settings:', err);
-      setError('Failed to save settings. Please try again.');
+      setError(`Failed to save settings: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Remove unused functions
   useEffect(() => {
     loadSettings();
   }, [modelType]);
@@ -150,13 +211,7 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
     setEditingConfig(prev => ({
       ...prev,
       modelType: provider,
-      // Reset fields when changing provider
-      ...(provider === 'None' && {
-        ollamaEndpoint: '',
-        ollamaModel: '',
-        apiKey: '',
-        apiBase: '',
-      })
+      // Don't reset fields when changing provider - keep them for user convenience
     }));
   };
 
@@ -168,6 +223,41 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
         ? prev.filter(id => id !== websiteId)
         : [...prev, websiteId];
     });
+  };
+
+  // Check if there are unsaved changes
+  const hasChanges = () => {
+    if (!settings) return false;
+    
+    const prefix = modelType.toLowerCase();
+    const currentProvider = settings[`${prefix}_model_type`] || 'None';
+    
+    // Check model type change
+    if (editingConfig.modelType !== currentProvider) return true;
+    
+    // Check provider-specific fields
+    if (editingConfig.modelType === 'Ollama') {
+      return (
+        editingConfig.ollamaEndpoint !== (settings[`${prefix}_ollama_endpoint`] || '') ||
+        editingConfig.ollamaModel !== (settings[`${prefix}_ollama_model`] || '')
+      );
+    } else if (editingConfig.modelType === 'GPT') {
+      return (
+        editingConfig.gptApiKey !== (settings.gpt_api_key || '') ||
+        editingConfig.gptApiBase !== (settings.gpt_api_base || '') ||
+        editingConfig.gptModel !== (settings.gpt_model || '') ||
+        editingConfig.gptDeployment !== (settings.gpt_deployment || '') ||
+        editingConfig.gptApiVersion !== (settings.gpt_api_version || '')
+      );
+    } else if (editingConfig.modelType !== 'None') {
+      return (
+        editingConfig.apiKey !== (settings[`${prefix}_api_key`] || '') ||
+        editingConfig.apiBase !== (settings[`${prefix}_api_base`] || '') ||
+        editingConfig.model !== (settings[`${prefix}_model`] || '')
+      );
+    }
+    
+    return false;
   };
 
   // Render provider-specific fields
@@ -217,13 +307,100 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
             </div>
           </div>
 
-          {/* Show whitelisted websites only for scrapper model */}
           {modelType === 'scrapper' && renderWhitelistedWebsites()}
         </div>
       );
     }
 
-    // For other providers (GPT, HuggingFace, Gemini, Claude)
+    if (provider === 'GPT') {
+      return (
+        <div className="provider-fields">
+          <div className="form-group">
+            <div className="form-label">
+              <h3>API Key</h3>
+              <p>Enter your GPT API key.</p>
+            </div>
+            <div className="form-field">
+              <input
+                type="password"
+                className="text-input"
+                placeholder="Enter API Key"
+                value={editingConfig.gptApiKey}
+                onChange={(e) => handleFieldChange('gptApiKey', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <div className="form-label">
+              <h3>API Base URL</h3>
+              <p>Base URL for the GPT API.</p>
+            </div>
+            <div className="form-field">
+              <input
+                type="text"
+                className="text-input"
+                placeholder="https://api.openai.com/v1"
+                value={editingConfig.gptApiBase}
+                onChange={(e) => handleFieldChange('gptApiBase', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <div className="form-label">
+              <h3>Model</h3>
+              <p>GPT model to use (e.g., gpt-4, gpt-3.5-turbo).</p>
+            </div>
+            <div className="form-field">
+              <input
+                type="text"
+                className="text-input"
+                placeholder="gpt-4o"
+                value={editingConfig.gptModel}
+                onChange={(e) => handleFieldChange('gptModel', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <div className="form-label">
+              <h3>Deployment</h3>
+              <p>Azure OpenAI deployment name (if using Azure).</p>
+            </div>
+            <div className="form-field">
+              <input
+                type="text"
+                className="text-input"
+                placeholder="gpt-4o"
+                value={editingConfig.gptDeployment}
+                onChange={(e) => handleFieldChange('gptDeployment', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <div className="form-label">
+              <h3>API Version</h3>
+              <p>API version for Azure OpenAI.</p>
+            </div>
+            <div className="form-field">
+              <input
+                type="text"
+                className="text-input"
+                placeholder="2024-02-15-preview"
+                value={editingConfig.gptApiVersion}
+                onChange={(e) => handleFieldChange('gptApiVersion', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {modelType === 'scrapper' && renderWhitelistedWebsites()}
+        </div>
+      );
+    }
+
+    // For other providers (HuggingFace, Gemini, Claude)
     return (
       <div className="provider-fields">
         <div className="form-group">
@@ -258,7 +435,22 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
           </div>
         </div>
 
-        {/* Show whitelisted websites only for scrapper model */}
+        <div className="form-group">
+          <div className="form-label">
+            <h3>Model</h3>
+            <p>Specify the {provider} model to use.</p>
+          </div>
+          <div className="form-field">
+            <input
+              type="text"
+              className="text-input"
+              placeholder={`Enter ${provider} model name`}
+              value={editingConfig.model}
+              onChange={(e) => handleFieldChange('model', e.target.value)}
+            />
+          </div>
+        </div>
+
         {modelType === 'scrapper' && renderWhitelistedWebsites()}
       </div>
     );
@@ -337,13 +529,7 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
   }
 
   const isConnected = editingConfig.modelType !== 'None';
-  const hasChanges = settings && (
-    editingConfig.modelType !== (settings[`${modelType.toLowerCase()}_model_type`] || 'None') ||
-    editingConfig.ollamaEndpoint !== (settings[`${modelType.toLowerCase()}_ollama_endpoint`] || '') ||
-    editingConfig.ollamaModel !== (settings[`${modelType.toLowerCase()}_ollama_model`] || '') ||
-    editingConfig.apiKey !== (settings[`${modelType.toLowerCase()}_api_key`] || '') ||
-    editingConfig.apiBase !== (settings[`${modelType.toLowerCase()}_api_base`] || '')
-  );
+  const hasUnsavedChanges = hasChanges();
 
   return (
     <div className="llm-settings-container">
@@ -385,8 +571,8 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
         {editingConfig.modelType !== 'None' && (
           <div className="form-group">
             <div className="form-label">
-              <h2>Details</h2>
-              <p>Provide additional details about the selected model configuration.</p>
+              <h2>Configuration</h2>
+              <p>Configure the settings for the selected model type.</p>
             </div>
             <div className="form-field">
               {renderProviderFields()}
@@ -399,9 +585,9 @@ const DynamicModelComponent: React.FC<DynamicModelComponentProps> = ({
             <button 
               className="save-button" 
               onClick={saveSettings}
-              disabled={isSaving || !hasChanges}
+              disabled={isSaving || !hasUnsavedChanges}
             >
-              {isSaving ? 'Saving...' : hasChanges ? 'Save Settings' : 'No Changes'}
+              {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save Settings' : 'No Changes'}
             </button>
           </div>
         )}

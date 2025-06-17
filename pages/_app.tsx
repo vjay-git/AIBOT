@@ -12,6 +12,9 @@ import '../components/MainContent/MainContent.css';
 import '../components/SubcontentBar/SubcontentBar.css';
 import '../components/Sidebar/Sidebar.css';
 
+//schema component styles
+import '../components/schema/ModelDetailsModal.css';
+
 // Database component styles
 import '../styles/Database/DatabaseHeader.css';
 import '../styles/Database/DatabaseTypeSelect.css';

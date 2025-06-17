@@ -79,52 +79,126 @@ const SchemaPage = () => {
     fetchAlgorithms();
   }, []);
 
+  // Function to fetch table fields (extracted for reusability)
+  const fetchTableFields = async (tableName) => {
+    if (!tableName || !userData?.company_id) return;
+    
+    setIsLoading(true);
+    try {
+      const schema = '95LH3K1M31';
+      
+      const response = await fetch(
+        `${API_BASE}/data_normalization/aitable_fields?schema=${schema}&ai_table=${tableName}`
+      );
+      const data = await response.json();
+      
+      if (data.fields) {
+        const fieldsWithSelection = data.fields.map(field => ({
+          ...field,
+          selected: false
+        }));
+        setTableFields(fieldsWithSelection);
+        
+        // Reset form state when table changes
+        setTargetFeature('');
+        setDateColumn('');
+        setSelectAll(false);
+        
+        if (fieldsWithSelection.length > 0) {
+          setTargetFeature(fieldsWithSelection[0].ai_field);
+        }
+        
+        const dateField = fieldsWithSelection.find(f => 
+          f.ai_field.toLowerCase().includes('year') || 
+          f.ai_field.toLowerCase().includes('date') ||
+          f.ai_field.toLowerCase().includes('time')
+        );
+        if (dateField) {
+          setDateColumn(dateField.ai_field);
+        }
+        
+        console.log('✅ Fields fetched for table:', tableName, fieldsWithSelection.length);
+      }
+    } catch (err) {
+      setError('Failed to load table fields');
+      console.error('Error fetching table fields:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Fetch table fields when table is selected
   useEffect(() => {
-    const fetchTableFields = async () => {
-      if (!selectedTable || !userData?.company_id) return;
-      
-      setIsLoading(true);
-      try {
-        const schema = '95LH3K1M31';
+    fetchTableFields(selectedTable);
+  }, [selectedTable, userData]);
+
+  // Listen for table changes from SchemaTabs
+  useEffect(() => {
+    const handleTableChangeFromTabs = (event) => {
+      console.log('📨 Schema page received table change from tabs:', event.detail);
+      if (event.detail && event.detail.selectedTable) {
+        const newTable = event.detail.selectedTable;
+        console.log('🔄 Updating schema page table from tabs:', newTable);
         
-        const response = await fetch(
-          `${API_BASE}/data_normalization/aitable_fields?schema=${schema}&ai_table=${selectedTable}`
-        );
-        const data = await response.json();
-        
-        if (data.fields) {
-          const fieldsWithSelection = data.fields.map(field => ({
-            ...field,
-            selected: false
-          }));
-          setTableFields(fieldsWithSelection);
-          
-          if (!targetFeature && fieldsWithSelection.length > 0) {
-            setTargetFeature(fieldsWithSelection[0].ai_field);
-          }
-          
-          const dateField = fieldsWithSelection.find(f => 
-            f.ai_field.toLowerCase().includes('year') || 
-            f.ai_field.toLowerCase().includes('date') ||
-            f.ai_field.toLowerCase().includes('time')
-          );
-          if (dateField && !dateColumn) {
-            setDateColumn(dateField.ai_field);
-          }
+        // Only update if it's actually different
+        if (newTable !== selectedTable) {
+          setSelectedTable(newTable);
+          console.log('✅ Table updated in schema page:', newTable);
         }
-      } catch (err) {
-        setError('Failed to load table fields');
-        console.error('Error fetching table fields:', err);
-      } finally {
-        setIsLoading(false);
       }
     };
 
-    fetchTableFields();
-  }, [selectedTable, userData]);
+    // Also listen for the backup event
+    const handleTableUpdated = (event) => {
+      console.log('📨 Schema page received table update event:', event.detail);
+      if (event.detail && event.detail.table) {
+        const newTable = event.detail.table;
+        console.log('🔄 Updating schema page table from backup event:', newTable);
+        
+        if (newTable !== selectedTable) {
+          setSelectedTable(newTable);
+          console.log('✅ Table updated in schema page via backup:', newTable);
+        }
+      }
+    };
 
-  // Notify schema tabs when table changes
+    console.log('👂 Schema page setting up table change listeners');
+    
+    // Set up event listeners
+    window.addEventListener('schemaTableChanged', handleTableChangeFromTabs);
+    window.addEventListener('tableUpdated', handleTableUpdated);
+    
+    return () => {
+      console.log('🔇 Schema page cleanup listeners');
+      window.removeEventListener('schemaTableChanged', handleTableChangeFromTabs);
+      window.removeEventListener('tableUpdated', handleTableUpdated);
+    };
+  }, [selectedTable]); // Include selectedTable in dependency to compare
+
+  // Handle table selection from the main page dropdown
+  const handleTableSelectFromPage = (tableName) => {
+    console.log('🎯 Table selected in main page:', tableName);
+    setSelectedTable(tableName);
+    
+    // Notify other components
+    if (typeof window !== 'undefined') {
+      (window as any).selectedSchemaTable = tableName;
+      
+      const event = new CustomEvent('schemaTableChanged', {
+        detail: { selectedTable: tableName }
+      });
+      window.dispatchEvent(event);
+      
+      setTimeout(() => {
+        const backupEvent = new CustomEvent('tableUpdated', {
+          detail: { table: tableName }
+        });
+        window.dispatchEvent(backupEvent);
+      }, 100);
+    }
+  };
+
+  // Notify schema tabs when table changes (keep existing functionality)
   useEffect(() => {
     if (selectedTable && typeof window !== 'undefined') {
       console.log('🔄 Notifying schema tabs of table change:', selectedTable);
@@ -308,7 +382,7 @@ const SchemaPage = () => {
                   value={selectedTable}
                   onChange={(e) => {
                     console.log('🎯 Table selected in main page:', e.target.value);
-                    setSelectedTable(e.target.value);
+                    handleTableSelectFromPage(e.target.value);
                   }}
                 >
                   {aiTables.map(table => (

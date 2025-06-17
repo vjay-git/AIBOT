@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Database, Brain, Trash2, Eye, Target, Calendar } from 'lucide-react';
+import { Plus, Database, Brain, Trash2, Eye, Target, Calendar, ChevronDown } from 'lucide-react';
+import ModelDetailsModal from '../schema/ModelDetailsModal'; // Import the modal component
 
 interface SchemaTabsProps {
   selectedId: string;
@@ -9,61 +10,106 @@ interface SchemaTabsProps {
 // API Configuration
 const API_BASE = 'http://20.204.162.66:5001';
 const COMPANY_ID = '4fa74802-6abb-4b65-880e-ac36a9dd1f6a';
+const USER_ID = '56376e63-0377-413d-8c9e-359028e2380d';
 
 const SchemaTabs: React.FC<SchemaTabsProps> = ({ selectedId, onSelect }) => {
   const [selectedTable, setSelectedTable] = useState('');
+  const [aiTables, setAiTables] = useState([]);
   const [trainedModels, setTrainedModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTables, setIsLoadingTables] = useState(true);
+  
+  // Modal state
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Try to get the selected table from multiple sources
+  // Fetch available AI tables
   useEffect(() => {
-    // Method 1: Listen for events
+    const fetchAiTables = async () => {
+      setIsLoadingTables(true);
+      try {
+        console.log('🔄 Fetching AI tables for schema tabs...');
+        const response = await fetch(`${API_BASE}/users/?user_id=${USER_ID}`);
+        const data = await response.json();
+        
+        if (data.data && data.data.ai_tables) {
+          setAiTables(data.data.ai_tables);
+          console.log('✅ AI tables loaded:', data.data.ai_tables);
+          
+          // Set default table if none selected
+          if (!selectedTable && data.data.ai_tables.length > 0) {
+            const defaultTable = data.data.ai_tables[0];
+            setSelectedTable(defaultTable);
+            console.log('🎯 Set default table in tabs:', defaultTable);
+          }
+        }
+      } catch (err) {
+        console.error('❌ Error fetching AI tables:', err);
+        setAiTables([]);
+      } finally {
+        setIsLoadingTables(false);
+      }
+    };
+
+    fetchAiTables();
+  }, []);
+
+  // Listen for table changes from the main schema page (for sync)
+  useEffect(() => {
     const handleTableChange = (event) => {
-      console.log('📨 Received table change event:', event.detail);
+      console.log('📨 Received table change event in tabs:', event.detail);
       if (event.detail && event.detail.selectedTable) {
-        console.log('🎯 Setting selected table in tabs:', event.detail.selectedTable);
+        console.log('🔄 Syncing table selection from main page:', event.detail.selectedTable);
         setSelectedTable(event.detail.selectedTable);
       }
     };
 
-    // Method 2: Check global window object
+    // Check global window object for initial sync
     const checkGlobalTable = () => {
       if (typeof window !== 'undefined' && (window as any).selectedSchemaTable) {
-        console.log('🌐 Found table in global scope:', (window as any).selectedSchemaTable);
+        console.log('🌐 Syncing from global scope:', (window as any).selectedSchemaTable);
         setSelectedTable((window as any).selectedSchemaTable);
       }
     };
 
-    // Method 3: Poll for table changes (fallback)
-    const pollForTable = () => {
-      const tableSelect = document.querySelector('.table-select') as HTMLSelectElement;
-      if (tableSelect && tableSelect.value && tableSelect.value !== selectedTable) {
-        console.log('🔄 Found table via DOM polling:', tableSelect.value);
-        setSelectedTable(tableSelect.value);
-      }
-    };
-
-    console.log('👂 Schema tabs setting up table detection');
+    console.log('👂 Schema tabs setting up table sync');
     
-    // Set up event listener
+    // Set up event listener for sync
     window.addEventListener('schemaTableChanged', handleTableChange);
     
-    // Check immediately
+    // Check immediately for sync
     checkGlobalTable();
-    pollForTable();
-    
-    // Set up polling as backup
-    const interval = setInterval(() => {
-      checkGlobalTable();
-      pollForTable();
-    }, 1000);
     
     return () => {
       console.log('🔇 Schema tabs cleanup');
       window.removeEventListener('schemaTableChanged', handleTableChange);
-      clearInterval(interval);
     };
-  }, [selectedTable]);
+  }, []);
+
+  // Handle table selection from the tabs component
+  const handleTableSelect = (tableName: string) => {
+    console.log('🎯 Table selected in schema tabs:', tableName);
+    setSelectedTable(tableName);
+    
+    // Update global state and notify other components
+    if (typeof window !== 'undefined') {
+      (window as any).selectedSchemaTable = tableName;
+      
+      // Notify the main schema page
+      const event = new CustomEvent('schemaTableChanged', {
+        detail: { selectedTable: tableName }
+      });
+      window.dispatchEvent(event);
+      
+      // Backup notification
+      setTimeout(() => {
+        const backupEvent = new CustomEvent('tableUpdated', {
+          detail: { table: tableName }
+        });
+        window.dispatchEvent(backupEvent);
+      }, 100);
+    }
+  };
 
   // Fetch trained models with better error handling and CORS support
   useEffect(() => {
@@ -183,12 +229,26 @@ const SchemaTabs: React.FC<SchemaTabsProps> = ({ selectedId, onSelect }) => {
     }
   };
 
+  // Handle viewing model details
+  const handleViewModel = (model) => {
+    console.log('📊 Opening model details for:', model);
+    setSelectedModel(model);
+    setIsModalOpen(true);
+  };
+
+  // Handle closing modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedModel(null);
+  };
+
   const formatAlgorithmName = (algorithm) => {
     const names = {
       'linear_regression': 'Linear Regression',
       'random_forest': 'Random Forest',
       'arima': 'ARIMA',
-      'prophet': 'Prophet'
+      'prophet': 'Prophet',
+      'xgboost': 'XGBoost'
     };
     return names[algorithm] || algorithm;
   };
@@ -198,7 +258,8 @@ const SchemaTabs: React.FC<SchemaTabsProps> = ({ selectedId, onSelect }) => {
       'linear_regression': '#10b981',
       'random_forest': '#8b5cf6', 
       'arima': '#f59e0b',
-      'prophet': '#ef4444'
+      'prophet': '#ef4444',
+      'xgboost': '#06b6d4'
     };
     return colors[algorithm] || '#6b7280';
   };
@@ -220,132 +281,130 @@ const SchemaTabs: React.FC<SchemaTabsProps> = ({ selectedId, onSelect }) => {
   });
 
   return (
-    <div className="clean-schema-tabs">
-      {/* Selected Table Header */}
-      {selectedTable ? (
-        <div className="table-header">
-          <div className="table-info">
-            <Database className="table-icon" />
-            <div>
-              <h3 className="table-name">Table: {selectedTable}</h3>
-              <p className="table-subtitle">Machine Learning Models</p>
+    <>
+      <div className="clean-schema-tabs">
+        {/* Table Selector */}
+        <div className="schema-table-selector-section">
+          <div className="schema-table-selector-wrapper">
+            <div className="schema-table-selector">
+              <Database className="schema-selector-icon" />
+              {isLoadingTables ? (
+                <span className="schema-table-loading">Loading tables...</span>
+              ) : (
+                <select 
+                  className="schema-table-select"
+                  value={selectedTable}
+                  onChange={(e) => handleTableSelect(e.target.value)}
+                >
+                  <option value="">Select a table...</option>
+                  {aiTables.map(table => (
+                    <option key={table} value={table}>{table}</option>
+                  ))}
+                </select>
+              )}
+              <ChevronDown className="schema-chevron-icon" />
             </div>
           </div>
         </div>
-      ) : (
-        <div className="no-table-header">
-          <div className="no-table-info">
-            <Database className="table-icon inactive" />
-            <div>
-              <h3 className="no-table-name">No Table Selected</h3>
-              <p className="no-table-subtitle">Choose a table from the dropdown above</p>
-            </div>
+
+        {/* Table header removed - using dropdown selector instead */}
+
+        {/* Trained Models for Selected Table */}
+        <div className="models-section">
+          <div className="section-header">
+            <span className="models-title">Trained Models</span>
+            <span className="models-count">{tableModels.length}</span>
           </div>
-        </div>
-      )}
 
-      {/* Trained Models for Selected Table */}
-      <div className="models-section">
-        <div className="section-header">
-          <span className="models-title">Trained Models</span>
-          <span className="models-count">{tableModels.length}</span>
-        </div>
-
-        <div className="models-list">
-          {isLoading ? (
-            <div className="loading-state">
-              <div className="spinner"></div>
-              <span>Loading models...</span>
-            </div>
-          ) : tableModels.length === 0 ? (
-            <div className="empty-models">
-              <Brain className="empty-icon" />
-              <p>No models trained yet</p>
-              <span>
-                {selectedTable 
-                  ? `Train your first model for "${selectedTable}" using the form above`
-                  : 'Select a table to see trained models'
-                }
-              </span>
-            </div>
-          ) : (
-            tableModels.map((model, index) => (
-              <div
-                key={`${model.target_col}-${model.algorithm}-${index}`}
-                className={`model-card ${selectedId === `model-${index}` ? 'active' : ''}`}
-                onClick={() => onSelect(`model-${index}`)}
-              >
-                <div className="model-header">
-                  <div className="model-main">
-                    <div 
-                      className="algorithm-badge"
-                      style={{ backgroundColor: `${getAlgorithmColor(model.algorithm)}15`, color: getAlgorithmColor(model.algorithm) }}
-                    >
-                      {formatAlgorithmName(model.algorithm)}
-                    </div>
-                    <h4 className="model-title">{model.target_col}</h4>
-                  </div>
-                  
-                  <div className="model-actions">
-                    <button 
-                      className="action-btn view"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('View model details:', model);
-                      }}
-                      title="View Details"
-                    >
-                      <Eye size={16} />
-                    </button>
-                    <button 
-                      className="action-btn delete"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteModel(model);
-                      }}
-                      title="Delete Model"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="model-details">
-                  <div className="detail-item">
-                    <Target size={12} />
-                    <span>Target: {model.target_col}</span>
-                  </div>
-                  {model.date_col && (
-                    <div className="detail-item">
-                      <Calendar size={12} />
-                      <span>Date: {model.date_col}</span>
-                    </div>
-                  )}
-                  <div className="detail-item">
-                    <Database size={12} />
-                    <span>Table: {model.table_name}</span>
-                  </div>
-                </div>
+          <div className="models-list">
+            {isLoading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <span>Loading models...</span>
               </div>
-            ))
-          )}
+            ) : tableModels.length === 0 ? (
+              <div className="empty-models">
+                <Brain className="empty-icon" />
+                <p>No models trained yet</p>
+                <span>
+                  {selectedTable 
+                    ? `Train your first model for "${selectedTable}" using the main schema page`
+                    : 'Select a table to see trained models'
+                  }
+                </span>
+              </div>
+            ) : (
+              tableModels.map((model, index) => (
+                <div
+                  key={`${model.target_col}-${model.algorithm}-${index}`}
+                  className={`model-card ${selectedId === `model-${index}` ? 'active' : ''}`}
+                  onClick={() => handleViewModel(model)}
+                >
+                  <div className="model-header">
+                    <div className="model-main">
+                      <div 
+                        className="algorithm-badge"
+                        style={{ backgroundColor: `${getAlgorithmColor(model.algorithm)}15`, color: getAlgorithmColor(model.algorithm) }}
+                      >
+                        {formatAlgorithmName(model.algorithm)}
+                      </div>
+                      <h4 className="model-title">{model.target_col}</h4>
+                    </div>
+                    
+                    <div className="model-actions">
+                      <button 
+                        className="action-btn view"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewModel(model);
+                        }}
+                        title="View Details"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button 
+                        className="action-btn delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteModel(model);
+                        }}
+                        title="Delete Model"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="model-details">
+                    <div className="detail-item">
+                      <Target size={12} />
+                      <span>Target: {model.target_col}</span>
+                    </div>
+                    {model.date_col && (
+                      <div className="detail-item">
+                        <Calendar size={12} />
+                        <span>Date: {model.date_col}</span>
+                      </div>
+                    )}
+                    <div className="detail-item">
+                      <Database size={12} />
+                      <span>Table: {model.table_name}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      {/* <div className="quick-actions">
-        <button 
-          className="quick-action-btn"
-          onClick={() => {
-            // Scroll to top of schema page
-            document.querySelector('.schema-page-container')?.scrollIntoView({ behavior: 'smooth' });
-          }}
-        >
-          <Plus size={16} />
-          Train New Model
-        </button>
-      </div> */}
-    </div>
+      {/* Model Details Modal */}
+      <ModelDetailsModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        model={selectedModel}
+      />
+    </>
   );
 };
 

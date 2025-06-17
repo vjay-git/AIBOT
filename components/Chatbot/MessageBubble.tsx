@@ -5,6 +5,12 @@ import { FiCornerUpLeft } from 'react-icons/fi';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { bookmarkMessageAPI, bookmarkMessageAPIUpdate } from '../../utils/api';
 
+// Add feedback API integration
+const FEEDBACK_COMMENTS = {
+  up: 'Excellent query results, very helpful analysis',
+  down: 'Query results were not accurate',
+};
+
 interface MessageBubbleProps {
   message: ChatMessage;
   messages: ChatMessage[];
@@ -29,6 +35,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [showBookmarkPrompt, setShowBookmarkPrompt] = useState(false);
   const [bookmarkName, setBookmarkName] = useState('');
   const [showTooltip, setShowTooltip] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   // Find the message being replied to, if any
   const repliedToMsg = message.replyTo
@@ -80,13 +88,36 @@ const isMessageBookmarked = useMemo(() => {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Handle feedback click
-  const handleFeedback = (type: 'up' | 'down') => {
+  // Handle feedback click with API integration
+  const handleFeedback = async (type: 'up' | 'down') => {
+    if (!message.queryId || feedbackLoading) return;
     setFeedback(type);
-    setShowThanks(true);
-    // Optionally: send feedback to analytics endpoint here
-    // e.g. sendFeedback({ messageId: message.id, type, timestamp: Date.now() })
-    setTimeout(() => setShowThanks(false), 1500);
+    setShowThanks(false);
+    setFeedbackLoading(true);
+    setFeedbackError(null);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const res = await fetch(`${baseUrl}/feedback/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query_id: message.queryId,
+          rating: type === 'up' ? 5 : 1,
+          comments: FEEDBACK_COMMENTS[type],
+        }),
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || 'Failed to submit feedback');
+      }
+      setShowThanks(true);
+      setTimeout(() => setShowThanks(false), 1500);
+    } catch (err: any) {
+      setFeedbackError('Failed to send feedback. Please try again.');
+      setTimeout(() => setFeedbackError(null), 2000);
+    } finally {
+      setFeedbackLoading(false);
+    }
   };
 
   // Helper to get the true original question for reply chains (ignoring greetings)
@@ -259,7 +290,7 @@ const isMessageBookmarked = useMemo(() => {
                   className={`feedback-btn${feedback === 'up' ? ' selected' : ''}`}
                   aria-label="Thumbs up"
                   onClick={() => handleFeedback('up')}
-                  disabled={!!feedback}
+                  disabled={!!feedback || feedbackLoading}
                 >
                   <ThumbsUp size={20} />
                 </button>
@@ -267,10 +298,12 @@ const isMessageBookmarked = useMemo(() => {
                   className={`feedback-btn${feedback === 'down' ? ' selected' : ''}`}
                   aria-label="Thumbs down"
                   onClick={() => handleFeedback('down')}
-                  disabled={!!feedback}
+                  disabled={!!feedback || feedbackLoading}
                 >
                   <ThumbsDown size={20} />
                 </button>
+                {feedbackLoading && <span className="feedback-loading" style={{ marginLeft: 8, fontSize: 12 }}>Sending...</span>}
+                {feedbackError && <span className="feedback-error" style={{ color: 'red', marginLeft: 8, fontSize: 12 }}>{feedbackError}</span>}
               </>
             )}
           </div>

@@ -26,7 +26,7 @@ const WelcomeMessage = React.memo(({ onSuggestionClick, suggestions }: {
   const defaultSuggestions = [
     "Top 5 Vendors by Purchasing amount",
     "Top 5 customers fiscal year 2024",
-    "Top 5 business fiscal year 2024",
+    "Predict billing amount for the year 2025",
     "Top 10 Customers by Billing Amount"
   ];
 
@@ -829,127 +829,167 @@ const Chatbot: React.FC<ChatbotProps> = ({
   // OPTIMIZED: handleSend function with debouncing to prevent duplicate calls
   const [sendingRequest, setSendingRequest] = useState(false);
 
-  const handleSend = useCallback(
-    async (msg: string | Blob, queryType = 'CHAT', isAudio = false) => {
-      // Prevent duplicate sends
-      if (sendingRequest) {
-        console.log('🚫 Request already in progress, ignoring duplicate send');
-        return;
-      }
+ // FIXED: Updated handleSend function to properly handle folder context
+const handleSend = useCallback(
+  async (msg: string | Blob, queryType = 'CHAT', isAudio = false) => {
+    // Prevent duplicate sends
+    if (sendingRequest) {
+      console.log('🚫 Request already in progress, ignoring duplicate send');
+      return;
+    }
 
-      console.log('📤 handleSend called with:', { 
-        message: typeof msg === 'string' ? msg.slice(0, 50) : '[Audio]', 
-        queryType, 
+    console.log('📤 handleSend called with:', { 
+      message: typeof msg === 'string' ? msg.slice(0, 50) : '[Audio]', 
+      queryType, 
+      isAudio,
+      isFromFolder,
+      selectedChatId,
+      context: 'folder message'
+    });
+    
+    setSendingRequest(true);
+    setReplyTo(null);
+    setError('');
+
+    // Optimistically create user message
+    let userMessage: ChatMessage;
+    let concatenatedQuestion = msg as string;
+    if (replyTo && typeof msg === 'string') {
+      const original = getTrueOriginalQuestion(replyTo, messages);
+      concatenatedQuestion = `Original Questions: ${original} | New Question: ${msg}`;
+    }
+    
+    if (isAudio && msg instanceof Blob) {
+      userMessage = {
+        id: `msg-${Date.now()}`,
+        sender: 'user',
+        text: '[Voice message]',
+        timestamp: new Date().toISOString(),
+        replyTo: replyTo?.id,
+        type: 'audio',
+        rawAnswer: msg,
+      };
+    } else {
+      userMessage = {
+        id: `msg-${Date.now()}`,
+        sender: 'user',
+        text: concatenatedQuestion,
+        timestamp: new Date().toISOString(),
+        replyTo: replyTo?.id,
+      };
+    }
+    
+    setMessages(msgs => [...msgs, userMessage]); // Show user message immediately
+    setLoading(true); // Now show loading spinner
+
+    try {
+      const {
+        botMessages,
+        res,
+        newThreadId,
+      } = await askDbAndFormatResponse({
+        msg,
         isAudio,
+        replyTo,
+        messages: [...messages, userMessage],
+        threadId,
+        isNewChatContext,
+        setNewChatStarted,
+        queryType: queryType as 'CHAT' | 'DB_QUERY' | 'SCRAP',
         isFromFolder,
         selectedChatId
       });
-      
-      setSendingRequest(true);
-      setReplyTo(null);
-      setError('');
 
-      // Optimistically create user message
-      let userMessage: ChatMessage;
-      let concatenatedQuestion = msg as string;
-      if (replyTo && typeof msg === 'string') {
-        const original = getTrueOriginalQuestion(replyTo, messages);
-        concatenatedQuestion = `Original Questions: ${original} | New Question: ${msg}`;
-      }
-      if (isAudio && msg instanceof Blob) {
-        userMessage = {
-          id: `msg-${Date.now()}`,
-          sender: 'user',
-          text: '[Voice message]',
-          timestamp: new Date().toISOString(),
-          replyTo: replyTo?.id,
-          type: 'audio',
-          rawAnswer: msg,
-        };
+      // 🔧 CRITICAL FIX: Don't create new thread when in folder context
+      if (isFromFolder) {
+        console.log('🗂️ Folder context: Not creating new thread, keeping folder view');
+        // Don't set threadId - keep it null for folder context
+        // Don't call setNewChatStarted - we're not starting a new chat
       } else {
-        userMessage = {
-          id: `msg-${Date.now()}`,
-          sender: 'user',
-          text: concatenatedQuestion,
-          timestamp: new Date().toISOString(),
-          replyTo: replyTo?.id,
-        };
-      }
-      setMessages(msgs => [...msgs, userMessage]); // Show user message immediately
-      setLoading(true); // Now show loading spinner
-
-      try {
-        const {
-          botMessages,
-          res,
-          newThreadId,
-        } = await askDbAndFormatResponse({
-          msg,
-          isAudio,
-          replyTo,
-          messages: [...messages, userMessage],
-          threadId,
-          isNewChatContext,
-          setNewChatStarted,
-          queryType: queryType as 'CHAT' | 'DB_QUERY' | 'SCRAP',
-          isFromFolder,
-          selectedChatId
-        });
-
-        // Handle new thread creation
+        // Handle new thread creation only for regular chats
         if (!threadId && newThreadId) {
           setThreadId(newThreadId);
           setIsNewChatContext(false);
         }
-
-        // Update query IDs
-        if (res?.query_id) {
-          setQueryIds(prev => prev.includes(res.query_id) ? prev : [...prev, res.query_id]);
-          // Update ONLY the user message with queryId (no automatic bookmarking)
-          setMessages(msgs => {
-            const updated = [...msgs];
-            for (let i = updated.length - 1; i >= 0; i--) {
-              if (updated[i].sender === 'user' && !updated[i].queryId) {
-                updated[i] = {
-                  ...updated[i],
-                  queryId: res.query_id,
-                  bookmarked: false
-                };
-                break;
-              }
-            }
-            return updated;
-          });
-        }
-
-        // Add bot messages after user message is visible
-        setTimeout(() => {
-          setMessages(msgs => [
-            ...msgs,
-            ...botMessages.map(botMsg => ({
-              ...botMsg,
-              queryId: res?.query_id || '',
-              bookmarked: false
-            }))
-          ]);
-          setLoading(false);
-        }, 100);
-      } catch (err: any) {
-        const errorMessage: ChatMessage = {
-          id: `msg-${Date.now() + 1}`,
-          sender: 'bot',
-          text: 'Sorry, there was an error processing your request. Please try again.',
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(msgs => [...msgs, errorMessage]);
-        setError(err.message || 'Failed to send message');
-        setLoading(false);
-      } finally {
-        setSendingRequest(false);
       }
-    },
-    [replyTo, messages, threadId, isNewChatContext, setNewChatStarted, isFromFolder, selectedChatId, sendingRequest]
-  );
+
+      // Update query IDs
+      if (res?.query_id) {
+        setQueryIds(prev => prev.includes(res.query_id) ? prev : [...prev, res.query_id]);
+        // Update ONLY the user message with queryId
+        setMessages(msgs => {
+          const updated = [...msgs];
+          for (let i = updated.length - 1; i >= 0; i--) {
+            if (updated[i].sender === 'user' && !updated[i].queryId) {
+              updated[i] = {
+                ...updated[i],
+                queryId: res.query_id,
+                bookmarked: false
+              };
+              break;
+            }
+          }
+          return updated;
+        });
+      }
+
+      // Add bot messages after user message is visible
+      setTimeout(() => {
+        setMessages(msgs => [
+          ...msgs,
+          ...botMessages.map(botMsg => ({
+            ...botMsg,
+            queryId: res?.query_id || '',
+            bookmarked: false
+          }))
+        ]);
+        setLoading(false);
+        
+        // 🔧 NEW: Show success message for folder context
+        if (isFromFolder && res?.query_id) {
+          console.log('✅ Message added to folder successfully:', {
+            folderId: selectedChatId,
+            queryId: res.query_id
+          });
+          
+          // Optional: Show a brief success indicator
+          const successMessage = document.createElement('div');
+          successMessage.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            z-index: 1000;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          `;
+          successMessage.textContent = '✅ Message added to folder';
+          document.body.appendChild(successMessage);
+          
+          setTimeout(() => {
+            document.body.removeChild(successMessage);
+          }, 3000);
+        }
+      }, 100);
+    } catch (err: any) {
+      const errorMessage: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'bot',
+        text: 'Sorry, there was an error processing your request. Please try again.',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(msgs => [...msgs, errorMessage]);
+      setError(err.message || 'Failed to send message');
+      setLoading(false);
+    } finally {
+      setSendingRequest(false);
+    }
+  },
+  [replyTo, messages, threadId, isNewChatContext, setNewChatStarted, isFromFolder, selectedChatId, sendingRequest]
+);
 
   // Enhanced theme toggle
   const toggleTheme = useCallback(() => {
